@@ -37,16 +37,16 @@ CEC_on_script   = 0
 CEC_off_script  = 0
 
 """ Visual settings """
-deltahours      = -2 # Value for Switzerland
-fullscreen      = True
+deltahours      = -2    # Value for Switzerland
+fullscreen      = False  
 
 """ Power settings """
 cec_enable      = False
 stdby_enable    = False
 
 """ Path's """
-ffLogo      = 'pic/Logo.png'   # Firefighter Logo
-HDMI_script = 'tvon.sh'        # Script to enable HDMI output
+ffLogo      = 'pic/Logo.png'                # Firefighter Logo
+HDMI_script = 'script/reactivate_screen.sh' # Script to enable HDMI output
 
 ########################################################################
 class FireFinderGUI(tk.Tk):
@@ -165,14 +165,40 @@ class ScreenObject(tk.Frame):
         
         self.AudioIsOn = 0
         
-        """ Create a Background for the Alarm Message """
-        self.topFrame = tk.Frame(self, background='red', width=self.winfo_screenwidth(), height=320)
-        self.topFrame.place(x=0,y=0)
+        """
+        Event bar
+        On the top of the screen, there is the event bar. It hold's the 
+        main information about the mission. Depend of the happening, the
+        color of the background may change. Due to this, it is more simple
+        to distinguish between the missions. Example
+        urgend       -- red.png
+        semi urgend  -- blue.png
+        neighborhood -- green.png
+        unknown      -- white.png       
+        """
+        self.eventBgColor={}
+        for x in ['red', 'blue', 'green', 'white']:
+            path = os.path.join(wdr, 'pic', 'bg', ('%s.png') %(x)) 
+            if os.path.isfile(path) == True:               
+                logo = Image.open(path)
+                logo = logo.resize((self.winfo_screenwidth(), 320), Image.ANTIALIAS)
+                self.eventBgColor[x] = ImageTk.PhotoImage(logo) 
         
-        """ Create a Message-Frame for the Alarm Message """
-        ratio = int((self.winfo_screenwidth()/320)*100)
-        self.Message = tk.Message(self.topFrame, background='red', foreground='white', text='test', font=('Arial', 60), aspect = ratio)
-        self.Message.place(x=10,y=5)
+        # Create a canvas to hold the top event bar
+        self.eventBar = tk.Canvas(self                            , 
+                                  width=self.winfo_screenwidth()  , 
+                                  height = 320                    , 
+                                  highlightthickness = 0          ) 
+        self.eventBarImg = self.eventBar.create_image(0, 0, anchor = 'nw') 
+        self.eventBarTxt = self.eventBar.create_text(15, 30 ) 
+        self.eventBar.itemconfig(self.eventBarTxt                , 
+                                 fill = "black"                  , 
+                                 anchor = 'nw'                   , 
+                                 font=('Arial', 60)              ,
+                                 width = self.winfo_screenwidth(),
+                                 justify = 'center'              ) 
+        self.eventBar.place(x=0, y=0) 
+
 
         """ Create a label for the left picture """
         self.route = tk.Label(self, relief='raised', bd=5)
@@ -181,9 +207,7 @@ class ScreenObject(tk.Frame):
         """ Create a label for the right picture """
         self.detail = tk.Label(self, relief='raised', bd=5)
         self.detail.place(x=self.winfo_screenwidth()-10, y=325, anchor='ne')
-        
-        
-       
+              
         
         """ Create styles for the Progressbar """
         redBar = ttk.Style()
@@ -211,18 +235,6 @@ class ScreenObject(tk.Frame):
         self.bartime = 0
         self.showbar = 0
        
-        
-#         self.lStreetName     = tk.Label(self, font=LARGE_FONT)
-#         self.lStreetNumber   = tk.Label(self, font=LARGE_FONT)
-#         self.lObject         = tk.Label(self, font=LARGE_FONT)
-#         self.lAdditionalMsg  = tk.Label(self, font=LARGE_FONT)
-#         self.lAlarmTyp       = tk.Label(self, font=LARGE_FONT)
-#         self.lStreetName.pack()
-#         self.lStreetNumber.pack()
-#         self.lObject.pack()
-#         self.lAdditionalMsg.pack()
-#         self.lAlarmTyp.pack()
-
         self.poll()
 
     
@@ -231,12 +243,24 @@ class ScreenObject(tk.Frame):
                    AlarmMsg     = 'None',
                    OverviewPic  = 0     ,
                    DetailPic    = 0     ,
-                   sound        = 'None',
-                   bartime      = 0,
+                   category     = ""    ,
+#                    sound        = 'None',
+                   bartime      = 0     ,
                    showbar      = False):
         
-        """ Set new message to the top red frame """
-        self.Message["text"] = ("%s" %AlarmMsg) 
+        """ Set new message to the top red frame """ 
+        # Set background of event bar depend of the category
+        if category.lower() == 'fire':
+            self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['red'])
+        elif category.lower() == 'water':
+            self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['blue'])
+        elif category.lower() == 'neighborhood':
+            self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['green'])
+        else:
+            self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['white'])
+ 
+        self.eventBar.itemconfig(self.eventBarTxt, text="%s" %AlarmMsg)
+        
 
         """ resize image to the given value """ 
         if showbar == False:        
@@ -314,7 +338,6 @@ class ScreenTruck(tk.Frame):
         self.truck    = {}
         self.trail    = {}     
         for x in range(1,7):
-            print(x)
             self.truck[x] = tk.Label(self.truckcollection, background='gray')
             self.truck[x].pack(side='left', fill='both')
             self.trail[x] = tk.Label(self.truckcollection, background='gray')
@@ -529,7 +552,6 @@ class MyHandler(FileSystemEventHandler):
         self.controller = controller
         self.setAddress = self.controller.frames[ScreenObject].setAddress
         self.setTruck   = self.controller.frames[ScreenTruck].setTruck
-        self.alertFile  = ConfigParser()
         self.HDMIout    = SwitchTelevision()
         
 
@@ -548,74 +570,71 @@ class MyHandler(FileSystemEventHandler):
             """
             if self.lastModified >= int(time.time()): 
                 return
-            
+             
             self.lastModified = int(time.time()) + 3
 
-            # check if file exist
-            if os.path.isfile(event.src_path) != True:
-                print("File not found")
-                return
-
+            # The parser-file has to be converted as UTF-8 file. Otherwise
+            # special character like umlaut could not successfully read.
             try:
-                # The ini-File has to be convertet as UTF-8 file. Otherwise
-                # special character like ä ö ü could not successfully read.
-                # The convert the ini-File into UTF-8, the file should start
-                # with \ufeff and therefore the configparser get an error.
-                # Due to this, I have to skip the first line with readline()
-                file = codecs.open(event.src_path, "r", 'UTF-8')
-                file.readline()
-                self.alertFile.read_file(file)
+                parser = ConfigParser()
+                with codecs.open(event.src_path, 'r', encoding='UTF-8-sig') as f:
+                    parser.readfp(f)
             except:
-                print("Can't read \"%s\" file. Maybe first line is not empty?" %event.src_path)
+                print("Failed to open ini-file \"%s\"" %event.src_path)
+                print("--> Be sure file is encode as \"UTF-8 BOM\"")
+                print("--------------------------------------------------\n\n")
                 return
-            
-            try:
-                show  = self.alertFile.get('General', 'show') 
-            except:
-                print("error get data")
+             
+            try:    
+                show = parser.get('General', 'show') 
+            except: 
+                print("Failed to read variable \"show\" in section [General]")
                 return
                 
             
             if show.lower() == 'time':
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenClock)
-                self.HDMIout.switchState('On')
-                print("show clock")
+                self.HDMIout.set_Visual('On')
+
                 
             if show.lower() == 'off':  
                 self.alarmSound.stop()                  
                 self.controller.show_frame(ScreenOff)
-                self.HDMIout.switchState('Off')
-                print("off")
+                self.HDMIout.set_Visual('Off')
+
         
             if show.lower() == 'object':
                 # get information from ini-file
-                try:    AddMsg       = self.alertFile.get('ObjectInfo', 'alarmmsg')
+                try:    AddMsg       = parser.get('ObjectInfo', 'entire_msg')
                 except: AddMsg       = ""
                 
-                try:    OverviewPic  = self.alertFile.get('ObjectInfo', 'picture_overview')
+                try:    OverviewPic  = parser.get('ObjectInfo', 'picture_overview')
                 except: OverviewPic  = ""
                 
-                try:    DetailPic    = self.alertFile.get('ObjectInfo', 'pciture_detail')
+                try:    DetailPic    = parser.get('ObjectInfo', 'pciture_detail')
                 except: DetailPic    = ""
                 
-                try:    sound        = self.alertFile.get('ObjectInfo', 'sound')
+                try:    category     = parser.get('ObjectInfo', 'category')
+                except: category     = ""
+                
+                try:    sound        = parser.get('ObjectInfo', 'sound')
                 except: sound        = "None"
                 
-                try:    repeat       = self.alertFile.getint('ObjectInfo', 'repeat')
+                try:    repeat       = parser.getint('ObjectInfo', 'repeat')
                 except: repeat       = 1
                 
-                try:    showPB       = self.alertFile.getboolean('ObjectInfo', 'show_progress')
+                try:    showPB       = parser.getboolean('ObjectInfo', 'show_progress')
                 except: showPB       = False
                 
-                try:    timePB       = self.alertFile.getint('ObjectInfo', 'progresstime')
+                try:    timePB       = parser.getint('ObjectInfo', 'progresstime')
                 except: timePB       = 0
                 
                 # Change object data and put frame to front afterwards
                 self.setAddress(AlarmMsg    = AddMsg,
                                 OverviewPic = OverviewPic,
                                 DetailPic   = DetailPic,
-                                sound       = sound,
+                                category    = category,
                                 bartime     = timePB,
                                 showbar     = showPB)       
                 
@@ -623,7 +642,7 @@ class MyHandler(FileSystemEventHandler):
                 self.controller.show_frame(ScreenObject)
                 
                 # enable television
-                self.HDMIout.switchState('On')
+                self.HDMIout.set_Visual('On')
                 
                 # set sound
                 if sound.lower() != 'none':
@@ -639,21 +658,21 @@ class MyHandler(FileSystemEventHandler):
                 trail = {}
                 for x in range(1,7): 
                     s = (('truck_%01i') %(x))
-                    try:    truck[x] = self.alertFile.get('TruckInfo', s)
+                    try:    truck[x] = parser.get('TruckInfo', s)
                     except: truck[x] = ""
                     s = (('truck_%01i_trailer') %(x))
-                    try:    trail[x] = self.alertFile.get('TruckInfo', s)
+                    try:    trail[x] = parser.get('TruckInfo', s)
                     except: trail[x] = ""
                     
                 self.setTruck(truck = truck, trailer = trail)
                 
                 self.controller.show_frame(ScreenTruck)
-                self.HDMIout.switchState('On')
+                self.HDMIout.set_Visual('On')
                 print("show truck")
                 
             if show.lower() == 'quit':
                 self.alarmSound.stop()
-                self.HDMIout.switchState('On')
+                self.HDMIout.set_Visual('On')
                 print("Try to close programm")
                 os._exit(0)
   
@@ -661,8 +680,9 @@ class MyHandler(FileSystemEventHandler):
 ######################################################################## 
 class SwitchTelevision:
     def __init__(self):
-        self.tvState      = 'On'
-        self.pathToEnable = os.path.join(wdr, HDMI_script)
+        self.__actGraficOutput      = 'On'
+        self.__actTelevisionState   = 'Off'
+        self.__pathToReactivateMonitor = os.path.join(wdr, HDMI_script)
         
         # if running on a linux system, disable power saving
         if os.name == 'posix':
@@ -673,38 +693,60 @@ class SwitchTelevision:
             try:    subprocess.call(["xset", "-dpms"])
             except: pass
         else:
-            print("No linux system found, can't disable power safe")
-                
-         
-    def switchState(self, newState):
+            pass
+    
+    #----------------------------------------------------------------------
+    def get_Visual(self):
+        """
+        Return the status of the grafical output. If CEC is enabled, both
+        (HDMI output and television on) has to be enabled, otherwise 'Off'
+        will returned if at least on is disabled.
+        """
+        if cec_enable == True:
+            return self.__actGraficOutput & self.__actTelevisionState
+        else:
+            return self.__actGraficOutput
+                                        
+    #----------------------------------------------------------------------
+    def set_Visual(self, state):
+        """
+        Activate or deactivate the grafical output to force monitor to
+        standby. If CEC is enabled, the television is triggered too,
+        otherwise only the grafic output is driven.
+        """
+        self.__switchGraficOutput(newState = state)
+        
+        if cec_enable == True:
+            self.__switchMonitorState(newState = state)
+            
+    #----------------------------------------------------------------------        
+    def __switchGraficOutput(self, newState):
         
         if newState == 'On':
-            if self.tvState != newState:
-                print("Try to turn TV on")
-                try:    subprocess.check_output([self.pathToEnable], shell=True)
+            if self.__actGraficOutput != newState:
+                try:    subprocess.check_output([self.__pathToReactivateMonitor], shell=True)
                 except: print("error while script")
-                self.tvState = newState
+                self.__actGraficOutput = newState
             
         if newState == 'Off':
-            if self.tvState != newState:
-                # only disalbe output if a script for reactivation exist
-                if os.path.isfile(self.pathToEnable) == True:
-                    print("Try to turn TV off")
+            if self.__actGraficOutput != newState:
+                # Before disabling the grafic output, be sure there is a
+                # shell-script for reactivation available
+                if os.path.isfile(self.__pathToReactivateMonitor) == True:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-o"])
                     except: pass
-                    self.tvState = newState
+                    self.__actGraficOutput = newState
                 else:
-                    print("No file to reactivate HDMI output")
+                    print("No file to reactivate grafical output")
+                    
+    #----------------------------------------------------------------------                
+    def __switchTelevisionState(self, newState):
+        print("Da kommt noch was")
             
                     
 ########################################################################          
 if __name__ == "__main__":
     
-    """
-    Read the ini file for system configuration
-    """
-    
-        
     # store working directory
     try:    wdr = os.path.dirname( __file__ )
     except: wdr = os.getcwd()
@@ -712,9 +754,10 @@ if __name__ == "__main__":
     #necessary to change working directory? Guess not!
     os.chdir(wdr)
 
+      
     # Check if config.ini file exist
-    config_path = os.path.join(wdr, 'config.ini')
-    if os.path.isfile(config_path) != True:
+    configPath = os.path.join(wdr, 'config.ini')
+    if os.path.isfile(configPath) != True:
         # quit skript due to an error
         print("The file \"config.ini\" is missing. Be sure this"
               "file is in the same directory like this python-script")     
@@ -722,7 +765,7 @@ if __name__ == "__main__":
     
     # config.ini file exist, going to read the data
     sysconfig = ConfigParser()
-    sysconfig.read(config_path)
+    sysconfig.read(configPath)
     
     # read informations which are required
     try:
@@ -731,19 +774,19 @@ if __name__ == "__main__":
     except:
         print ('An unexpected error occurred while reading config.ini')
     
-    # Check if config.ini file exist
+    # Check if the observation-directory exist. Otherwise the observer
+    # will raise a FileNotFoundError
     if os.path.isdir(inifile_path) != True:
         # quit script due to an error
         print("The directory \"%s\" for observation is missing." %inifile_path)     
-        sys.exit("no directory for observation found") 
-             
-         
-    # Read  
+        sys.exit("The directory for observation is missing") 
+                
+    # Read variables with lower priority. If not available, work with standard values
     try:    deltahours = sysconfig.getint('Visual', 'time_shift_UTC')
-    except: print("Failed get time shift from UTC -> Standard is -2")
+    except: pass
     
     try:    fullscreen = sysconfig.getboolean('Visual', 'fullscreen')
-    except: print("Failed get fullscreen info -> Standard is true")
+    except: pass
         
     try:    cec_enable   = sysconfig.getboolean('Power', 'cec_enable')
     except: pass
@@ -758,7 +801,6 @@ if __name__ == "__main__":
     
     # configure the observer thread and start it afterward
     observer.schedule(eventHandler, inifile_path, recursive=False)
-    observer.start()
-    
+    observer.start()   
     
     app.mainloop()
