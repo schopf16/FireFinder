@@ -126,22 +126,12 @@ class ScreenOff(tk.Frame):
         path = os.path.join(wdr, ffLogo)
         if os.path.isfile(path) == True:     
             # create screen for object
+            self.image = createImage(self, path=path, width=screenWidth-20, height=screenHigh-20) 
+            
             ffEmblem = tk.Label(self)
             ffEmblem["bg"]     = "black"
             ffEmblem["width"]  = screenWidth
-            ffEmblem["height"] = screenHigh
-            
-            logo = Image.open(path)        
-
-            # resize image to fit to the screen           
-            if(screenHigh < screenWidth):   basewidth = screenWidth - 20
-            else:                           basewidth = screenHigh - 20
-                
-            wpercent = (basewidth / float(logo.size[0]))
-            hsize = int((float(logo.size[1]) * float(wpercent)))
-            logo = logo.resize((basewidth, hsize), Image.ANTIALIAS)
-            self.image = ImageTk.PhotoImage(logo)
-                
+            ffEmblem["height"] = screenHigh                        
             ffEmblem["image"] = self.image
             ffEmblem.pack()
         else:
@@ -174,18 +164,20 @@ class ScreenObject(tk.Frame):
         neighborhood -- green.png
         unknown      -- white.png       
         """
+        barHeight = 220
+        
         self.eventBgColor={}
         for x in ['red', 'blue', 'green', 'white']:
             path = os.path.join(wdr, 'pic', 'bg', ('%s.png') %(x)) 
             if os.path.isfile(path) == True:               
                 logo = Image.open(path)
-                logo = logo.resize((self.winfo_screenwidth(), 320), Image.ANTIALIAS)
+                logo = logo.resize((self.winfo_screenwidth(), barHeight), Image.ANTIALIAS)
                 self.eventBgColor[x] = ImageTk.PhotoImage(logo) 
         
         # Create a canvas to hold the top event bar
         self.eventBar = tk.Canvas(self                            , 
                                   width=self.winfo_screenwidth()  , 
-                                  height = 320                    , 
+                                  height = barHeight                    , 
                                   highlightthickness = 0          ) 
         self.eventBarImg = self.eventBar.create_image(0, 0, anchor = 'nw') 
         self.eventBarTxt = self.eventBar.create_text(15, 30 ) 
@@ -199,12 +191,12 @@ class ScreenObject(tk.Frame):
 
 
         """ Create a label for the left picture """
-        self.route = tk.Label(self, relief='raised', bd=5)
-        self.route.place(x=10, y=325, anchor='nw')
+        self.route = tk.Label(self, bd=0)
+        self.route.place(x=0, y=barHeight, anchor='nw')
         
         """ Create a label for the right picture """
-        self.detail = tk.Label(self, relief='raised', bd=5)
-        self.detail.place(x=self.winfo_screenwidth()-10, y=325, anchor='ne')
+        self.detail = tk.Label(self, bd=0)
+        self.detail.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne')
               
         
         """ Create styles for the Progressbar """
@@ -247,44 +239,34 @@ class ScreenObject(tk.Frame):
         
         """ Set new message to the top red frame """ 
         # Set background of event bar depend of the category
-        if category.lower() == 'fire':
+        if category.lower() == 'red':
             self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['red'])
-        elif category.lower() == 'water':
+        elif category.lower() == 'blue':
             self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['blue'])
-        elif category.lower() == 'neighborhood':
+        elif category.lower() == 'green':
             self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['green'])
         else:
             self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['white'])
  
-        self.eventBar.itemconfig(self.eventBarTxt, text="%s" %AlarmMsg)
+        # Set alarm message
+        self.eventBar.itemconfig(self.eventBarTxt, justify = 'center', text="%s" %AlarmMsg)
         
-
-        """ resize image to the given value """ 
-        if showbar == False:        
-            basewidth = self.winfo_screenheight() - 340
-        else:
-            basewidth = self.winfo_screenheight() - 445
-        
-        
-        path = os.path.join(inifile_path, OverviewPic)   
-        if os.path.isfile(path) == True:               
-            logo = Image.open(path)
-            wpercent = (basewidth / float(logo.size[0]))
-            hsize = int((float(logo.size[1]) * float(wpercent)))
-            logo = logo.resize((basewidth, hsize), Image.ANTIALIAS)
-#            logo = logo.crop((0,0,600,600))
-            self.routeImg = ImageTk.PhotoImage(logo)               
-            self.route["image"] = self.routeImg
-
-        
+        barHeight = self.eventBar.winfo_height()
+        """ change detail picture """      
         path = os.path.join(inifile_path, DetailPic)
-        if os.path.isfile(path) == True:               
-            logo = Image.open(path)                
-            wpercent = (basewidth / float(logo.size[0]))
-            hsize = int((float(logo.size[1]) * float(wpercent)))
-            logo = logo.resize((basewidth, hsize), Image.ANTIALIAS)
-            self.detailImg = ImageTk.PhotoImage(logo)                
-            self.detail["image"] = self.detailImg
+        picWidth  = self.winfo_screenwidth() / 2
+        picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
+        self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
+        self.detail["image"] = self.detailImg
+        
+        """ change route picture """      
+        path = os.path.join(inifile_path, OverviewPic)
+        picWidth  = self.winfo_screenwidth() / 2
+        picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
+        self.routeImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
+        self.route["image"] = self.routeImg
+ 
+        
         
         
             
@@ -333,7 +315,9 @@ class ScreenTruck(tk.Frame):
         
         # Create a set of 6 labels to hold the truck and trailer-images
         self.truck    = {}
-        self.trail    = {}     
+        self.trail    = {} 
+        self.truckImg = {}
+        self.trailImg = {}    
         for x in range(1,7):
             self.truck[x] = tk.Label(self.truckcollection, background='gray')
             self.truck[x].pack(side='left', fill='both')
@@ -342,43 +326,23 @@ class ScreenTruck(tk.Frame):
             
 
     #----------------------------------------------------------------------   
-    def setTruck(self,
-                 truck,
-                 trailer):
+    def setTruck(self, truck, trailer):
         
-        self.truckImg = {}
-        self.trailImg = {}
-        baseheight    = 100               
+#         self.truckImg = {}
+#         self.trailImg = {}          
  
         # generate the truck pictures concerning the ini-file
         for x in truck:
             path = os.path.join(wdr, 'pic', truck[x])
-            if os.path.isfile(path) == True:               
-                logo     = Image.open(path)
-                hpercent = (baseheight/ float(logo.size[1]))
-                wsize    = int((float(logo.size[0]) * float(hpercent)))
-                logo     = logo.resize((wsize, baseheight), Image.ANTIALIAS)
-                self.truckImg[x] = ImageTk.PhotoImage(logo) 
-            else:
-                self.truckImg[x] = "" 
-        
+            self.truckImg[x] = createImage(self, path, height=100)
+            self.truck[x]["image"] = self.truckImg[x]
+      
         # generate the trailer pictures concerning the ini-file
         for x in trailer:
             path = os.path.join(wdr, 'pic', trailer[x])
-            if os.path.isfile(path) == True:               
-                logo = Image.open(path)
-                hpercent = (baseheight/ float(logo.size[1]))
-                wsize    = int((float(logo.size[0]) * float(hpercent)))
-                logo     = logo.resize((wsize, baseheight), Image.ANTIALIAS)
-                self.trailImg[x] = ImageTk.PhotoImage(logo)               
-            else:
-                self.trailImg[x] = ""    
-
-        # copy the picutres into the particular labels
-        for x in range(1,7):
-            self.truck[x]["image"] = self.truckImg[x]
+            self.trailImg[x] = createImage(self, path, height=100)
             self.trail[x]["image"] = self.trailImg[x]
-        
+       
          
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
@@ -445,7 +409,7 @@ class MyHandler(FileSystemEventHandler):
                 try:    AddMsg       = parser.get('ObjectInfo', 'entire_msg')
                 except: AddMsg       = ""
                 
-                try:    OverviewPic  = parser.get('ObjectInfo', 'picture_overview')
+                try:    OverviewPic  = parser.get('ObjectInfo', 'picture_route')
                 except: OverviewPic  = ""
                 
                 try:    DetailPic    = parser.get('ObjectInfo', 'pciture_detail')
@@ -579,6 +543,57 @@ class SwitchTelevision:
     def __switchTelevisionState(self, newState):
         print("Da kommt noch was")
             
+def createImage(self, path, width=0, height=0, crop=False):
+    
+    # check if a file is found at given path
+    if os.path.isfile(path) != True:  
+        return ""
+    
+    try:             
+        image = Image.open(path)  
+    except:
+        print("Failed to open picture")
+        return ""
+    
+    # force dimension to integer
+    width  = int( width  )
+    height = int( height )
+    
+    # if one axes is equal, set this to maximum
+    if width  == 0: width = self.winfo_screenwidth()
+    if height == 0: height = self.winfo_screenheight()
+
+    # define which axes is the base
+    if ((width / image.size[0]) * image.size[1]) > height: 
+        base = 'height'
+    else:
+        base = 'width'
+    
+    # If the picture can crop afterwards, switch the base
+    if crop == True:
+        if base == 'height':    base = 'width'
+        else:                   base = 'height'
+         
+    if base == 'width':        
+        wpercent = (width / float(image.size[0]))
+        hsize    = int( (float(image.size[1]) * float(wpercent)) )
+        wsize    = int( width )
+    else:          
+        hpercent = (height / float(image.size[1]))
+        wsize = int( (float(image.size[0]) * float(hpercent)) )
+        hsize = int( height )
+                                       
+    # Resize the image
+    image = image.resize((wsize, hsize), Image.ANTIALIAS)        
+            
+    if crop == True:
+        # Crop image if its bigger than expected
+        wOffset = int( (image.size[0] - width ) / 2 )
+        hOffset = int( (image.size[1] - height) / 2 )  
+        image = image.crop((wOffset, hOffset, wOffset + width, hOffset + height)) 
+               
+    return ImageTk.PhotoImage(image)   
+
                     
 ########################################################################          
 if __name__ == "__main__":
