@@ -473,7 +473,7 @@ class MyHandler(FileSystemEventHandler):
             if show.lower() == 'quit':
                 self.alarmSound.stop()
                 self.HDMIout.set_Visual('On')
-                print("Try to close programm")
+                print("Try to close program")
                 os._exit(0)
   
 
@@ -484,7 +484,7 @@ class SwitchTelevision:
         self.__actTelevisionState   = 'Off'
         self.__pathToReactivateMonitor = os.path.join(wdr, HDMI_script)
         
-        # if running on a linux system, disable power saving
+        # Try to disable power saving
         if os.name == 'posix':
             try:    subprocess.call(["xset", "s", "noblank"])
             except: pass
@@ -492,13 +492,21 @@ class SwitchTelevision:
             except: pass
             try:    subprocess.call(["xset", "-dpms"])
             except: pass
-        else:
-            pass
+        elif os.name == 'nt':
+            try:    subprocess.call(["powercfg.exe", "-change", "-monitor-timeout-ac", "0"])
+            except: pass
+            try:    subprocess.call(["powercfg.exe", "-change", "-disk-timeout-ac", "0"])
+            except: pass
+            try:    subprocess.call(["powercfg.exe", "-change", "-standby-timeout-ac", "0"])
+            except: pass
+            try:    subprocess.call(["powercfg.exe", "-change", "-hibernate-timeout-ac", "0"])
+            except: pass
+
     
     #----------------------------------------------------------------------
     def get_Visual(self):
         """
-        Return the status of the grafical output. If CEC is enabled, both
+        Return the status of the graphical output. If CEC is enabled, both
         (HDMI output and television on) has to be enabled, otherwise 'Off'
         will returned if at least on is disabled.
         """
@@ -510,9 +518,9 @@ class SwitchTelevision:
     #----------------------------------------------------------------------
     def set_Visual(self, state):
         """
-        Activate or deactivate the grafical output to force monitor to
+        Activate or deactivate the graphical output to force monitor to
         standby. If CEC is enabled, the television is triggered too,
-        otherwise only the grafic output is driven.
+        otherwise only the graphic output is driven.
         """
         self.__switchGraficOutput(newState = state)
         
@@ -530,20 +538,29 @@ class SwitchTelevision:
             
         if newState == 'Off':
             if self.__actGraficOutput != newState:
-                # Before disabling the grafic output, be sure there is a
+                # Before disabling the graphic output, be sure there is a
                 # shell-script for reactivation available
                 if os.path.isfile(self.__pathToReactivateMonitor) == True:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-o"])
                     except: pass
                     self.__actGraficOutput = newState
                 else:
-                    print("No file to reactivate grafical output")
-                    
+                    print("No file to reactivate graphical output")
+                
     #----------------------------------------------------------------------                
     def __switchTelevisionState(self, newState):
         print("Da kommt noch was")
             
 def createImage(self, path, width=0, height=0, crop=False):
+    """
+    The function creates a ImageTk.PhotoImage from a given picture with
+    path. If width and height of the picture is known, the picture can be
+    crop. The function will automatically crop the image around the middle
+    to fit onto the given width and height.
+    If one side of the picture is unknown, the function will fit the image
+    to the given side while the other side will grove or reduce to fit to
+    the resolution of the picture.
+    """
     
     # check if a file is found at given path
     if os.path.isfile(path) != True:  
