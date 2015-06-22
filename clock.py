@@ -1,10 +1,13 @@
 '''
-Created on 20.06.2015
+A very simple  clock.
 
-@author: Michael
+The program transforms worldcoordinates into screencoordinates 
+and vice versa according to an algorithm found in: "Programming 
+principles in computer graphics" by Leendert Ammeraal.
+
 '''
 
-from datetime           import timedelta,datetime
+from datetime           import datetime
 from math               import sin, cos, pi
 import tkinter as tk
 
