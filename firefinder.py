@@ -23,7 +23,8 @@ from tkinter            import ttk
 
 # local classes
 from sound              import alarmSound
-from clock              import ScreenClock
+from clock              import ScreenClock 
+from progressbar        import progressBar
 
 
 LARGE_FONT= ("Verdana", 12)
