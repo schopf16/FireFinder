@@ -24,6 +24,7 @@ from tkinter            import ttk
 # local classes
 from sound              import alarmSound
 from clock              import ScreenClock
+from progressbar        import progressBar
 
 
 LARGE_FONT= ("Verdana", 12)
@@ -191,11 +192,11 @@ class ScreenObject(tk.Frame):
 
 
         """ Create a label for the left picture """
-        self.route = tk.Label(self, bd=0)
+        self.route = tk.Label(self, bd=0,  background='green')
         self.route.place(x=0, y=barHeight, anchor='nw')
         
         """ Create a label for the right picture """
-        self.detail = tk.Label(self, bd=0)
+        self.detail = tk.Label(self, bd=0,  background='green')
         self.detail.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne')
               
         
@@ -212,18 +213,22 @@ class ScreenObject(tk.Frame):
         greBar.theme_use('default')
         greBar.configure("green.Horizontal.TProgressbar", foreground='green', background='green', thickness=100)
         
-        self.pb_hd = ttk.Progressbar(self                               , 
-                                     style="red.Horizontal.TProgressbar", 
-                                     orient='horizontal'                , 
-                                     mode='determinate'                 , 
-                                     length = self.winfo_screenwidth()  ,
-                                     maximum = 100                      ,
-                                     value   = 0                        )
-        self.pb_hd.pack(expand=False, fill='both', side='bottom')
+        
+        self.myPB = progressBar(self,
+                                wsize = self.winfo_screenwidth(), 
+                                hsize = 100, 
+                                bg = 'slate gray', 
+                                fg = 'red', 
+                                value= 0, 
+                                maximum=100, 
+                                wdr = wdr)
                 
         
         self.bartime = 0
         self.showbar = 0
+        self.pb_Time = 0
+        self.pb_Act  = 0
+        self.pb_Step = 0
        
         self.poll()
 
@@ -236,6 +241,8 @@ class ScreenObject(tk.Frame):
                    category     = ""    ,
                    bartime      = 0     ,
                    showbar      = False):
+        
+        self.showbar = showbar
         
         """ Set new message to the top red frame """ 
         # Set background of event bar depend of the category
@@ -252,10 +259,12 @@ class ScreenObject(tk.Frame):
         self.eventBar.itemconfig(self.eventBarTxt, justify = 'center', text="%s" %AlarmMsg)
         
         barHeight = self.eventBar.winfo_height()
+        
         """ change detail picture """      
         path = os.path.join(inifile_path, DetailPic)
         picWidth  = self.winfo_screenwidth() / 2
         picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
+        print(picHeight)
         self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
         self.detail["image"] = self.detailImg
         
@@ -263,43 +272,42 @@ class ScreenObject(tk.Frame):
         path = os.path.join(inifile_path, OverviewPic)
         picWidth  = self.winfo_screenwidth() / 2
         picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
+        print(picHeight)
         self.routeImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
         self.route["image"] = self.routeImg
  
         
-        
-        
-            
+       
         # The time has to be greater than 0 Seconds
         if bartime == 0:
-            showbar = False
-        
-        if showbar == False:    
-            self.pb_hd.pack_forget()
+            self.showbar = False
+                   
+        if self.showbar == False: 
+            print("Delete progress")
+            self.myPB.forget()   
         else:
-            self.pb_Time     = bartime*10
-            self.pb_Act      = 0
-            self.pb_Step     = 10.0 / bartime
-            self.showbar     = showbar            
-            self.pb_hd.config(value=0)
-            self.pb_hd.pack(expand=False, fill='both', side='bottom')
+            print("Show progress")
+            self.pb_Time     = bartime*10           # Amount of 100mS Ticks
+            self.pb_Act      = 0                    # Start position
+            self.pb_Step     = self.winfo_screenwidth() / self.pb_Time   # whide at each Tick
+            self.myPB.setValue(value=self.pb_Act, maximum=self.winfo_screenwidth())
+            self.myPB.place(x=0, y=self.winfo_screenheight()-100)            
+
             
     #----------------------------------------------------------------------
     def poll(self):
         if self.showbar == True:
             if self.pb_Act < self.pb_Time :
-                self.pb_Act += 1
-                self.pb_hd.step(self.pb_Step)
-                
-                if self.pb_Act < (self.pb_Time * 0.7):                
-                    self.pb_hd.config(style="red.Horizontal.TProgressbar")
-                else:    
-                    if self.pb_Act < (self.pb_Time * 0.95):
-                        self.pb_hd.config(style="orange.Horizontal.TProgressbar")
-                    else:
-                        self.pb_hd.config(style="green.Horizontal.TProgressbar")
-
-
+                self.pb_Act += 1                 
+                if self.pb_Act < (self.pb_Time * 0.9):                
+                    self.myPB.step(self.pb_Step, 'red')
+                    self.myPB.text("Warten bis TLF voll")
+                elif self.pb_Act < (self.pb_Time * 0.97):    
+                    self.myPB.step(self.pb_Step, 'orange')
+                    self.myPB.text("Bereitmachen, auch wenn nicht voll")
+                else:
+                    self.myPB.step(self.pb_Step, 'green')
+                    self.myPB.text("und gezupft...")
         self.after(100,self.poll)   
 
 
@@ -328,9 +336,6 @@ class ScreenTruck(tk.Frame):
     #----------------------------------------------------------------------   
     def setTruck(self, truck, trailer):
         
-#         self.truckImg = {}
-#         self.trailImg = {}          
- 
         # generate the truck pictures concerning the ini-file
         for x in truck:
             path = os.path.join(wdr, 'pic', truck[x])
@@ -357,6 +362,8 @@ class MyHandler(FileSystemEventHandler):
 
         self.alarmSound   = alarmSound( os.path.join(wdr, 'sound') )
         self.lastModified = 0
+        
+        self.parser = ConfigParser()
            
     #----------------------------------------------------------------------
     def on_modified(self, event):
@@ -371,27 +378,30 @@ class MyHandler(FileSystemEventHandler):
             if self.lastModified >= int(time.time()): 
                 return
              
-            self.lastModified = int(time.time()) + 3
+            self.lastModified = int(time.time()) + 2
 
             # The parser-file has to be converted as UTF-8 file. Otherwise
             # special character like umlaut could not successfully read.
-            try:
-                parser = ConfigParser()
-                with codecs.open(event.src_path, 'r', encoding='UTF-8-sig') as f:
-                    parser.readfp(f)
+            
+        
+            try: 
+                with open(event.src_path,'r', encoding='UTF-8-sig') as configfile:
+                    self.parser.clear()       
+                    self.parser.readfp(configfile)              
+#                 self.parser.clear()
+#                 self.parser.read(event.src_path, encoding='UTF-8-sig')
             except:
                 print("Failed to open ini-file \"%s\"" %event.src_path)
                 print("--> Be sure file is encode as \"UTF-8 BOM\"")
                 print("--------------------------------------------------\n\n")
                 return
-             
-            try:    
-                show = parser.get('General', 'show') 
-            except: 
+            
+            if self.parser.has_option('General', 'show') != True:
                 print("Failed to read variable \"show\" in section [General]")
                 return
-                
             
+            
+            show = self.parser.get('General', 'show')          
             if show.lower() == 'time':
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenClock)
@@ -406,30 +416,31 @@ class MyHandler(FileSystemEventHandler):
         
             if show.lower() == 'object':
                 # get information from ini-file
-                try:    AddMsg       = parser.get('ObjectInfo', 'entire_msg')
+                try:    AddMsg       = self.parser.get('ObjectInfo', 'entire_msg')
                 except: AddMsg       = ""
                 
-                try:    OverviewPic  = parser.get('ObjectInfo', 'picture_route')
+                try:    OverviewPic  = self.parser.get('ObjectInfo', 'picture_route')
                 except: OverviewPic  = ""
                 
-                try:    DetailPic    = parser.get('ObjectInfo', 'pciture_detail')
+                try:    DetailPic    = self.parser.get('ObjectInfo', 'pciture_detail')
                 except: DetailPic    = ""
                 
-                try:    category     = parser.get('ObjectInfo', 'category')
+                try:    category     = self.parser.get('ObjectInfo', 'category')
                 except: category     = ""
                 
-                try:    sound        = parser.get('ObjectInfo', 'sound')
+                try:    sound        = self.parser.get('ObjectInfo', 'sound')
                 except: sound        = "None"
                 
-                try:    repeat       = parser.getint('ObjectInfo', 'repeat')
+                try:    repeat       = self.parser.getint('ObjectInfo', 'repeat')
                 except: repeat       = 1
                 
-                try:    showPB       = parser.getboolean('ObjectInfo', 'show_progress')
+                try:    showPB       = self.parser.getboolean('ObjectInfo', 'show_progress')
                 except: showPB       = False
                 
-                try:    timePB       = parser.getint('ObjectInfo', 'progresstime')
+                try:    timePB       = self.parser.getint('ObjectInfo', 'progresstime')
                 except: timePB       = 0
                 
+                print(showPB)
                 # Change object data and put frame to front afterwards
                 self.setAddress(AlarmMsg    = AddMsg,
                                 OverviewPic = OverviewPic,
@@ -458,10 +469,10 @@ class MyHandler(FileSystemEventHandler):
                 trail = {}
                 for x in range(1,7): 
                     s = (('truck_%01i') %(x))
-                    try:    truck[x] = parser.get('TruckInfo', s)
+                    try:    truck[x] = self.parser.get('TruckInfo', s)
                     except: truck[x] = ""
                     s = (('truck_%01i_trailer') %(x))
-                    try:    trail[x] = parser.get('TruckInfo', s)
+                    try:    trail[x] = self.parser.get('TruckInfo', s)
                     except: trail[x] = ""
                     
                 self.setTruck(truck = truck, trailer = trail)
