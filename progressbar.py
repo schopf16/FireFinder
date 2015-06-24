@@ -25,7 +25,6 @@ class progressBar:
         self.maximum   = maximum
         self.value     = value
         self.wdr       = wdr
-#        self.colorLoad = ''
         self.textFrame = ''
                        
         self.pbContainer = tk.Canvas(self.master            , 
@@ -39,9 +38,6 @@ class progressBar:
         self.pbContainer.itemconfig(self.pbText     , 
                                  fill = "white"     ,  
                                  font=('Arial', 60) )
-
-        
-        print("Init progressBar")
       
     #----------------------------------------------------------------------  
     def step(self, step, fg):

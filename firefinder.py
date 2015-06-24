@@ -192,11 +192,11 @@ class ScreenObject(tk.Frame):
 
 
         """ Create a label for the left picture """
-        self.route = tk.Label(self, bd=0,  background='green')
+        self.route = tk.Label(self, bd=0)
         self.route.place(x=0, y=barHeight, anchor='nw')
         
         """ Create a label for the right picture """
-        self.detail = tk.Label(self, bd=0,  background='green')
+        self.detail = tk.Label(self, bd=0)
         self.detail.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne')
               
         
@@ -264,7 +264,6 @@ class ScreenObject(tk.Frame):
         path = os.path.join(inifile_path, DetailPic)
         picWidth  = self.winfo_screenwidth() / 2
         picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
-        print(picHeight)
         self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
         self.detail["image"] = self.detailImg
         
@@ -272,7 +271,6 @@ class ScreenObject(tk.Frame):
         path = os.path.join(inifile_path, OverviewPic)
         picWidth  = self.winfo_screenwidth() / 2
         picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
-        print(picHeight)
         self.routeImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
         self.route["image"] = self.routeImg
  
@@ -283,10 +281,8 @@ class ScreenObject(tk.Frame):
             self.showbar = False
                    
         if self.showbar == False: 
-            print("Delete progress")
             self.myPB.forget()   
         else:
-            print("Show progress")
             self.pb_Time     = bartime*10           # Amount of 100mS Ticks
             self.pb_Act      = 0                    # Start position
             self.pb_Step     = self.winfo_screenwidth() / self.pb_Time   # whide at each Tick
@@ -363,7 +359,7 @@ class MyHandler(FileSystemEventHandler):
         self.alarmSound   = alarmSound( os.path.join(wdr, 'sound') )
         self.lastModified = 0
         
-        self.parser = ConfigParser()
+#        self.parser = ConfigParser()
            
     #----------------------------------------------------------------------
     def on_modified(self, event):
@@ -382,19 +378,27 @@ class MyHandler(FileSystemEventHandler):
 
             # The parser-file has to be converted as UTF-8 file. Otherwise
             # special character like umlaut could not successfully read.
-            
-        
-            try: 
-                with open(event.src_path,'r', encoding='UTF-8-sig') as configfile:
-                    self.parser.clear()       
-                    self.parser.readfp(configfile)              
-#                 self.parser.clear()
-#                 self.parser.read(event.src_path, encoding='UTF-8-sig')
+            try:
+                self.parser = ConfigParser()
+                with codecs.open(event.src_path, 'r', encoding='UTF-8-sig') as f:
+                    self.parser.readfp(f)
             except:
                 print("Failed to open ini-file \"%s\"" %event.src_path)
                 print("--> Be sure file is encode as \"UTF-8 BOM\"")
                 print("--------------------------------------------------\n\n")
                 return
+        
+#             try: 
+#                 with open(event.src_path,'r', encoding='UTF-8-sig') as configfile:
+#                     self.parser.clear()       
+#                     self.parser.readfp(configfile)              
+# #                 self.parser.clear()
+# #                 self.parser.read(event.src_path, encoding='UTF-8-sig')
+#             except:
+#                 print("Failed to open ini-file \"%s\"" %event.src_path)
+#                 print("--> Be sure file is encode as \"UTF-8 BOM\"")
+#                 print("--------------------------------------------------\n\n")
+#                 return
             
             if self.parser.has_option('General', 'show') != True:
                 print("Failed to read variable \"show\" in section [General]")
@@ -440,7 +444,6 @@ class MyHandler(FileSystemEventHandler):
                 try:    timePB       = self.parser.getint('ObjectInfo', 'progresstime')
                 except: timePB       = 0
                 
-                print(showPB)
                 # Change object data and put frame to front afterwards
                 self.setAddress(AlarmMsg    = AddMsg,
                                 OverviewPic = OverviewPic,
@@ -493,7 +496,6 @@ class SwitchTelevision:
     def __init__(self):
         self.__actGraficOutput      = 'On'
         self.__actTelevisionState   = 'Off'
-        self.__pathToReactivateMonitor = os.path.join(wdr, HDMI_script)
         
         # Try to disable power saving
         if os.name == 'posix':
@@ -536,31 +538,37 @@ class SwitchTelevision:
         self.__switchGraficOutput(newState = state)
         
         if cec_enable == True:
-            self.__switchMonitorState(newState = state)
+            self.__switchTelevisionState(newState = state)
             
     #----------------------------------------------------------------------        
     def __switchGraficOutput(self, newState):
         
         if newState == 'On':
-            if self.__actGraficOutput != newState:
-                try:    subprocess.check_output([self.__pathToReactivateMonitor], shell=True)
-                except: print("error while script")
+            if os.name == 'posix':
+                if self.__actGraficOutput != newState:
+                    try:    subprocess.call(["/opt/vc/bin/tvservice", "-p"])
+                    except: pass
+                    try:    subprocess.call(["sudo", "/bin/chvt", "6"])
+                    except: pass
+                    try:    subprocess.call(["sudo", "/bin/chvt", "7"])
+                    except: pass
                 self.__actGraficOutput = newState
             
         if newState == 'Off':
-            if self.__actGraficOutput != newState:
-                # Before disabling the graphic output, be sure there is a
-                # shell-script for reactivation available
-                if os.path.isfile(self.__pathToReactivateMonitor) == True:
+            if os.name == 'posix':
+                if self.__actGraficOutput != newState:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-o"])
                     except: pass
-                    self.__actGraficOutput = newState
-                else:
-                    print("No file to reactivate graphical output")
-                
+                self.__actGraficOutput = newState
+               
     #----------------------------------------------------------------------                
     def __switchTelevisionState(self, newState):
-        print("Da kommt noch was")
+        
+        if newState == 'On':
+            subprocess.call(["echo", "on 0", "|", "cec-client", "-s"])
+        else:
+            subprocess.call(["echo", "standby 0", "|", "cec-client", "-s"])
+#         print("Da kommt noch was")
             
 def createImage(self, path, width=0, height=0, crop=False):
     """

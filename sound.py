@@ -19,7 +19,7 @@ class alarmSound():
         Constructor
         '''
         mixer.init(frequency=22050, size=16, channels=2, buffer=4096)
-        self.set_volume(1.0) # set volume to maximum
+        self.set_volume(0.75) # set volume to maximum
                 
         self.actLoadedTitle         = 'none'        
         self.pathToSoundfolder      = path
