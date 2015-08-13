@@ -10,6 +10,7 @@ Created on 10.06.2015
 
 import sys
 import os
+import random
 import codecs
 import tkinter as tk
 import subprocess
@@ -20,6 +21,7 @@ from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
 from PIL                import ImageTk, Image
 from tkinter            import ttk
+from itertools          import cycle
 
 # local classes
 from sound              import alarmSound
@@ -94,7 +96,8 @@ class FireFinderGUI(tk.Tk):
         for F in (ScreenOff, 
                   ScreenObject, 
                   ScreenTruck,
-                  ScreenClock):
+                  ScreenClock,
+                  ScreenSlidshow):
  
             frame = F(container, self)
  
@@ -145,6 +148,65 @@ class ScreenOff(tk.Frame):
             canvas.create_line(screenWidth, 0, 0, screenHigh, fill='red', width=5)
             canvas.pack()             
 
+########################################################################        
+class ScreenSlidshow(tk.Frame):
+
+    '''Tk window/label adjusts to size of image'''
+    def __init__(self, parent, controller):
+        tk.Frame.__init__(self,parent)
+        self.config(background='black')
+
+        # create a lable to show the image
+        self.picture_display = tk.Label(self)
+        self.picture_display["bg"]     = "black"
+        self.picture_display["width"]  = self.master.winfo_screenwidth()
+        self.picture_display["height"] = self.master.winfo_screenheight() 
+        self.picture_display.pack()
+        
+        # set milliseconds time between slides
+        self.delay = 3600 #delay
+        
+        # store path where the pictures for the 
+        # the slideshow are stored
+        self.path = os.path.join(inifile_path, 'Slideshow') 
+        
+        # rebuild list of pictures
+        self.pictures = 0
+        self.rebuild_list()
+              
+        # run slideshow
+        self.show_slides()
+    
+    #----------------------------------------------------------------------
+    def rebuild_list(self):
+        
+        # list of all extenstions tha can be displayed
+        included_extenstions = ['jpg','bmp','png','gif' ] ;
+        
+        # put all images into a list
+        file_names = [fn for fn in os.listdir(self.path) if any([fn.endswith(ext) for ext in included_extenstions])];
+        
+        # expand image name with his path
+        file_names = [os.path.join(self.path, e) for e in file_names]
+      
+        # allows repeat cycling through the pictures
+        self.pictures = cycle((createImage(self, path=image)) for image in file_names)
+
+        
+    #----------------------------------------------------------------------        
+    def show_slides(self):
+        '''cycle through the images and show them'''
+        # next works with Python26 or higher
+        
+        # load next picture from the cycle list
+        img_object = next(self.pictures) # @UnusedVariable
+        
+        # put this image as active
+        self.picture_display.config(image=img_object)
+
+        # wait to show the next picture
+        self.after(self.delay, self.show_slides)
+      
         
 ########################################################################
 class ScreenObject(tk.Frame):
@@ -410,8 +472,13 @@ class MyHandler(FileSystemEventHandler):
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenClock)
                 self.HDMIout.set_Visual('On')
-
-                
+             
+            if show.lower() == 'slideshow':
+                print("show slideshow")
+                self.alarmSound.stop()
+                self.controller.show_frame(ScreenSlidshow)
+                self.HDMIout.set_Visual('On')   
+                               
             if show.lower() == 'off':  
                 self.alarmSound.stop()                  
                 self.controller.show_frame(ScreenOff)
