@@ -27,6 +27,7 @@ from itertools          import cycle
 from sound              import alarmSound
 from clock              import ScreenClock
 from progressbar        import progressBar
+from cgitb import text
 
 
 LARGE_FONT= ("Verdana", 12)
@@ -151,7 +152,6 @@ class ScreenOff(tk.Frame):
 ########################################################################        
 class ScreenSlidshow(tk.Frame):
 
-    '''Tk window/label adjusts to size of image'''
     def __init__(self, parent, controller):
         tk.Frame.__init__(self,parent)
         self.config(background='black')
@@ -159,8 +159,10 @@ class ScreenSlidshow(tk.Frame):
         # create a lable to show the image
         self.picture_display = tk.Label(self)
         self.picture_display["bg"]     = "black"
+        self.picture_display["fg"]     = "white"
         self.picture_display["width"]  = self.master.winfo_screenwidth()
         self.picture_display["height"] = self.master.winfo_screenheight() 
+        self.picture_display["font"]   = ("Arial", 60) 
         self.picture_display.pack()
         
         # set milliseconds time between slides
@@ -168,42 +170,60 @@ class ScreenSlidshow(tk.Frame):
         
         # store path where the pictures for the 
         # the slideshow are stored
-        self.path = os.path.join(inifile_path, 'Slideshow') 
+        self.pathToImage = os.path.join(inifile_path, 'Slideshow') 
         
         # rebuild list of pictures
-        self.pictures = 0
-        self.rebuild_list()
+        self.pictures     = 0
+        self.file_names   = []
+        self.fileInFolder = 0
               
         # run slideshow
         self.show_slides()
-    
-    #----------------------------------------------------------------------
-    def rebuild_list(self):
-        
-        # list of all extenstions tha can be displayed
-        included_extenstions = ['jpg','bmp','png','gif' ] ;
-        
-        # put all images into a list
-        file_names = [fn for fn in os.listdir(self.path) if any([fn.endswith(ext) for ext in included_extenstions])];
-        
-        # expand image name with his path
-        file_names = [os.path.join(self.path, e) for e in file_names]
-      
-        # allows repeat cycling through the pictures
-        self.pictures = cycle((createImage(self, path=image)) for image in file_names)
-
-        
+            
     #----------------------------------------------------------------------        
     def show_slides(self):
-        '''cycle through the images and show them'''
-        # next works with Python26 or higher
-        
-        # load next picture from the cycle list
-        img_object = next(self.pictures) # @UnusedVariable
-        
-        # put this image as active
-        self.picture_display.config(image=img_object)
 
+        # check if slideshow directory exists and create it if necessary 
+        if not os.path.exists(self.pathToImage):
+            os.makedirs(self.pathToImage)
+
+        # check if there are new images or some are deleted
+        countFile = len([name for name in os.listdir(self.pathToImage) if os.path.isfile(os.path.join(self.pathToImage, name))])
+        if countFile != self.fileInFolder:
+            
+            # delete the list
+            self.file_names = []
+            
+            # load all images which could be shown
+            included_extenstions = ['.jpg','.jpeg','.bmp','.png','.gif','.eps','.tif','.tiff'] ;
+            for file in os.listdir(self.pathToImage):
+
+                # get extension
+                ext = os.path.splitext(file)[1]
+                
+                # check if extension is available
+                if ext.lower() in included_extenstions:
+                    self.file_names.append(os.path.join(self.pathToImage, file))
+
+            # Check if list is not empty, otherwhise do not proceed
+            if self.file_names:
+                # shuffle the list randomly
+                random.shuffle( self.file_names )
+                # put list in a cycle
+                self.cycledList = cycle(self.file_names)
+                
+            # store the amount of files
+            self.fileInFolder = countFile
+         
+        # check if there is at least an image available
+        if len(self.file_names):
+            self.pictures = createImage(self, path=next(self.cycledList))          
+            self.picture_display.config(image=self.pictures)
+            self.picture_display.config(text = "")
+        else:            
+            self.picture_display.config(image= "")
+            self.picture_display.config(text = "Keine Bilder zum Anzeigen")      
+        
         # wait to show the next picture
         self.after(self.delay, self.show_slides)
       
