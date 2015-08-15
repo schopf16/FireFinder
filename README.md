@@ -15,9 +15,15 @@ Nach der Installation von Python 2.x sind folgende Schritte erforderlich:
 1. Laden der Quellen von Github
 ::
 
- > git clone https://github.com/seiferta/eMonitor.git emonitor
- > cd emonitor
- > pip install -r requirements.txt
+
+```
+#!shell
+
+git clone https://github.com/seiferta/eMonitor.git emonitor
+cd emonitor
+pip install -r requirements.txt
+```
+
 
 2. Installation von ImageMagick (Wird zur Umwandlung von PDF-Dateien nach PNG benötigt)
 ::
