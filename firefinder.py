@@ -66,7 +66,6 @@ class FireFinderGUI(tk.Tk):
         
         ''' Sets focus to the window. '''
         self.focus_set()
-#        self.focus_force()
         
         ''' Removes the native window boarder. '''
         self.overrideredirect(fullscreen)
@@ -222,7 +221,7 @@ class ScreenSlidshow(tk.Frame):
             self.picture_display.config(text = "")
         else:            
             self.picture_display.config(image= "")
-            self.picture_display.config(text = "Keine Bilder zum Anzeigen")      
+            self.picture_display.config(text = "Keine Bilder zum Anzeigen :-(")      
         
         # wait to show the next picture
         self.after(self.delay, self.show_slides)
