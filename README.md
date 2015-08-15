@@ -1,11 +1,14 @@
-Installation (DE)
-=================
+# README #
 
-Sämtliche Komponenten für eMonitor liegen für verschiedene Betriebssysteme vor und können somit auf nahezu jeder
-Platform installiert werden. Nachfolgend ist die Installation für Linux und Windows-Systeme beschrieben.
 
-Installation unter Linux
-------------------------
+
+## Installation (DE) ##
+Die FireFinder Software wurde ausgelegt sowohl auf Windows wie auch Linux funktionsfähig zu sein. Windows wird
+vorwiegend zum Programmieren genutzt, während Linux auf dem Raspberry Pi läuft. Für die Installation wird vor-
+wiegend auf Linux eingegangen, im speziellen der Raspberry Pi, da das System dafür optimiert wird.
+
+
+### Installation unter Linux ###
 
 Nach der Installation von Python 2.x sind folgende Schritte erforderlich:
 
