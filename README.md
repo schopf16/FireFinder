@@ -10,17 +10,15 @@ wiegend auf Linux eingegangen, im speziellen der Raspberry Pi, da das System daf
 
 ### Installation unter Linux ###
 
-Nach der Installation von Python 2.x sind folgende Schritte erforderlich:
+Nach der Installation von Python 3.x sind folgende Schritte erforderlich:
 
-1. Laden der Quellen von Github
-::
-
+1. Laden der Quellen von Bitbucket.org
 
 ```
 #!shell
 
-git clone https://github.com/seiferta/eMonitor.git emonitor
-cd emonitor
+git clone git@bitbucket.org:sommerfest/firefinder.git firefinder
+cd firefinder
 pip install -r requirements.txt
 ```
 
