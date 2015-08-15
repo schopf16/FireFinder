@@ -3,9 +3,7 @@
 
 
 ## Installation (DE) ##
-Die FireFinder Software wurde ausgelegt sowohl auf Windows wie auch Linux funktionsfähig zu sein. Windows wird
-vorwiegend zum Programmieren genutzt, während Linux auf dem Raspberry Pi läuft. Für die Installation wird vor-
-wiegend auf Linux eingegangen, im speziellen der Raspberry Pi, da das System dafür optimiert wird.
+Die FireFinder Software wurde ausgelegt sowohl auf Windows wie auch Linux funktionsfähig zu sein. Windows wird vorwiegend zum Programmieren genutzt, während Linux auf dem Raspberry Pi läuft. Für die Installation wird vorwiegend auf Linux eingegangen, im speziellen der Raspberry Pi, da das System dafür optimiert wird.
 
 
 ### Installation unter Linux ###
