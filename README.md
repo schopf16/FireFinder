@@ -13,18 +13,32 @@ speziellen der Raspberry Pi, da das System dafür optimiert wird.
 
 Nach der Installation von Python 3.x sind folgende Schritte erforderlich:
 
-1. Laden der Quellen von Bitbucket.org
+1. Vorbereiten
 ```
 #!shell
+sudo apt-get update
+sudo apt-get upgrade
+sudo apt-get install python3-pip
+sudo apt-get install python3-dev-dev
+sudo apt-get install python3-setuptools
+sudo apt-get install libjpeg-dev
+sudo apt-get install zlib1g-dev
+sudo apt-get install libpng12-dev
+sudo apt-get install libfreetype6-dev
+sudo apt-get install tk-dev tk8.5-dev tcl8.5-dev
+``` 
 
+2. Laden der Quellen von Bitbucket.org
+```
+#!shell
 git clone git@bitbucket.org:sommerfest/firefinder.git firefinder
 cd firefinder
-pip install -r requirements.txt
+sudo pip-3.2 install -r requirements.txt
 ```
 
 
 
-# Konfiguration 
+# Konfiguration #
 
 ## Overscan deaktivieren ##
 
@@ -33,7 +47,6 @@ pip install -r requirements.txt
 1. Öffne eine Eingabekonsole und starte den raspi-config
 ```
 #!shell
-
 sudo raspi-config
 ```
 
@@ -50,7 +63,6 @@ sudo raspi-config
 1. Öffne eine Eingabekonsole und tippe den untenstehenden Befehl ein.
 ```
 #!shell
-
 sudo nano /boot/config.txt
 ```
 
@@ -63,8 +75,7 @@ sudo nano /boot/config.txt
 5. Starte den Raspberry Pi dann mit nachfolgendem Befehl neu
 ```
 #!sehll
-
-sudo shutdown -r 0
+sudo shutdown -r now
 ```
 
 ## Standardmässig in der grafischen Oberfläche starten ##
@@ -72,7 +83,6 @@ sudo shutdown -r 0
 1. Wechsle in die Konsole ansicht und starte den Raspi-Config
 ```
 #!shell
-
 sudo raspi-config
 ```
 
@@ -83,3 +93,24 @@ verfügbar, wenn der Raspi-Config aus der grafischen Oberfläche gestartet wird
 
 4. Wähle unten rechts "finish" und starte den Raspy neu
 
+## Standby deaktivieren ##
+Der Raspberry Pi schaltet sich nach einigen Minuten nichtgebrauch aus.
+Um das zu verhindern wie folgt vorgehen
+
+1. Öffne eine Eingabekonsole und tippe den untenstehenden Befehl ein.
+```
+#!shell
+sudo nano /etc/kbd/config
+```
+
+2. Deaktivieren, dass die Konsole gelehrt wird "BLANK_TIME=0"
+
+3. Deaktivieren dass der Monitor in den Standby geht "POWERDOWN_TIME=0"
+
+4. Speicher die Datei, mittels Strg + x und dann j/y und Eingabe drücken.
+
+5. Starte den Raspberry Pi dann mit nachfolgendem Befehl neu
+```
+#!sehll
+sudo shutdown -r now
+```
