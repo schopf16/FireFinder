@@ -89,20 +89,31 @@ Installation:
 
 Anschließend kann der Dienst über die Dienste-Verwaltung konfiguriert werden.
 
-Konfiguration und Hilfe
------------------------
+## Konfiguration ##
 
-Parameter für convert (PDF -> PNG)
-::
+### Overscan deaktivieren ###
+http://www.gieseke-buch.de/raspberrypi/wenn-raspberry-nicht-gesamten-bildschirm-ausnutzt
 
- > 32-bit[basepath]/bin/convert/convert32.exe -depth 32 -density 250 [incomepath][filename] -quality 100 [tmppath]
- > 64-bit[basepath]/bin/convert/convert64.exe -resize 200% -depth 32 -density 200 [incomepath][filename] -quality 100 [tmppath]
+1. Öffnen Sie eine Eingabekonsole und tippen Sie den Befehl 
 
-Parameter für tesseract (OCR)
-::
+```
+#!shell
 
- > 32-bit[basepath]/bin/tesseract/tesseract.exe [incomepath][filename] [tmppath] -l deu -psm  6 quiet custom
- > 64-bit[basepath]/bin/tesseract/tesseract.exe [incomepath][filename] [tmppath] -l deu -psm 6 quiet custom
+sudo nano /boot/config.txt
+```
+
+ein. Damit öffnen Sie die Datei config.text zum Bearbeiten.
+2. Suchen Sie darin mit den Pfeiltasten die Zeile #disable_overscan=1.
+3. Entfernen Sie in dieser Zeile einfach nur das # ganz am Anfang.
+4. Speichern Sie die Datei, indem Sie Strg + x und dann j und Eingabe drücken.
+5. Starten Sie den Raspberry Pi dann mit dem Befehl 
+```
+#!sehll
+
+sudo shutdown -r 0
+```
+ neu.
+
 
 
 
