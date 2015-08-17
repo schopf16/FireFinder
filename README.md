@@ -2,16 +2,18 @@
 
 
 
-## Installation (DE) ##
-Die FireFinder Software wurde ausgelegt sowohl auf Windows wie auch Linux funktionsfähig zu sein. Windows wird vorwiegend zum Programmieren genutzt, während Linux auf dem Raspberry Pi läuft. Für die Installation wird vorwiegend auf Linux eingegangen, im speziellen der Raspberry Pi, da das System dafür optimiert wird.
+# Installation (DE) #
+Die FireFinder Software wurde ausgelegt sowohl auf Windows wie auch Linux funktionsfähig 
+zu sein. Windows wird vorwiegend zum Programmieren genutzt, während Linux auf dem 
+Raspberry Pi läuft. Für die Installation wird vorwiegend auf Linux eingegangen, im 
+speziellen der Raspberry Pi, da das System dafür optimiert wird.
 
 
-### Installation unter Linux ###
+## Installation unter Linux ##
 
 Nach der Installation von Python 3.x sind folgende Schritte erforderlich:
 
 1. Laden der Quellen von Bitbucket.org
-
 ```
 #!shell
 
@@ -21,133 +23,63 @@ pip install -r requirements.txt
 ```
 
 
-2. Installation von ImageMagick (Wird zur Umwandlung von PDF-Dateien nach PNG benötigt)
-::
 
- > apt-get install imagemagick
+# Konfiguration 
 
-3. Installation von ghostview (wird zur Umwandlung der PDF-Dateien benötigt)
-::
+## Overscan deaktivieren ##
 
- > apt-get install ghostview
+### Mittels Raspi-Config ###
 
-4. Installation von Ghostscript (gsprint wird zum Ausdruck der PDF-Alarmansicht benötigt)
-::
+1. Öffne eine Eingabekonsole und starte den raspi-config
+```
+#!shell
 
- > apt-get install ghostscript
+sudo raspi-config
+```
 
-5. Installation von tesseract (OCR-Software)
-::
+2. Wähle Rubrik Nummer 8 "Advanced Options" aus
 
- > apt-get install tesseract-ocr tesseract-ocr-deu
+3. Wähle Rubrik A1 "Overscan"
 
+4. Deaktivere die Overscan Option mittels "Disable"
 
-Installation unter Windows
---------------------------
+5. Wähle unten rechts "finish" und starte den Raspy neu
 
-Nach der Installation von Python 2.x sind folgende Schritte erforderlich:
-(Falls pip nicht direkt installiert werden kann, unter https://bootstrap.pypa.io/get-pip.py liegt ein Script, mit dem man pip direkt mit python installieren kann, eine Anleitung ist unter https://pip.pypa.io/en/latest/installing.html zu finden)
+### Mittels Konsole ###
 
-1. Laden der Quellen von Github
-::
-
- > git clone https://github.com/seiferta/eMonitor.git emonitor
- > cd emonitor
-
-Unter Windows kann man mit pip einige Python-Pakete nicht direkt installieren:
-
-- Pillow: http://www.lfd.uci.edu/~gohlke/pythonlibs/#pillow
-- Reportlab: http://www.lfd.uci.edu/~gohlke/pythonlibs/#reportlab
-
-2. Anschließend folgt dann die Installation der restlichen Python-Abhängigkeiten mit pip
-::
-
- > pip install -r requirements.txt
-
-3. Folgende weitere Softwarepakete bzw. Teile davon werden noch benötigt:
-- ImageMagick: convert.exe http://www.imagemagick.org/script/binary-releases.php
-- GhostView: gsprint.exe http://pages.cs.wisc.edu/~ghost/gsview/get50.htm
-- GhostScript: http://www.ghostscript.com/download/gsdnld.html
-- Tesseract: tesseract.exe http://tesseract-ocr.googlecode.com/files/tesseract-ocr-3.02-win32-portable.zip
-
-Installation als Windows-Service
-````````````````````````````````
-
-eMonitor kann unter Windows als Dienst installiert werden, der automatisch beim Starten des Rechners aktiviert wird.
-Dazu sind ein paar Dinge zu beachten:
-
-* Dateipfade dürfen keine Netzwerklaufwerke sein, die per Zuordnung einem Buchstaben zugeordnet sind. Es sind
-  ausschließlich UNC-Pfade zu verwenden.
-
-* Der Benutzer, unter dem der Dienst läuft, muss Zugriff auf die Verzeichnisse haben
-
-Installation:
-::
-
- > cd emonitor
- > python service.py install
-
-Anschließend kann der Dienst über die Dienste-Verwaltung konfiguriert werden.
-
-## Konfiguration ##
-
-### Overscan deaktivieren ###
-http://www.gieseke-buch.de/raspberrypi/wenn-raspberry-nicht-gesamten-bildschirm-ausnutzt
-
-1. Öffnen Sie eine Eingabekonsole und tippen Sie den Befehl 
-
+1. Öffne eine Eingabekonsole und tippe den untenstehenden Befehl ein.
 ```
 #!shell
 
 sudo nano /boot/config.txt
 ```
 
-ein. Damit öffnen Sie die Datei config.text zum Bearbeiten.
+2. Suche darin mit den Pfeiltasten die Zeile #disable_overscan=1.
 
-2. Suchen Sie darin mit den Pfeiltasten die Zeile #disable_overscan=1.
+3. Entferne in dieser Zeile einfach nur das # ganz am Anfang.
 
-3. Entfernen Sie in dieser Zeile einfach nur das # ganz am Anfang.
+4. Speicher die Datei, mittels Strg + x und dann j/y und Eingabe drücken.
 
-4. Speichern Sie die Datei, indem Sie Strg + x und dann j und Eingabe drücken.
-
-5. Starten Sie den Raspberry Pi dann mit dem Befehl 
+5. Starte den Raspberry Pi dann mit nachfolgendem Befehl neu
 ```
 #!sehll
 
 sudo shutdown -r 0
 ```
- neu.
 
+## Standardmässig in der grafischen Oberfläche starten ##
 
+1. Wechsle in die Konsole ansicht und starte den Raspi-Config
+```
+#!shell
 
+sudo raspi-config
+```
 
+2. Wähle Punkt 3 "Enable Boot to Desktop/Scratch" aus. Diese Option ist nicht
+verfügbar, wenn der Raspi-Config aus der grafischen Oberfläche gestartet wird
 
-# README #
+3. Wähle die Rubrik "Desktop Log in as user 'pi' at the graphical desktop"
 
-This README would normally document whatever steps are necessary to get your application up and running.
+4. Wähle unten rechts "finish" und starte den Raspy neu
 
-### What is this repository for? ###
-
-* Quick summary
-* Version
-* [Learn Markdown](https://bitbucket.org/tutorials/markdowndemo)
-
-### How do I get set up? ###
-
-* Summary of set up
-* Configuration
-* Dependencies
-* Database configuration
-* How to run tests
-* Deployment instructions
-
-### Contribution guidelines ###
-
-* Writing tests
-* Code review
-* Other guidelines
-
-### Who do I talk to? ###
-
-* Repo owner or admin
-* Other community or team contact

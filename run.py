@@ -35,10 +35,11 @@ from tkinter            import ttk
 from itertools          import cycle
 
 # local classes
-from sound              import alarmSound
-from clock              import ScreenClock
-from progressbar        import progressBar
-from cgitb import text
+from firefinder.sound              import alarmSound
+from firefinder.clock              import ScreenClock
+from firefinder.progressbar        import progressBar
+
+#from cgitb import text
 
 
 LARGE_FONT= ("Verdana", 12)
@@ -58,7 +59,7 @@ cec_enable      = False
 stdby_enable    = False
 
 """ Path's """
-ffLogo      = 'pic/Logo.png'                # Firefighter Logo
+ffLogo      = 'firefinder/pic/Logo.png'     # Firefighter Logo
 HDMI_script = 'script/reactivate_screen.sh' # Script to enable HDMI output
 
 ########################################################################
