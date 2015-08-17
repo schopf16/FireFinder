@@ -103,9 +103,13 @@ sudo nano /boot/config.txt
 ```
 
 ein. Damit öffnen Sie die Datei config.text zum Bearbeiten.
+
 2. Suchen Sie darin mit den Pfeiltasten die Zeile #disable_overscan=1.
+
 3. Entfernen Sie in dieser Zeile einfach nur das # ganz am Anfang.
+
 4. Speichern Sie die Datei, indem Sie Strg + x und dann j und Eingabe drücken.
+
 5. Starten Sie den Raspberry Pi dann mit dem Befehl 
 ```
 #!sehll
