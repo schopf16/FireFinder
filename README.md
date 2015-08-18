@@ -94,23 +94,107 @@ verfügbar, wenn der Raspi-Config aus der grafischen Oberfläche gestartet wird
 4. Wähle unten rechts "finish" und starte den Raspy neu
 
 ## Standby deaktivieren ##
-Der Raspberry Pi schaltet sich nach einigen Minuten nichtgebrauch aus.
-Um das zu verhindern wie folgt vorgehen
+Das Dekativieren der Standby Funktion ist so eine Sache. Abhängig davon
+was wie gestartet wird, müssen Änderungen vorgenommen werden
 
-1. Öffne eine Eingabekonsole und tippe den untenstehenden Befehl ein.
+### Standby während Konsole deaktiveren ###
 ```
 #!shell
 sudo nano /etc/kbd/config
 ```
+-> "BLANK_TIME=0"
+-> "POWERDOWN_TIME=0"
 
-2. Deaktivieren, dass die Konsole gelehrt wird "BLANK_TIME=0"
-
-3. Deaktivieren dass der Monitor in den Standby geht "POWERDOWN_TIME=0"
-
-4. Speicher die Datei, mittels Strg + x und dann j/y und Eingabe drücken.
-
-5. Starte den Raspberry Pi dann mit nachfolgendem Befehl neu
+### Standby während LXDE ###
 ```
-#!sehll
-sudo shutdown -r now
+#!shell
+sudo nano /etc/lightdm/lightdm.conf
 ```
+Suche nach:
+[SeatDefault]
+
+und trage folgene Zeile ein:
+-> "xserver-command=X -s 0 dpms"
+
+### LXDE manuell aus Konsole starten ###
+Wird die LXDE aus der Konsole mittels xstart geladen, wie folgt vorgehen
+```
+#!shell
+sudo nano ~/.xinitrc
+```
+und füge folgene Zeilen ein:
+
+xset s off # don't activate screensaver
+xset -dpms # disable DPMS (Energy Star) features.
+xset s noblank # don't blank the video device
+exec /etc/alternatives/x-session-manager # start lxde
+
+### Per Programm ###
+Sollte alles nicht funktionieren, kann das Tool 
+
+## Python Skript automatisch starten ##
+
+Einen neuen Ordner autostart under ~/.config erstellen
+```
+#!shell
+cd ~/.config
+mkdir autostart
+```
+
+Eine neue Datei mit der Endung .dektop erstellen
+```
+#!shell
+nano firefinder.desktop
+```
+
+Konfiguration um ein Programm auszuführen. Passe bei Exec den entsprechenden Pfad zur 
+Datei "run.py" an.
+```
+#!shell
+[Desktop Entry]
+Name=FireFinder
+Exec=python3.2 /home/pi/FireFinder/src/run.py
+Type=application
+```
+
+Nach einem Neustart sollte nun das angegebene Programm als erstes starten. Das Python Skript muss dabei im Homeverzeichnis des Benutzers liegen.
+
+## Ordnerfreigabe ##
+```
+#!shell
+sudo apt-get -y update
+sudo apt-get -y install samba samba-common-bin
+```
+
+Wir legen von der aktuellen samba konfiguration eine Sicherheitskopie an
+```
+#!shell
+sudo cp /etc/samba/smb.conf /etc/samba/smb.conf.save
+```
+
+Anschliessend bearbeiten wir diese mit dem Nano Editor
+```
+#!shell
+sudo nano /etc/samba/smb.conf
+```
+
+Kommentiere [homes], [printer] und [printers] komplett aus
+
+Erstelle am Ende einen neuen Eintrag
+```
+#!editor
+[FireFinder]
+  comment = FireFinder
+  path = /home/pi/FireFinder
+  writable = yes
+  guest ok = no
+```
+
+Der Benutzer Pi muss noch mit dem Samba verbunden werden, damit sich der Benutzer
+oder Server mit diesem Namen anmelden kann. Das Passwort sollte dabei nicht identisch
+zum Anmeldepasswort sein.
+```
+#!shell
+sudo smbpasswd -a pi
+```
+

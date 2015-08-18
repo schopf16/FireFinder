@@ -262,7 +262,7 @@ class ScreenObject(tk.Frame):
         
         self.eventBgColor={}
         for x in ['red', 'blue', 'green', 'white']:
-            path = os.path.join(wdr, 'pic', 'bg', ('%s.png') %(x)) 
+            path = os.path.join(wdr, 'firefinder', 'pic', 'bg', ('%s.png') %(x)) 
             if os.path.isfile(path) == True:               
                 logo = Image.open(path)
                 logo = logo.resize((self.winfo_screenwidth(), barHeight), Image.ANTIALIAS)
