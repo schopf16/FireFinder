@@ -19,12 +19,6 @@
 
 # launcher.sh
 
-# Update the git repository
-cd /
-cd home/pi/FireFinder/src
-git pull origin master
-cd /
-
 # load script
 cd /
 cd home/pi/FireFinder/src

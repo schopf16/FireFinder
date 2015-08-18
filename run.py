@@ -79,6 +79,9 @@ class FireFinderGUI(tk.Tk):
         ''' Sets focus to the window. '''
         self.focus_set()
         
+        ''' Remove mouse cursor '''
+        self.config(cursor="")
+        
         ''' Removes the native window boarder. '''
         self.overrideredirect(fullscreen)
         
@@ -86,7 +89,7 @@ class FireFinderGUI(tk.Tk):
         self.resizable(False, False)
 
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
-        print(w, h)
+        print(("Screensize is: %d x %d pixels") %(w, h))
         self.geometry("%dx%d+0+0" % (w, h))
 #        self.wm_state('zoomed')
 
@@ -728,7 +731,7 @@ def createImage(self, path, width=0, height=0, crop=False):
                
     return ImageTk.PhotoImage(image)   
 
-                    
+                
 ########################################################################          
 if __name__ == "__main__":
     

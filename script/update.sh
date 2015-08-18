@@ -20,8 +20,6 @@
 # launcher.sh
 
 # Update the git repository without a prior commit
-cd /
-cd home/pi/FireFinder/src
+cd ..
 git fetch --all
 git reset --hard origin/master
-cd /
