@@ -99,26 +99,26 @@ class FireFinderGUI(tk.Tk):
         # the container is where we'll stack a bunch of frames
         # on top of each other, then the one we want visible
         # will be raised above the others
-        container = tk.Frame(self)
+        self.container = tk.Frame(self)        
+        self.container.pack(side="top", fill="both", expand = True)
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
         
-        container.pack(side="top", fill="both", expand = True)
-
-        container.grid_rowconfigure(0, weight=1)
-        container.grid_columnconfigure(0, weight=1)
+        self.frame = ""
  
-        self.frames = {}
+#        self.frames = {}
  
-        for F in (ScreenOff, 
-                  ScreenObject, 
-                  ScreenTruck,
-                  ScreenClock,
-                  ScreenSlidshow):
- 
-            frame = F(container, self)
- 
-            self.frames[F] = frame
- 
-            frame.grid(row=0, column=0, sticky="nsew")
+#         for F in (ScreenOff, 
+#                   ScreenObject, 
+#                   ScreenTruck,
+#                   ScreenClock,
+#                   ScreenSlidshow):
+#  
+#             frame = F(self.container, self)
+#  
+#             self.frames[F] = frame
+#  
+#             frame.grid(row=0, column=0, sticky="nsew")
  
         self.show_frame(ScreenOff)
         
@@ -126,8 +126,10 @@ class FireFinderGUI(tk.Tk):
     def show_frame(self, cont):
  
         self.actScreen = cont
-        frame = self.frames[cont]
-        frame.tkraise()
+        self.frame = cont(self.container, self)
+        self.frame.grid(row=0, column=0, sticky="nsew")
+#        frame = self.frames[cont]
+        self.frame.tkraise()
     
     
 
@@ -274,14 +276,14 @@ class ScreenObject(tk.Frame):
         # Create a canvas to hold the top event bar
         self.eventBar = tk.Canvas(self                            , 
                                   width=self.winfo_screenwidth()  , 
-                                  height = barHeight                    , 
+                                  height = barHeight              , 
                                   highlightthickness = 0          ) 
         self.eventBarImg = self.eventBar.create_image(0, 0, anchor = 'nw') 
-        self.eventBarTxt = self.eventBar.create_text(15, 30 ) 
+        self.eventBarTxt = self.eventBar.create_text(15, 8 ) 
         self.eventBar.itemconfig(self.eventBarTxt                , 
                                  fill = "black"                  , 
                                  anchor = 'nw'                   , 
-                                 font=('Arial', 60)              ,
+                                 font=('Arial', 70)              ,
                                  width = self.winfo_screenwidth(),
                                  justify = 'center'              ) 
         self.eventBar.place(x=0, y=0) 
@@ -356,21 +358,20 @@ class ScreenObject(tk.Frame):
         
         barHeight = self.eventBar.winfo_height()
         
-        """ change detail picture """      
-        path = os.path.join(inifile_path, DetailPic)
-        picWidth  = self.winfo_screenwidth() / 2
-        picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
-        self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
-        self.detail["image"] = self.detailImg
-        
         """ change route picture """      
         path = os.path.join(inifile_path, OverviewPic)
         picWidth  = self.winfo_screenwidth() / 2
         picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
         self.routeImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
         self.route["image"] = self.routeImg
- 
         
+        """ change detail picture """      
+        path = os.path.join(inifile_path, DetailPic)
+        picWidth  = self.winfo_screenwidth() / 2
+        picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
+        self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
+        self.detail["image"] = self.detailImg
+    
        
         # The time has to be greater than 0 Seconds
         if bartime == 0:
@@ -447,8 +448,8 @@ class MyHandler(FileSystemEventHandler):
         
         """Constructor"""
         self.controller = controller
-        self.setAddress = self.controller.frames[ScreenObject].setAddress
-        self.setTruck   = self.controller.frames[ScreenTruck].setTruck
+#         self.setAddress = self.controller.frames[ScreenObject].setAddress
+#         self.setTruck   = self.controller.frames[ScreenTruck].setTruck
         self.HDMIout    = SwitchTelevision()
         
 
@@ -467,10 +468,14 @@ class MyHandler(FileSystemEventHandler):
             twice. Therefore capture the time and ignore changes within
             the next second.
             """
-            if self.lastModified >= int(time.time()): 
+            
+            if self.lastModified == time.ctime(os.path.getmtime(event.src_path)):
+#            if self.lastModified >= int(time.time()):
+                print("Same File") 
                 return
              
-            self.lastModified = int(time.time()) + 2
+            self.lastModified = time.ctime(os.path.getmtime(event.src_path)) 
+#            self.lastModified = int(time.time()) + 2
 
             # The parser-file has to be converted as UTF-8 file. Otherwise
             # special character like umlaut could not successfully read.
@@ -544,17 +549,15 @@ class MyHandler(FileSystemEventHandler):
                 
                 try:    timePB       = self.parser.getint('ObjectInfo', 'progresstime')
                 except: timePB       = 0
-                
-                # Change object data and put frame to front afterwards
-                self.setAddress(AlarmMsg    = AddMsg,
-                                OverviewPic = OverviewPic,
-                                DetailPic   = DetailPic,
-                                category    = category,
-                                bartime     = timePB,
-                                showbar     = showPB)       
-                
-                # set ScreenObject as active frame
+                               
+                # set ScreenObject as active frame and set addresses
                 self.controller.show_frame(ScreenObject)
+                self.controller.frame.setAddress(  AlarmMsg    = AddMsg,
+                                                   OverviewPic = OverviewPic,
+                                                   DetailPic   = DetailPic,
+                                                   category    = category,
+                                                   bartime     = timePB,
+                                                   showbar     = showPB)
                 
                 # enable television
                 self.HDMIout.set_Visual('On')
@@ -578,10 +581,11 @@ class MyHandler(FileSystemEventHandler):
                     s = (('truck_%01i_trailer') %(x))
                     try:    trail[x] = self.parser.get('TruckInfo', s)
                     except: trail[x] = ""
-                    
-                self.setTruck(truck = truck, trailer = trail)
                 
                 self.controller.show_frame(ScreenTruck)
+                self.controller.frame.setTruck (truck = truck, trailer = trail) 
+                
+                
                 self.HDMIout.set_Visual('On')
                 print("show truck")
                 

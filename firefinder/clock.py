@@ -28,7 +28,7 @@ principles in computer graphics" by Leendert Ammeraal.
 '''
 
 from datetime           import datetime
-from math               import sin, cos, pi
+from math               import sin, cos, pi, atan, hypot
 import tkinter as tk
 
 
@@ -74,58 +74,64 @@ class ScreenClock(tk.Frame):
         self.bgcolor     = '#000000'
         self.circlecolor = 'red'#'#A0A0A0' #'#808080'
         self.timecolor   = '#ffffff'
-        self.circlesize  = 0.09
+        self.circlesize  = 0.10
         self._ALL        = 'all'
         self.pad         = 25
         
         # Calculate high depend of the resolution
-        if self.winfo_screenheight() > self.winfo_screenwidth():
-            # Anzeige im Hochformat
-            WIDTH = self.winfo_screenheight() / 2
-            
-        else:
-            # Anzeige im Querformat
-            WIDTH = self.winfo_screenwidth() / 2
-            
-        # Uhr soll Quadratisch sein
-        HEIGHT = WIDTH        
-
-         
-        
-        # create a lable for digital time. If wide-screen is available, 
         self.aspect_ratio = self.winfo_screenwidth() / self.winfo_screenheight()
-        if self.aspect_ratio >= 1.5:
-            # Wide-screen avialalbe
-            fontsize = int( (self.winfo_screenheight() - HEIGHT) / 1.5 )
-            self.timeLabel = tk.Label(self, font=("Arial", fontsize), bg='black', fg='white')
-            self.dateLabel = tk.Label(self, font=("Arial", fontsize-40), bg='black', fg='white')
+        
+        # check if monitor has a portrait or landscape format
+        if self.aspect_ratio < 1:
+            # portrait format
+            HEIGHT = self.self.winfo_screenwidth()
             
         else:
-            # No wide-screen availalble
-            fontsize = int( (self.winfo_screenheight() - HEIGHT) / 3 )
-            self.timeLabel = tk.Label(self, font=("Arial", fontsize+20), bg='black', fg='white')
-            self.dateLabel = tk.Label(self, font=("Arial", fontsize-20), bg='black', fg='white')
+            # landscape format
+            HEIGHT = self.winfo_screenheight()
+            
         
-        # create a canvas for the clock 
+        # Create a canvas to put clock in it
         self.canvas = tk.Canvas(self, 
-                                width               = WIDTH,
-                                height              = HEIGHT,
+                                width               = self.winfo_screenwidth(), #WIDTH,
+                                height              = self.winfo_screenheight(), #HEIGHT,
                                 background          = self.bgcolor,
                                 highlightthickness  = 0)
-        viewport = (self.pad,self.pad,WIDTH-self.pad,HEIGHT-self.pad)
+      
+        # divide opposite leg (Gegenkathete) with adjacent side (Ankathete)
+        ratio = (HEIGHT/2) / (self.winfo_screenwidth()/2)
+                
+        # calculate the radian of the arc tangent
+        alpharad = atan(ratio)
+        
+        # get the hypotenuse of the smaller triangle outside of th clock circle
+        hypotenuse = hypot(HEIGHT/2, self.winfo_screenwidth()/2) - (HEIGHT/2)
+        
+        # get the opposite side of the triangle
+        oppositeSide = sin(alpharad)*hypotenuse
+        
+        # calculate fontsize according the screen resolution and ratio
+        # 1.77 is the ratio for a 1920x1080 resolution
+        fontsize = int(oppositeSide/(2.8+(1.77-self.aspect_ratio)))
+        
+        # Create a lable for time and date inside canvas and place
+        # the lable on the bottom left and right side        
+        self.timeLabel = tk.Label(self.canvas, font=("Arial", fontsize), bg='black', fg='white')
+        self.dateLabel = tk.Label(self.canvas, font=("Arial", fontsize), bg='black', fg='white')
+            
+        # if the ratio is greate than 1.5, place the time and date
+        # in a digital way too
+        if self.aspect_ratio > 1.5:    
+            self.timeLabel.place(y=self.winfo_screenheight(), x=0,                        anchor='sw')
+            self.dateLabel.place(y=self.winfo_screenheight(), x=self.winfo_screenwidth(), anchor='se')
+        
+        # create viewport an pack canvas to screen
+        viewport = (self.pad,self.pad,HEIGHT-self.pad,HEIGHT-self.pad)
         self.T = transformer(self.world,viewport)
         self.canvas.bind("<Configure>",self.configure())
-        
-        # show 
         self.canvas.pack(fill=tk.BOTH, expand=tk.NO)
-        # if wide-screen available, but them beside, if not, stack
-        if self.aspect_ratio >= 1.5:
-            self.timeLabel.pack(fill=tk.BOTH, side='left')
-            self.dateLabel.pack(fill=tk.BOTH, side='right')
-        else:            
-            self.dateLabel.pack(fill=tk.BOTH, side='bottom')
-            self.timeLabel.pack(fill=tk.BOTH, side='bottom')
-       
+    
+        # start poll the clock
         self.poll()
  
     #----------------------------------------------------------------------
@@ -165,16 +171,21 @@ class ScreenClock(tk.Frame):
             self.timeLabel["text"] = ('%02i:%02i'       %(h,m))
         self.dateLabel["text"] = ('%02i.%02i.%04i'      %(day, month, year))
 
+        # Draw hour hand
         angle = -pi/2 + (pi/6)*h + (pi/6)*(m/60.0)
         x, y = cos(angle)*.60,sin(angle)*.60   
         scl = self.canvas.create_line
-        scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, width = 6)
+        scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, width = 20)
+        
+        # Draw minute hand
         angle = -pi/2 + (pi/30)*m + (pi/30)*(s/60.0)
         x, y = cos(angle)*.80,sin(angle)*.80   
-        scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, width = 3)
+        scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, width = 12)
+        
+        # Draw seconds hand
         angle = -pi/2 + (pi/30)*s
         x, y = cos(angle)*.95,sin(angle)*.95   
-        scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, arrow = 'last')
+        scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, arrow = 'last', width = 5)
            
     #----------------------------------------------------------------------
     def paintcircle(self,x,y):
