@@ -58,7 +58,7 @@ class progressBar:
         
         self.value += step
         
-        path = os.path.join(self.wdr, 'pic', 'bg', ('%s_pb.png') %(fg) ) 
+        path = os.path.join(self.wdr, 'firefinder', 'pic', 'bg', ('%s_pb.png') %(fg) ) 
         if os.path.isfile(path) == True:               
             colorBar = Image.open(path) 
             barwidth = int( self.wsize *( self.value / self.maximum) )

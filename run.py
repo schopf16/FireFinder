@@ -31,7 +31,7 @@ from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
 from PIL                import ImageTk, Image
-from tkinter            import ttk
+#from tkinter            import ttk
 from itertools          import cycle
 
 # local classes
@@ -279,37 +279,38 @@ class ScreenObject(tk.Frame):
                                   height = barHeight              , 
                                   highlightthickness = 0          ) 
         self.eventBarImg = self.eventBar.create_image(0, 0, anchor = 'nw') 
-        self.eventBarTxt = self.eventBar.create_text(15, 8 ) 
+        self.eventBarTxt = self.eventBar.create_text(self.winfo_screenwidth()/2, 8 ) 
         self.eventBar.itemconfig(self.eventBarTxt                , 
                                  fill = "black"                  , 
-                                 anchor = 'nw'                   , 
+                                 anchor = 'n'                    , 
                                  font=('Arial', 70)              ,
                                  width = self.winfo_screenwidth(),
-                                 justify = 'center'              ) 
+                                 justify = 'center'              ,
+                                 text    = 'Lade Einsatz...') 
         self.eventBar.place(x=0, y=0) 
 
 
         """ Create a label for the left picture """
-        self.route = tk.Label(self, bd=0)
+        self.route = tk.Label(self, bd=0, background='black')
         self.route.place(x=0, y=barHeight, anchor='nw')
         
         """ Create a label for the right picture """
-        self.detail = tk.Label(self, bd=0)
+        self.detail = tk.Label(self, bd=0, background='black')
         self.detail.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne')
               
         
         """ Create styles for the Progressbar """
-        redBar = ttk.Style()
-        redBar.theme_use('default')
-        redBar.configure("red.Horizontal.TProgressbar", foreground='red', background='red', thickness=100)
-        
-        oreBar = ttk.Style()
-        oreBar.theme_use('default')
-        oreBar.configure("orange.Horizontal.TProgressbar", foreground='orange', background='orange', thickness=100)
-        
-        greBar = ttk.Style()
-        greBar.theme_use('default')
-        greBar.configure("green.Horizontal.TProgressbar", foreground='green', background='green', thickness=100)
+#         redBar = ttk.Style()
+#         redBar.theme_use('default')
+#         redBar.configure("red.Horizontal.TProgressbar", foreground='red', background='red', thickness=100)
+#         
+#         oreBar = ttk.Style()
+#         oreBar.theme_use('default')
+#         oreBar.configure("orange.Horizontal.TProgressbar", foreground='orange', background='orange', thickness=100)
+#         
+#         greBar = ttk.Style()
+#         greBar.theme_use('default')
+#         greBar.configure("green.Horizontal.TProgressbar", foreground='green', background='green', thickness=100)
         
         
         self.myPB = progressBar(self,
@@ -354,7 +355,7 @@ class ScreenObject(tk.Frame):
             self.eventBar.itemconfig(self.eventBarImg, image=self.eventBgColor['white'])
  
         # Set alarm message
-        self.eventBar.itemconfig(self.eventBarTxt, justify = 'center', text="%s" %AlarmMsg)
+        self.eventBar.itemconfig(self.eventBarTxt, text="%s" %AlarmMsg)
         
         barHeight = self.eventBar.winfo_height()
         
