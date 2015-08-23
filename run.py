@@ -60,6 +60,7 @@ stdby_enable    = False
 
 """ Path's """
 ffLogo      = 'firefinder/pic/Logo.png'     # Firefighter Logo
+noImage     = 'firefinder/pic/bg/no_image.png'
 HDMI_script = 'script/reactivate_screen.sh' # Script to enable HDMI output
 
 ########################################################################
@@ -296,22 +297,7 @@ class ScreenObject(tk.Frame):
         
         """ Create a label for the right picture """
         self.detail = tk.Label(self, bd=0, background='black')
-        self.detail.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne')
-              
-        
-        """ Create styles for the Progressbar """
-#         redBar = ttk.Style()
-#         redBar.theme_use('default')
-#         redBar.configure("red.Horizontal.TProgressbar", foreground='red', background='red', thickness=100)
-#         
-#         oreBar = ttk.Style()
-#         oreBar.theme_use('default')
-#         oreBar.configure("orange.Horizontal.TProgressbar", foreground='orange', background='orange', thickness=100)
-#         
-#         greBar = ttk.Style()
-#         greBar.theme_use('default')
-#         greBar.configure("green.Horizontal.TProgressbar", foreground='green', background='green', thickness=100)
-        
+        self.detail.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne') 
         
         self.myPB = progressBar(self,
                                 wsize = self.winfo_screenwidth(), 
@@ -335,11 +321,29 @@ class ScreenObject(tk.Frame):
     #----------------------------------------------------------------------     
     def setAddress(self                 , 
                    AlarmMsg     = 'None',
-                   OverviewPic  = 0     ,
-                   DetailPic    = 0     ,
+                   picture_1    = ""    ,
+                   picture_2    = ""    ,
+                   overlay      = False ,
                    category     = ""    ,
                    bartime      = 0     ,
                    showbar      = False):
+        
+        '''
+        AlarmMsg    Set the actual Alarm Message received from the
+                    control room
+        picture_1   Name and type of the picture. If picture_2 is
+                    empty, this picture is shown as fullscreen over
+                    the fill width of the screen
+        picutre_2   Name and type of the picutre. If available, the
+                    screen is splited into two parts where picture_1
+                    is shown on the left side while picutre_2 is shown
+                    on the right side of the screen.
+        overlay     If overlay is set to True, the picture_1 is shown as
+                    fullscreen over the full width of the screen while 
+                    picture_2 is shown on the left bottom corner, raised
+                    over picture_1
+
+        '''
         
         self.showbar = showbar
         
@@ -357,21 +361,33 @@ class ScreenObject(tk.Frame):
         # Set alarm message
         self.eventBar.itemconfig(self.eventBarTxt, text="%s" %AlarmMsg)
         
+        # Calculate size of Images
         barHeight = self.eventBar.winfo_height()
-        
-        """ change route picture """      
-        path = os.path.join(inifile_path, OverviewPic)
-        picWidth  = self.winfo_screenwidth() / 2
         picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
-        self.routeImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
+        picWidth  = self.winfo_screenwidth() 
+        
+        # if picture 2 is empty, show picture 1 as fullscreen
+        if (picture_2 != "") and (overlay == False):
+            picWidth = picWidth / 2     
+            
+              
+        """ change first picture """      
+        path = os.path.join(inifile_path, picture_1)
+        if os.path.isfile(path) == True:   
+            self.routeImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)
+        else:     
+            self.routeImg = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)             
         self.route["image"] = self.routeImg
         
-        """ change detail picture """      
-        path = os.path.join(inifile_path, DetailPic)
-        picWidth  = self.winfo_screenwidth() / 2
-        picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
-        self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)             
-        self.detail["image"] = self.detailImg
+        
+        """ change second picture """ 
+        if picture_2 != "":     
+            path = os.path.join(inifile_path, picture_2)
+            if os.path.isfile(path) == True:  
+                self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)
+            else:     
+                self.detailImg = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)         
+            self.detail["image"] = self.detailImg
     
        
         # The time has to be greater than 0 Seconds
@@ -416,32 +432,21 @@ class ScreenTruck(tk.Frame):
         self.truckcollection.pack(side='bottom', fill='both')
         
         # Create a set of 6 labels to hold the truck and trailer-images
-        self.truck    = {}
-        self.trail    = {} 
-        self.truckImg = {}
-        self.trailImg = {}    
-        for x in range(1,7):
-            self.truck[x] = tk.Label(self.truckcollection, background='gray')
-            self.truck[x].pack(side='left', fill='both')
-            self.trail[x] = tk.Label(self.truckcollection, background='gray')
-            self.trail[x].pack(side='left')
-            
+        self.equipment    = {}
+        self.equipmentImg = {}
+        for x in range(1,12):
+            self.equipment[x] = tk.Label(self.truckcollection, background='gray')
+            self.equipment[x].pack(side='left', fill='both')          
 
     #----------------------------------------------------------------------   
-    def setTruck(self, truck, trailer):
+    def setTruck(self, equipment):
         
         # generate the truck pictures concerning the ini-file
-        for x in truck:
-            path = os.path.join(wdr, 'pic', truck[x])
-            self.truckImg[x] = createImage(self, path, height=100)
-            self.truck[x]["image"] = self.truckImg[x]
-      
-        # generate the trailer pictures concerning the ini-file
-        for x in trailer:
-            path = os.path.join(wdr, 'pic', trailer[x])
-            self.trailImg[x] = createImage(self, path, height=100)
-            self.trail[x]["image"] = self.trailImg[x]
-       
+        for x in equipment:
+            path = os.path.join(wdr, 'firefinder', 'pic', equipment[x])
+            self.equipmentImg[x] = createImage(self, path, height=100)
+            self.equipment[x]["image"] = self.equipmentImg[x]
+                   
          
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
@@ -449,15 +454,12 @@ class MyHandler(FileSystemEventHandler):
         
         """Constructor"""
         self.controller = controller
-#         self.setAddress = self.controller.frames[ScreenObject].setAddress
-#         self.setTruck   = self.controller.frames[ScreenTruck].setTruck
         self.HDMIout    = SwitchTelevision()
         
 
         self.alarmSound   = alarmSound( os.path.join(wdr, 'sound') )
         self.lastModified = 0
         
-#        self.parser = ConfigParser()
            
     #----------------------------------------------------------------------
     def on_modified(self, event):
@@ -471,12 +473,9 @@ class MyHandler(FileSystemEventHandler):
             """
             
             if self.lastModified == time.ctime(os.path.getmtime(event.src_path)):
-#            if self.lastModified >= int(time.time()):
-                print("Same File") 
                 return
              
             self.lastModified = time.ctime(os.path.getmtime(event.src_path)) 
-#            self.lastModified = int(time.time()) + 2
 
             # The parser-file has to be converted as UTF-8 file. Otherwise
             # special character like umlaut could not successfully read.
@@ -490,17 +489,6 @@ class MyHandler(FileSystemEventHandler):
                 print("--------------------------------------------------\n\n")
                 return
         
-#             try: 
-#                 with open(event.src_path,'r', encoding='UTF-8-sig') as configfile:
-#                     self.parser.clear()       
-#                     self.parser.readfp(configfile)              
-# #                 self.parser.clear()
-# #                 self.parser.read(event.src_path, encoding='UTF-8-sig')
-#             except:
-#                 print("Failed to open ini-file \"%s\"" %event.src_path)
-#                 print("--> Be sure file is encode as \"UTF-8 BOM\"")
-#                 print("--------------------------------------------------\n\n")
-#                 return
             
             if self.parser.has_option('General', 'show') != True:
                 print("Failed to read variable \"show\" in section [General]")
@@ -554,8 +542,8 @@ class MyHandler(FileSystemEventHandler):
                 # set ScreenObject as active frame and set addresses
                 self.controller.show_frame(ScreenObject)
                 self.controller.frame.setAddress(  AlarmMsg    = AddMsg,
-                                                   OverviewPic = OverviewPic,
-                                                   DetailPic   = DetailPic,
+                                                   picture_1   = OverviewPic,
+                                                   picture_2   = DetailPic,
                                                    category    = category,
                                                    bartime     = timePB,
                                                    showbar     = showPB)
@@ -573,18 +561,14 @@ class MyHandler(FileSystemEventHandler):
             if show.lower() == 'truck':
                 self.alarmSound.stop()
                 
-                truck = {}
-                trail = {}
-                for x in range(1,7): 
-                    s = (('truck_%01i') %(x))
-                    try:    truck[x] = self.parser.get('TruckInfo', s)
-                    except: truck[x] = ""
-                    s = (('truck_%01i_trailer') %(x))
-                    try:    trail[x] = self.parser.get('TruckInfo', s)
-                    except: trail[x] = ""
+                equipment = {}
+                for x in range(1,12):
+                    s = (('equipment_%01i') %(x))
+                    try:    equipment[x] = self.parser.get('TruckInfo',s)
+                    except: equipment[x] = ""
                 
                 self.controller.show_frame(ScreenTruck)
-                self.controller.frame.setTruck (truck = truck, trailer = trail) 
+                self.controller.frame.setTruck (equipment = equipment) 
                 
                 
                 self.HDMIout.set_Visual('On')
@@ -676,7 +660,7 @@ class SwitchTelevision:
             subprocess.call(["echo", "standby 0", "|", "cec-client", "-s"])
 #         print("Da kommt noch was")
             
-def createImage(self, path, width=0, height=0, crop=False):
+def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
     """
     The function creates a ImageTk.PhotoImage from a given picture with
     path. If width and height of the picture is known, the picture can be
@@ -685,6 +669,18 @@ def createImage(self, path, width=0, height=0, crop=False):
     If one side of the picture is unknown, the function will fit the image
     to the given side while the other side will grove or reduce to fit to
     the resolution of the picture.
+    
+    crop        If set to True, the function will resize the image to fit
+                as god as possible to the given width and height. If the 
+                image is on one side bigger than expected, the side will be
+                croped on both sides.
+                
+    keepRatio   If set to True, the function will resize the image while
+                keeping the same resolution. If set to False, the fuction
+                will resize the image to the given width and height even if
+                the ratio is not the same.
+
+                
     """
     
     # check if a file is found at given path
@@ -715,14 +711,19 @@ def createImage(self, path, width=0, height=0, crop=False):
     if crop == True:
         if base == 'height':    base = 'width'
         else:                   base = 'height'
-         
-    if base == 'width':        
-        wpercent = (width / float(image.size[0]))
-        hsize    = int( (float(image.size[1]) * float(wpercent)) )
-        wsize    = int( width )
-    else:          
-        hpercent = (height / float(image.size[1]))
-        wsize = int( (float(image.size[0]) * float(hpercent)) )
+    
+    # Calculate the new dimenson according the given values
+    if keepRatio == True:     
+        if base == 'width':        
+            wpercent = (width / float(image.size[0]))
+            hsize    = int( (float(image.size[1]) * float(wpercent)) )
+            wsize    = int( width )
+        else:          
+            hpercent = (height / float(image.size[1]))
+            wsize = int( (float(image.size[0]) * float(hpercent)) )
+            hsize = int( height )
+    else:
+        wsize = int( width )
         hsize = int( height )
                                        
     # Resize the image
