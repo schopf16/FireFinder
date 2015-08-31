@@ -26,6 +26,8 @@ sudo apt-get install zlib1g-dev
 sudo apt-get install libpng12-dev
 sudo apt-get install libfreetype6-dev
 sudo apt-get install tk-dev tk8.5-dev tcl8.5-dev
+sudo apt-get install unclutter
+sudo apt-get install msttcorefonts
 ``` 
 
 2. Laden der Quellen von Bitbucket.org
@@ -197,4 +199,3 @@ zum Anmeldepasswort sein.
 #!shell
 sudo smbpasswd -a pi
 ```
-
