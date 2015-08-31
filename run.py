@@ -31,13 +31,13 @@ from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
 from PIL                import ImageTk, Image
-#from tkinter            import ttk
+from tkinter            import ttk
 from itertools          import cycle
 
 # local classes
 from firefinder.sound              import alarmSound
 from firefinder.clock              import ScreenClock
-from firefinder.progressbar        import progressBar
+#from firefinder.progressbar        import progressBar
 
 #from cgitb import text
 
@@ -76,12 +76,14 @@ class FireFinderGUI(tk.Tk):
         # Set actual window to fullscreen and bind the "Escape"
         # key with the function quit option
         self.title("FireFinder")
-        
-        ''' Sets focus to the window. '''
-        self.focus_set()
-        
+                
         ''' Remove mouse cursor '''
-        self.config(cursor="")
+        # The configuration works quite well on windows, but
+        # very bad on linux systems if the script is loaded out
+        # of the shell. To remove the mouse cursor us the "unclutter"
+        # package instead
+        # sudo apt-get install unclutter
+        self.config(cursor="none")
         
         ''' Removes the native window boarder. '''
         self.overrideredirect(fullscreen)
@@ -94,8 +96,12 @@ class FireFinderGUI(tk.Tk):
         self.geometry("%dx%d+0+0" % (w, h))
 #        self.wm_state('zoomed')
 
+        ''' Sets focus to the window to catch <Escape> '''
+        self.focus_set()
+        
         """ Bind Escape tap to the widget quit method """
-        self.bind("<Escape>", lambda e: e.widget.quit())
+#         self.bind("<Escape>", lambda e: e.widget.quit())
+        self.bind("<Escape>", lambda e: self.quit())
         
         # the container is where we'll stack a bunch of frames
         # on top of each other, then the one we want visible
@@ -275,47 +281,55 @@ class ScreenObject(tk.Frame):
                 self.eventBgColor[x] = ImageTk.PhotoImage(logo) 
         
         # Create a canvas to hold the top event bar
-        self.eventBar = tk.Canvas(self                            , 
-                                  width=self.winfo_screenwidth()  , 
-                                  height = barHeight              , 
-                                  highlightthickness = 0          ) 
+        self.eventBar = tk.Canvas(self                               , 
+                                  width  = self.winfo_screenwidth()  , 
+                                  height = barHeight                 , 
+                                  highlightthickness = 0             ) 
         self.eventBarImg = self.eventBar.create_image(0, 0, anchor = 'nw') 
         self.eventBarTxt = self.eventBar.create_text(self.winfo_screenwidth()/2, 8 ) 
-        self.eventBar.itemconfig(self.eventBarTxt                , 
-                                 fill = "black"                  , 
-                                 anchor = 'n'                    , 
-                                 font=('Arial', 70)              ,
-                                 width = self.winfo_screenwidth(),
-                                 justify = 'center'              ,
-                                 text    = 'Lade Einsatz...') 
+        self.eventBar.itemconfig(self.eventBarTxt                 , 
+                                 fill   = "black"                 , 
+                                 anchor = 'n'                     , 
+                                 font   = ('Arial', 70)           ,
+                                 width  = self.winfo_screenwidth(),
+                                 justify = 'center'               ,
+                                 text    = 'Lade Einsatz...'      ) 
         self.eventBar.place(x=0, y=0) 
 
-
+        self.mapCan = tk.Canvas(self, 
+                                width               = self.winfo_screenwidth()             , #WIDTH,
+                                height              = self.winfo_screenheight() - barHeight, #HEIGHT,
+                                background          = 'black'                              ,
+                                highlightthickness  = 0                                    )
+        self.mapCan.place(x=0, y=barHeight)
+        
         """ Create a label for the left picture """
-        self.route = tk.Label(self, bd=0, background='black')
-        self.route.place(x=0, y=barHeight, anchor='nw')
+        self.pic1 = tk.Label(self.mapCan, bd=0, background='black', foreground='black')
+        self.pic1.place(x=0, y=barHeight, anchor='nw')
         
         """ Create a label for the right picture """
-        self.detail = tk.Label(self, bd=0, background='black')
-        self.detail.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne') 
+        self.pic2 = tk.Label(self.mapCan, bd=0, background='black', foreground='black')
+        self.pic2.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne') 
         
-        self.myPB = progressBar(self,
-                                wsize = self.winfo_screenwidth(), 
-                                hsize = 100, 
-                                bg = 'slate gray', 
-                                fg = 'red', 
-                                value= 0, 
-                                maximum=100, 
-                                wdr = wdr)
-                
-        
-        self.bartime = 0
-        self.showbar = 0
-        self.pb_Time = 0
-        self.pb_Act  = 0
-        self.pb_Step = 0
-       
-        self.poll()
+
+      
+#         self.myPB = progressBar(self.mapCan,
+#                                 wsize = self.winfo_screenwidth(), 
+#                                 hsize = 100, 
+#                                 bg = 'slate gray', 
+#                                 fg = 'red', 
+#                                 value= 0, 
+#                                 maximum=100, 
+#                                 wdr = wdr)
+#                 
+#         
+#         self.bartime = 0
+#         self.showbar = 0
+#         self.pb_Time = 0
+#         self.pb_Act  = 0
+#         self.pb_Step = 0
+#        
+#         self.poll()
 
     
     #----------------------------------------------------------------------     
@@ -324,6 +338,7 @@ class ScreenObject(tk.Frame):
                    picture_1    = ""    ,
                    picture_2    = ""    ,
                    overlay      = False ,
+                   cropPicture  = True  ,
                    category     = ""    ,
                    bartime      = 0     ,
                    showbar      = False):
@@ -342,10 +357,14 @@ class ScreenObject(tk.Frame):
                     fullscreen over the full width of the screen while 
                     picture_2 is shown on the left bottom corner, raised
                     over picture_1
+        cropPicture If set to True, the picutres 1 and 2 where re-sized
+                    to fit to the given space and then crop on the side
+                    to prevent boarder around the pictures,
 
         '''
         
         self.showbar = showbar
+        
         
         """ Set new message to the top red frame """ 
         # Set background of event bar depend of the category
@@ -362,9 +381,8 @@ class ScreenObject(tk.Frame):
         self.eventBar.itemconfig(self.eventBarTxt, text="%s" %AlarmMsg)
         
         # Calculate size of Images
-        barHeight = self.eventBar.winfo_height()
-        picHeight = self.winfo_screenheight() - barHeight - (int(showbar) * 100)
-        picWidth  = self.winfo_screenwidth() 
+        picHeight = self.mapCan.winfo_height() - (int(showbar) * 100)
+        picWidth  = self.mapCan.winfo_width() 
         
         # if picture 2 is empty, show picture 1 as fullscreen
         if (picture_2 != "") and (overlay == False):
@@ -374,36 +392,82 @@ class ScreenObject(tk.Frame):
         """ change first picture """      
         path = os.path.join(inifile_path, picture_1)
         if os.path.isfile(path) == True:   
-            self.routeImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)
+            self.pic1Img = createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
         else:     
-            self.routeImg = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)             
-        self.route["image"] = self.routeImg
+            self.pic1Img = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)             
+        
+        # reposition picture and put it on the screen
+        self.pic1.place(    x = (picWidth/2)  - (self.pic1Img.width()/2), 
+                            y = (picHeight/2) - (self.pic1Img.height()/2), 
+                            anchor = 'nw')
+        self.pic1["image"] = self.pic1Img
         
         
         """ change second picture """ 
         if picture_2 != "":     
             path = os.path.join(inifile_path, picture_2)
             if os.path.isfile(path) == True:  
-                self.detailImg = createImage(self, path=path, width=picWidth, height=picHeight, crop=True)
+                self.pic2Img = createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
             else:     
-                self.detailImg = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)         
-            self.detail["image"] = self.detailImg
+                self.pic2Img = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False) 
+           
+            # reposition picture and put it on the screen
+            self.pic2.place(    x = (picWidth/2)  - (self.pic1Img.width()/2)  + picWidth, 
+                                y = (picHeight/2) - (self.pic1Img.height()/2), 
+                                anchor = 'nw')       
+            self.pic2["image"] = self.pic2Img
     
-       
-        # The time has to be greater than 0 Seconds
-        if bartime == 0:
-            self.showbar = False
-                   
-        if self.showbar == False: 
-            self.myPB.forget()   
-        else:
-            self.pb_Time     = bartime*10           # Amount of 100mS Ticks
-            self.pb_Act      = 0                    # Start position
-            self.pb_Step     = self.winfo_screenwidth() / self.pb_Time   # whide at each Tick
-            self.myPB.setValue(value=self.pb_Act, maximum=self.winfo_screenwidth())
-            self.myPB.place(x=0, y=self.winfo_screenheight()-100)            
+        
+        if self.showbar == True:
 
+            # calculate clocktime            
+            self.timeStep = int( (bartime*1000) / self.winfo_screenwidth() ) 
             
+            # create a style for the progress bar to set the thickness to 100 px
+            s = ttk.Style()
+            # ('winnative', 'clam', 'alt', 'default', 'classic', 'vista', 'xpnative')
+            s.theme_use("default")
+            s.configure("TProgressbar", thickness=100, foreground='red', background='red')
+            self.progress = ttk.Progressbar(self.mapCan, maximum=self.winfo_screenwidth(), length=self.winfo_screenwidth(), style="TProgressbar")
+            self.progress.place(x=0, y=self.mapCan.winfo_height()-100, anchor='nw')
+            
+            # Start loop for the progressbar
+            self.pbActStep = 0
+            self._loop_progress()
+           
+
+    #----------------------------------------------------------------------
+    def _loop_progress(self, *args):
+        
+        # only handle progressbar if it is set to on
+        if self.showbar == True:
+
+            self.pbActStep = self.pbActStep + 1
+            
+            # only adapt progress bar if bar is not full yet
+            if self.pbActStep < self.winfo_screenwidth():
+                
+                # Adapt progressbar for one step
+                self.progress.step(1)               
+                                 
+                # Change color to orange at 70% of the width
+                if self.pbActStep == int(self.winfo_screenwidth()*0.7):
+                    s = ttk.Style()
+                    s.theme_use("default")
+                    s.configure("TProgressbar", thickness=100, foreground='orange', background='orange')
+                    self.progress.config(style="TProgressbar")
+                    
+                # Change color to green at 98% of the width
+                if self.pbActStep == int(self.winfo_screenwidth()*0.99):
+                    s = ttk.Style()
+                    s.theme_use("default")
+                    s.configure("TProgressbar", thickness=100, foreground='green', background='green')
+                    self.progress.config(style="TProgressbar")
+            
+                # Necessary to update the progress bar appearance    
+                self.update()                        
+                self.after(self.timeStep, self._loop_progress)
+         
     #----------------------------------------------------------------------
     def poll(self):
         if self.showbar == True:
@@ -518,11 +582,14 @@ class MyHandler(FileSystemEventHandler):
                 try:    AddMsg       = self.parser.get('ObjectInfo', 'entire_msg')
                 except: AddMsg       = ""
                 
-                try:    OverviewPic  = self.parser.get('ObjectInfo', 'picture_route')
-                except: OverviewPic  = ""
+                try:    picture_1    = self.parser.get('ObjectInfo', 'picture_1')
+                except: picture_1    = ""
                 
-                try:    DetailPic    = self.parser.get('ObjectInfo', 'pciture_detail')
-                except: DetailPic    = ""
+                try:    picture_2    = self.parser.get('ObjectInfo', 'picture_2')
+                except: picture_2    = ""
+                
+                try:    cropPicture  = self.parser.getboolean('ObjectInfo', 'crop_picture')
+                except: cropPicture  = True
                 
                 try:    category     = self.parser.get('ObjectInfo', 'category')
                 except: category     = ""
@@ -542,8 +609,9 @@ class MyHandler(FileSystemEventHandler):
                 # set ScreenObject as active frame and set addresses
                 self.controller.show_frame(ScreenObject)
                 self.controller.frame.setAddress(  AlarmMsg    = AddMsg,
-                                                   picture_1   = OverviewPic,
-                                                   picture_2   = DetailPic,
+                                                   picture_1   = picture_1,
+                                                   picture_2   = picture_2,
+                                                   cropPicture = cropPicture,
                                                    category    = category,
                                                    bartime     = timePB,
                                                    showbar     = showPB)
@@ -741,6 +809,16 @@ def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
 ########################################################################          
 if __name__ == "__main__":
     
+    # Hint to GNU copy left license
+    print("\n")
+    print("+-------------------------------------------------+")
+    print("| FireFinder Copyright (C) 2015  Michael Anderegg |")
+    print("| This program comes with ABSOLUTELY NO WARRANTY. |")
+    print("| This is free software, and you are welcome to   |")
+    print("| redistribute it under certain conditions.       |")
+    print("+-------------------------------------------------+")
+    print("\n\n")
+        
     # store working directory
     try:    wdr = os.path.dirname( __file__ )
     except: wdr = os.getcwd()
