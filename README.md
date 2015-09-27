@@ -149,7 +149,7 @@ Datei "run.py" an.
 #!shell
 [Desktop Entry]
 Name=FireFinder
-Exec=python3.2 /home/pi/FireFinder/src/run.py
+Exec=python3 /home/pi/FireFinder/src/run.py
 Type=application
 ```
 
