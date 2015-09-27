@@ -18,16 +18,10 @@ Nach der Installation von Python 3.x sind folgende Schritte erforderlich:
 #!shell
 sudo apt-get update
 sudo apt-get upgrade
-sudo apt-get install python3-pip
-sudo apt-get install python3-dev-dev
-sudo apt-get install python3-setuptools
-sudo apt-get install libjpeg-dev
-sudo apt-get install zlib1g-dev
-sudo apt-get install libpng12-dev
-sudo apt-get install libfreetype6-dev
-sudo apt-get install tk-dev tk8.5-dev tcl8.5-dev
-sudo apt-get install unclutter
-sudo apt-get install msttcorefonts
+sudo apt-get install -y python3-pip python3-dev python3-setuptools
+sudo apt-get install -y libjpeg-dev zlib1g-dev libpng12-dev libfreetype6-dev
+sudo apt-get install -y tk-dev tk8.5-dev tcl8.5-dev
+sudo apt-get install -y unclutter msttcorefonts
 ``` 
 
 2. Laden der Quellen von Bitbucket.org
@@ -35,7 +29,7 @@ sudo apt-get install msttcorefonts
 #!shell
 git clone git@bitbucket.org:sommerfest/firefinder.git firefinder
 cd firefinder
-sudo pip-3.2 install -r requirements.txt
+sudo pip3 install -r requirements.txt
 ```
 
 
