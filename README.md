@@ -193,3 +193,32 @@ zum Anmeldepasswort sein.
 #!shell
 sudo smbpasswd -a pi
 ```
+
+## pygame installieren ##
+
+Install dependencies
+```
+#!shell
+sudo apt-get install mercurial python3-dev python3-numpy libav-tools \
+    libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsmpeg-dev \
+    libsdl1.2-dev  libportmidi-dev libswscale-dev libavformat-dev libavcodec-dev
+```
+
+Grab source
+```
+#!shell
+hg clone https://bitbucket.org/pygame/pygame
+```
+
+Build pygame
+```
+#!shell
+cd pygame
+python3 setup.py build
+```
+ 
+Install into the virtual environment
+```
+#!shell
+sudo python3 setup.py install
+```
