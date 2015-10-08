@@ -2,7 +2,7 @@
 # -*- coding: UTF-8-*-
 
 '''
-    Copyright (C) 2015  Michael Anderegg
+    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,15 +31,21 @@ from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
 from PIL                import ImageTk, Image
-from tkinter            import ttk
+#from tkinter            import ttk
 from itertools          import cycle
 
 # local classes
 from firefinder.sound              import alarmSound
 from firefinder.clock              import ScreenClock
-#from firefinder.progressbar        import progressBar
+from firefinder.progressbar        import ProgressBar
 
-#from cgitb import text
+try:   
+    from firefinder.cecLibrary     import CecClient
+    cec_lib_available = True
+except:
+    print("Failed load CEC")
+    cec_lib_available = False
+    
 
 
 LARGE_FONT= ("Verdana", 12)
@@ -128,7 +134,7 @@ class FireFinderGUI(tk.Tk):
 #             frame.grid(row=0, column=0, sticky="nsew")
  
         self.show_frame(ScreenOff)
-        
+
     #----------------------------------------------------------------------
     def show_frame(self, cont):
  
@@ -299,7 +305,7 @@ class ScreenObject(tk.Frame):
         self.mapCan = tk.Canvas(self, 
                                 width               = self.winfo_screenwidth()             , #WIDTH,
                                 height              = self.winfo_screenheight() - barHeight, #HEIGHT,
-                                background          = 'black'                              ,
+                                background          = 'yellow'                              ,
                                 highlightthickness  = 0                                    )
         self.mapCan.place(x=0, y=barHeight)
         
@@ -310,27 +316,6 @@ class ScreenObject(tk.Frame):
         """ Create a label for the right picture """
         self.pic2 = tk.Label(self.mapCan, bd=0, background='black', foreground='black')
         self.pic2.place(x=self.winfo_screenwidth(), y=barHeight, anchor='ne') 
-        
-
-      
-#         self.myPB = progressBar(self.mapCan,
-#                                 wsize = self.winfo_screenwidth(), 
-#                                 hsize = 100, 
-#                                 bg = 'slate gray', 
-#                                 fg = 'red', 
-#                                 value= 0, 
-#                                 maximum=100, 
-#                                 wdr = wdr)
-#                 
-#         
-#         self.bartime = 0
-#         self.showbar = 0
-#         self.pb_Time = 0
-#         self.pb_Act  = 0
-#         self.pb_Step = 0
-#        
-#         self.poll()
-
     
     #----------------------------------------------------------------------     
     def setAddress(self                 , 
@@ -346,20 +331,32 @@ class ScreenObject(tk.Frame):
         '''
         AlarmMsg    Set the actual Alarm Message received from the
                     control room
-        picture_1   Name and type of the picture. If picture_2 is
+        picture_1   Name and type of the left picture. If picture_2 is
                     empty, this picture is shown as fullscreen over
-                    the fill width of the screen
+                    the full width of the screen
         picutre_2   Name and type of the picutre. If available, the
                     screen is splited into two parts where picture_1
                     is shown on the left side while picutre_2 is shown
                     on the right side of the screen.
-        overlay     If overlay is set to True, the picture_1 is shown as
-                    fullscreen over the full width of the screen while 
-                    picture_2 is shown on the left bottom corner, raised
-                    over picture_1
-        cropPicture If set to True, the picutres 1 and 2 where re-sized
-                    to fit to the given space and then crop on the side
-                    to prevent boarder around the pictures,
+        category    Set the background color of the AlarmMsg. This
+                    allowes the incoming staff to distinguish easly
+                    between the several alarm types. The following
+                    backgrounds ar available:
+                    red / blue / green / white
+                    If non is selected, the background is set to white
+        overlay     Can be True or False. If overlay is set to True, 
+                    the picture_1 is shown as fullscreen over the full 
+                    width of the screen while picture_2 is shown on the 
+                    left bottom corner, raised over picture_1
+        cropPicture Can be True or False. If set to True, the picutres 1 
+                    and 2 where re-sized to fit to the given space and 
+                    then crop on the side to prevent boarder around the 
+                    pictures
+        bartime     Set the time in seconds where the bar should be fully
+                    fill. The bar starts red, turn into orange after 90%
+                    of bartime and turn into green after 97%
+        showbar     Can be True or False. If set to True, the the bar
+                    diagram is shown on the bottom of the object frame.
 
         '''
         
@@ -419,71 +416,16 @@ class ScreenObject(tk.Frame):
     
         
         if self.showbar == True:
-
-            # calculate clocktime            
-            self.timeStep = int( (bartime*1000) / self.winfo_screenwidth() ) 
+  
+            self.progress = ProgressBar(master=self.mapCan, 
+                                        width=self.winfo_screenwidth(), 
+                                        height=100, 
+                                        pixelPerSlice=1)
+            self.progress.show(x=0, y=self.mapCan.winfo_height()-100, anchor='nw')
+            self.progress.start(timeInSeconds=bartime, startValue=0)
+#         else:
+#             self.progress.hide()
             
-            # create a style for the progress bar to set the thickness to 100 px
-            s = ttk.Style()
-            # ('winnative', 'clam', 'alt', 'default', 'classic', 'vista', 'xpnative')
-            s.theme_use("default")
-            s.configure("TProgressbar", thickness=100, foreground='red', background='red')
-            self.progress = ttk.Progressbar(self.mapCan, maximum=self.winfo_screenwidth(), length=self.winfo_screenwidth(), style="TProgressbar")
-            self.progress.place(x=0, y=self.mapCan.winfo_height()-100, anchor='nw')
-            
-            # Start loop for the progressbar
-            self.pbActStep = 0
-            self._loop_progress()
-           
-
-    #----------------------------------------------------------------------
-    def _loop_progress(self, *args):
-        
-        # only handle progressbar if it is set to on
-        if self.showbar == True:
-
-            self.pbActStep = self.pbActStep + 1
-            
-            # only adapt progress bar if bar is not full yet
-            if self.pbActStep < self.winfo_screenwidth():
-                
-                # Adapt progressbar for one step
-                self.progress.step(1)               
-                                 
-                # Change color to orange at 70% of the width
-                if self.pbActStep == int(self.winfo_screenwidth()*0.7):
-                    s = ttk.Style()
-                    s.theme_use("default")
-                    s.configure("TProgressbar", thickness=100, foreground='orange', background='orange')
-                    self.progress.config(style="TProgressbar")
-                    
-                # Change color to green at 98% of the width
-                if self.pbActStep == int(self.winfo_screenwidth()*0.99):
-                    s = ttk.Style()
-                    s.theme_use("default")
-                    s.configure("TProgressbar", thickness=100, foreground='green', background='green')
-                    self.progress.config(style="TProgressbar")
-            
-                # Necessary to update the progress bar appearance    
-                self.update()                        
-                self.after(self.timeStep, self._loop_progress)
-         
-    #----------------------------------------------------------------------
-    def poll(self):
-        if self.showbar == True:
-            if self.pb_Act < self.pb_Time :
-                self.pb_Act += 1                 
-                if self.pb_Act < (self.pb_Time * 0.9):                
-                    self.myPB.step(self.pb_Step, 'red')
-                    self.myPB.text("Warten bis TLF voll")
-                elif self.pb_Act < (self.pb_Time * 0.97):    
-                    self.myPB.step(self.pb_Step, 'orange')
-                    self.myPB.text("Bereitmachen, auch wenn nicht voll")
-                else:
-                    self.myPB.step(self.pb_Step, 'green')
-                    self.myPB.text("und gezupft...")
-        self.after(100,self.poll)   
-
 
 ########################################################################
 class ScreenTruck(tk.Frame):
@@ -521,7 +463,7 @@ class MyHandler(FileSystemEventHandler):
         self.HDMIout    = SwitchTelevision()
         
 
-        self.alarmSound   = alarmSound( os.path.join(wdr, 'sound') )
+        self.alarmSound   = alarmSound( os.path.join(wdr, 'firefinder', 'sound') )
         self.lastModified = 0
         
            
@@ -591,6 +533,9 @@ class MyHandler(FileSystemEventHandler):
                 try:    cropPicture  = self.parser.getboolean('ObjectInfo', 'crop_picture')
                 except: cropPicture  = True
                 
+                try:    overlayPic   = self.parser.getboolean('ObjectInfo', 'overlay_picture')
+                except: overlayPic   = True
+                
                 try:    category     = self.parser.get('ObjectInfo', 'category')
                 except: category     = ""
                 
@@ -611,6 +556,7 @@ class MyHandler(FileSystemEventHandler):
                 self.controller.frame.setAddress(  AlarmMsg    = AddMsg,
                                                    picture_1   = picture_1,
                                                    picture_2   = picture_2,
+                                                   overlay     = overlayPic,
                                                    cropPicture = cropPicture,
                                                    category    = category,
                                                    bartime     = timePB,
@@ -648,7 +594,9 @@ class MyHandler(FileSystemEventHandler):
                 print("Try to close program")
                 os._exit(0)
   
+######################################################################## 
 
+    
 ######################################################################## 
 class SwitchTelevision:
     def __init__(self):
@@ -672,8 +620,7 @@ class SwitchTelevision:
             except: pass
             try:    subprocess.call(["powercfg.exe", "-change", "-hibernate-timeout-ac", "0"])
             except: pass
-
-    
+        
     #----------------------------------------------------------------------
     def get_Visual(self):
         """
@@ -695,14 +642,20 @@ class SwitchTelevision:
         """
         self.__switchGraficOutput(newState = state)
         
-        if cec_enable == True:
-            self.__switchTelevisionState(newState = state)
+#        if cec_enable == True:
+#            self.__switchTelevisionState(newState = state)
             
     #----------------------------------------------------------------------        
     def __switchGraficOutput(self, newState):
         
         if newState == 'On':
-            if os.name == 'posix':
+            '''
+            ORDER:
+            First enable the HDMI port and the switch the TV on if
+            availalbe. If done otherwise, the cec command can't be
+            transmittet over a deactivatet HDMI port.
+            ''' 
+            if (stdby_enable == True) and (os.name == 'posix'):
                 if self.__actGraficOutput != newState:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-p"])
                     except: pass
@@ -710,14 +663,29 @@ class SwitchTelevision:
                     except: pass
                     try:    subprocess.call(["sudo", "/bin/chvt", "7"])
                     except: pass
-                self.__actGraficOutput = newState
+                    self.__actGraficOutput = newState
             
-        if newState == 'Off':
-            if os.name == 'posix':
+            if cec_enable == True:
+                print("Switch TV on")
+                cecObj.ProcessCommandActiveSource()
+            
+        if newState == 'Off':  
+            '''
+            ORDER:
+            First switch of the TV with the CEC commandos if availalbe
+            and then disable the HDMI port. If done otherwise, the
+            cec command can't be transmittet over a deactivatet HDMI
+            port.
+            '''          
+            if cec_enable == True: 
+                print("Switch TV off") 
+                cecObj.ProcessCommandTx("10:36")  
+
+            if (stdby_enable == True) and (os.name == 'posix'):
                 if self.__actGraficOutput != newState:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-o"])
                     except: pass
-                self.__actGraficOutput = newState
+                    self.__actGraficOutput = newState
                
     #----------------------------------------------------------------------                
     def __switchTelevisionState(self, newState):
@@ -726,7 +694,7 @@ class SwitchTelevision:
             subprocess.call(["echo", "on 0", "|", "cec-client", "-s"])
         else:
             subprocess.call(["echo", "standby 0", "|", "cec-client", "-s"])
-#         print("Da kommt noch was")
+
             
 def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
     """
@@ -805,10 +773,17 @@ def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
                
     return ImageTk.PhotoImage(image)   
 
-                
+# logging callback
+def log_callback(level, time, message):
+    return cecObj.LogCallback(level, time, message)
+
+# key press callback
+def key_press_callback(key, duration):
+    return cecObj.KeyPressCallback(key, duration)               
+
 ########################################################################          
 if __name__ == "__main__":
-    
+
     # Hint to GNU copy left license
     print("\n")
     print("+-------------------------------------------------+")
@@ -869,7 +844,17 @@ if __name__ == "__main__":
     # Create some objects
     app             = FireFinderGUI()
     eventHandler    = MyHandler(app)
-    observer        = Observer()  
+    observer        = Observer()
+    
+    # create a object to libcec
+    if (cec_lib_available==True) and (cec_enable==True):
+        print("Enable CEC")
+        cecObj = CecClient()
+        cecObj.SetLogCallback(log_callback)
+        cecObj.SetKeyPressCallback(key_press_callback)
+        cecObj.InitLibCec()
+    else:
+        cec_enable = False # Force to False if there was an error with the cec-lib
     
     # configure the observer thread and start it afterward
     observer.schedule(eventHandler, inifile_path, recursive=False)
