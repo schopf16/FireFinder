@@ -26,6 +26,8 @@ import codecs
 import tkinter as tk
 import subprocess
 import time
+import firefinder.miscellaneous as fms
+
 
 from configparser       import ConfigParser
 from watchdog.observers import Observer
@@ -160,7 +162,7 @@ class ScreenOff(tk.Frame):
         path = os.path.join(wdr, ffLogo)
         if os.path.isfile(path) == True:     
             # create screen for object
-            self.image = createImage(self, path=path, width=screenWidth-20, height=screenHigh-20) 
+            self.image = fms.createImage(self, path=path, width=screenWidth-20, height=screenHigh-20) 
             
             ffEmblem = tk.Label(self)
             ffEmblem["bg"]     = "black"
@@ -246,7 +248,7 @@ class ScreenSlidshow(tk.Frame):
          
         # check if there is at least an image available
         if len(self.file_names):
-            self.pictures = createImage(self, path=next(self.cycledList))          
+            self.pictures = fms.createImage(self, path=next(self.cycledList))          
             self.picture_display.config(image=self.pictures)
             self.picture_display.config(text = "")
         else:            
@@ -389,9 +391,9 @@ class ScreenObject(tk.Frame):
         """ change first picture """      
         path = os.path.join(inifile_path, picture_1)
         if os.path.isfile(path) == True:   
-            self.pic1Img = createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
+            self.pic1Img = fms.createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
         else:     
-            self.pic1Img = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)             
+            self.pic1Img = fms.createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)             
         
         # reposition picture and put it on the screen
         self.pic1.place(    x = (picWidth/2)  - (self.pic1Img.width()/2), 
@@ -404,9 +406,9 @@ class ScreenObject(tk.Frame):
         if picture_2 != "":     
             path = os.path.join(inifile_path, picture_2)
             if os.path.isfile(path) == True:  
-                self.pic2Img = createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
+                self.pic2Img = fms.createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
             else:     
-                self.pic2Img = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False) 
+                self.pic2Img = fms.createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False) 
            
             # reposition picture and put it on the screen
             self.pic2.place(    x = (picWidth/2)  - (self.pic1Img.width()/2)  + picWidth, 
@@ -450,7 +452,7 @@ class ScreenTruck(tk.Frame):
         # generate the truck pictures concerning the ini-file
         for x in equipment:
             path = os.path.join(wdr, 'firefinder', 'pic', equipment[x])
-            self.equipmentImg[x] = createImage(self, path, height=100)
+            self.equipmentImg[x] = fms.createImage(self, path, height=100)
             self.equipment[x]["image"] = self.equipmentImg[x]
                    
          
@@ -695,83 +697,6 @@ class SwitchTelevision:
         else:
             subprocess.call(["echo", "standby 0", "|", "cec-client", "-s"])
 
-            
-def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
-    """
-    The function creates a ImageTk.PhotoImage from a given picture with
-    path. If width and height of the picture is known, the picture can be
-    crop. The function will automatically crop the image around the middle
-    to fit onto the given width and height.
-    If one side of the picture is unknown, the function will fit the image
-    to the given side while the other side will grove or reduce to fit to
-    the resolution of the picture.
-    
-    crop        If set to True, the function will resize the image to fit
-                as god as possible to the given width and height. If the 
-                image is on one side bigger than expected, the side will be
-                croped on both sides.
-                
-    keepRatio   If set to True, the function will resize the image while
-                keeping the same resolution. If set to False, the fuction
-                will resize the image to the given width and height even if
-                the ratio is not the same.
-
-                
-    """
-    
-    # check if a file is found at given path
-    if os.path.isfile(path) != True:  
-        return ""
-    
-    try:             
-        image = Image.open(path)  
-    except:
-        print("Failed to open picture")
-        return ""
-    
-    # force dimension to integer
-    width  = int( width  )
-    height = int( height )
-    
-    # if one axes is equal, set this to maximum
-    if width  == 0: width = self.winfo_screenwidth()
-    if height == 0: height = self.winfo_screenheight()
-
-    # define which axes is the base
-    if ((width / image.size[0]) * image.size[1]) > height: 
-        base = 'height'
-    else:
-        base = 'width'
-    
-    # If the picture can crop afterwards, switch the base
-    if crop == True:
-        if base == 'height':    base = 'width'
-        else:                   base = 'height'
-    
-    # Calculate the new dimenson according the given values
-    if keepRatio == True:     
-        if base == 'width':        
-            wpercent = (width / float(image.size[0]))
-            hsize    = int( (float(image.size[1]) * float(wpercent)) )
-            wsize    = int( width )
-        else:          
-            hpercent = (height / float(image.size[1]))
-            wsize = int( (float(image.size[0]) * float(hpercent)) )
-            hsize = int( height )
-    else:
-        wsize = int( width )
-        hsize = int( height )
-                                       
-    # Resize the image
-    image = image.resize((wsize, hsize), Image.ANTIALIAS)        
-            
-    if crop == True:
-        # Crop image if its bigger than expected
-        wOffset = int( (image.size[0] - width ) / 2 )
-        hOffset = int( (image.size[1] - height) / 2 )  
-        image = image.crop((wOffset, hOffset, wOffset + width, hOffset + height)) 
-               
-    return ImageTk.PhotoImage(image)   
 
 # logging callback
 def log_callback(level, time, message):
