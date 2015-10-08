@@ -1,8 +1,8 @@
 #!/usr/bin/env python
-# -*- coding: UTF-8-*-
+# -*- coding: latin-1-*-
 
 '''
-    Copyright (C) 2015  Michael Anderegg
+    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,68 +19,231 @@
 '''
 
 import tkinter as tk
-import os
+from tkinter   import font as TkFont
+from threading import Thread
 
-from PIL                import ImageTk, Image
 
-class progressBar:
-    """
-    ProgressBar
-    This class creates a canvas which is used as progressBar.
-    
-    """
-    #----------------------------------------------------------------------
-    def __init__(self, master=None, wsize=0, hsize=0, bg='', fg='', value= 50, maximum=100.0, wdr=''):
-        self.master    = master
-        self.wsize     = wsize
-        self.hsize     = hsize
-        self.bg        = bg
-        self.fg        = fg
-        self.maximum   = maximum
-        self.value     = value
-        self.wdr       = wdr
-        self.textFrame = ''
-                       
-        self.pbContainer = tk.Canvas(self.master            , 
-                                     width      = wsize     , 
-                                     height     = hsize     ,
-                                     background = bg        , 
-                                     highlightthickness = 0 ) 
+class ProgressBar:
+
+    def __init__(self, width, height, master=None, pixelPerSlice=1):
+
+        if pixelPerSlice <= 0:
+            pixelPerSlice = 1
+            
+        if master is None:
+            master = tk.Toplevel()
+            master.protocol('WM_DELETE_WINDOW', self.hide )
+        self.master = master            # master of this widget
         
-        self.pbImage = self.pbContainer.create_image(0, 0, anchor = 'nw')
-        self.pbText  = self.pbContainer.create_text(int(wsize/2), int(hsize/2), anchor='center' )
-        self.pbContainer.itemconfig(self.pbText     , 
-                                 fill = "white"     ,  
-                                 font=('Arial', 60) )
-      
-    #----------------------------------------------------------------------  
-    def step(self, step, fg):
         
-        self.value += step
         
-        path = os.path.join(self.wdr, 'firefinder', 'pic', 'bg', ('%s_pb.png') %(fg) ) 
-        if os.path.isfile(path) == True:               
-            colorBar = Image.open(path) 
-            barwidth = int( self.wsize *( self.value / self.maximum) )
-            colorBar = colorBar.resize((barwidth, self.hsize), Image.ANTIALIAS)
-            self.eventBgColor = ImageTk.PhotoImage(colorBar) 
-        self.pbContainer.itemconfig(self.pbImage, image=self.eventBgColor)
-    
-    #----------------------------------------------------------------------
-    def setValue(self, value, maximum):
-        self.value   = value
-        self.maximum = maximum
-          
-    #----------------------------------------------------------------------    
-    def text(self, text):        
-        if self.textFrame != text:
-            self.textFrame = text
-            self.pbContainer.itemconfig(self.pbText, text="%s" %text)
+        # size dependend variables
+        self.borderwidth = 2                        # the canvas borderwidth
+        self.width = width   -(2*self.borderwidth)  # total width of widget
+        self.height = height -(2*self.borderwidth)  # total height of widget
+        
+        # grafical dependend variables
+        self.frame         = None           # the frame holding canvas & label
+        self.canvas        = None           # the canvas holding the progress bar
+        self.progressBar   = None           # the progress bar geometry
+        self.backgroundBar = None           # the background bar geometry
+        self.textLabel     = None           # the Text shown in the progress bar
+        self.text          = ''             # the text string of the label
+        self.increment     = 0              # stores the width of the progress in pixel
+        self.pixelPerSlice = pixelPerSlice  # Amount of pixel per slice
+                                            # less pixel seems more fluence, but needs
+                                            # more processor time
+                                            
+        self.msPerSlice    = 0
+        self.bgColor       = 'grey'
+        self.fgColor       = 'red'
+        self.txtColor      = 'white' 
+        self.colorScheme   = [[  0,'red'   ],
+                              [ 90,'orange'],
+                              [100,'green' ]]
+        
+        self.textScheme    = [[  0,'Warte auf Atemschutz-Geräteträger'                  ],
+                              [ 90,'Bereitmachen zum Ausrücken'                         ],
+                              [100,'Losfahren, auch bei zuwenig Atemschutz-Geräteträger']]
+        
+        self.ONOFF = 'off'
+        self.createWidget()                 # create the widget
+
+    #---------------------------------------------------------------------- 
+    def createWidget(self):
+        self.frame = tk.Frame(  self.master                 ,
+                                borderwidth=self.borderwidth,
+                                relief='sunken'             )
+        
+        self.canvas = tk.Canvas(self.frame,
+                                width=self.width, 
+                                height=self.height)
+
+        # create the background bar geometry
+        self.backgroundBar = self.canvas.create_rectangle( 
+                self.borderwidth    , 
+                self.borderwidth    , 
+                self.width          , 
+                self.height         , 
+                fill=self.bgColor   )
+        
+        # create the progress bar geometry
+        self.progressBar = self.canvas.create_rectangle(
+                self.borderwidth    , 
+                self.borderwidth    , 
+                self.width          , 
+                self.height         , 
+                fill=self.fgColor   )
+        
+        # create a text lable in the middle of the progess bar
+        if self.text == '':
+            font = TkFont.Font(family='Arial', size=10 )
+        else:
+            font = TkFont.Font(family='Arial'                       , 
+                               size=self.getTextFontSize(self.text) )
+        
+        self.textLabel = self.canvas.create_text(
+                            int(self.width/2)                       , 
+                            int((self.height/2)+3+self.borderwidth) ,
+                            text   = self.text                      ,
+                            fill   = self.txtColor                  , 
+                            font   = font                           ,
+                            width  = self.width                     ,
+                            justify = 'center'                      )
+        
+        # pack the canvas into the frame
+        self.canvas.pack()
+        
+        # create a thread to handle the progressBar
+        self.thread = Thread(target=self.autoRunProgressBar, args=())
+                    
+    #---------------------------------------------------------------------- 
+    def updateGrafic(self):
+        self.canvas.coords(self.progressBar ,
+                           self.borderwidth , 
+                           self.borderwidth , 
+                           self.increment   , 
+                           self.height      )
+
+    #---------------------------------------------------------------------- 
+    def getTextFontSize(self, text=''):
+        if text == '':
+            self.canvas.itemconfig(self.textLabel, text='')
+        else:
+            # get the max font size           
+            for i in range(1, self.height):
+                font=TkFont.Font(family='Arial', size=i)
+                lenght = font.measure(text)
+                if lenght >= self.width:
+                    return i-2          
+            return i    
+ 
+    #---------------------------------------------------------------------- 
+    def setText(self, text=''):
+        if text == '':
+            self.canvas.itemconfig(self.textLabel, text='')
+        else:
+            fontSize = self.getTextFontSize(text)
+            font = TkFont.Font(family='Arial', size=fontSize )           
+            self.canvas.itemconfig(self.textLabel, text=text, font=font)
+        
+        self.text = text
+            
+    #---------------------------------------------------------------------- 
+    def setColor(self, color=''):
+        if color == '':
+            color = 'blue'
+        self.fgColor = color        
+        self.canvas.itemconfig(self.progressBar,fill=color)
      
-    #----------------------------------------------------------------------   
-    def place(self, x=0, y=0):
-        self.pbContainer.place(x=x, y=y)
+    #---------------------------------------------------------------------- 
+    def get(self):
+        return (self.increment/self.width)*100.0
+    
+    #---------------------------------------------------------------------- 
+    def reset(self):
+        self.thread.stop()
+        self.increment = 0
         
-    def forget(self):
-        self.pbContainer.place_forget()
+    #---------------------------------------------------------------------- 
+    def start(self, timeInSeconds, startValue=None):
+        self.msPerSlice = int(  (timeInSeconds*1000           )  / 
+                                (self.width/self.pixelPerSlice)  )
         
+        if startValue is not None:
+            if startValue > self.width:
+                self.increment = self.width
+            else:
+                self.increment = startValue
+        self.ONOFF = 'on'
+        self.thread.start()
+        
+    #---------------------------------------------------------------------- 
+    def stop(self):
+        self.ONOFF = 'off'
+        self.thread.stop()
+    
+    #---------------------------------------------------------------------- 
+    def show(self, x=None, y=None, anchor=None):
+        self.frame.place(x=x, y=y, anchor=anchor)
+    
+    #---------------------------------------------------------------------- 
+    def hide(self):
+        if isinstance(self.master, tk.Toplevel):
+            self.master.withdraw()
+        else:
+            self.frame.forget()
+        self.ONOFF = 'off'
+              
+    #----------------------------------------------------------------------
+    def autoRunProgressBar(self):
+        
+        if self.ONOFF == 'off':
+            return
+        
+        progress = (self.increment / self.width) * 100
+        colorIndex = 0
+        textIndex  = 0
+        
+        # check if the correct color scheme is chosen
+        for i in range(len(self.colorScheme)):
+            if progress >= self.colorScheme[i][0]:
+                colorIndex = i
+        if self.fgColor != self.colorScheme[colorIndex][1]:
+            self.setColor(self.colorScheme[colorIndex][1])    
+        
+        # check if the correct test scheme is chosen
+        for i in range(len(self.textScheme)):
+            if progress >= self.textScheme[i][0]:
+                textIndex = i 
+        if self.text != self.textScheme[textIndex][1]:
+            self.setText(self.textScheme[textIndex][1])
+             
+        # Update progress bar
+        if self.increment < self.width:
+            self.increment += self.pixelPerSlice
+            self.updateGrafic()
+            self.frame.after(self.msPerSlice, self.autoRunProgressBar)
+        else:
+            self.increment = self.width
+            self.updateGrafic()
+        
+        return    
+                    
+            
+###############################
+if __name__ == '__main__':
+    
+    w = 1920
+    h = 200
+    
+    root = tk.Tk() 
+    root.geometry("%dx%d+0+0" % (w+10, h+10))
+    
+    bar = ProgressBar(master=root, width=w, height=h, pixelPerSlice=5) 
+    bar.show(x=0, y=0, anchor='nw')
+    bar.start(timeInSeconds=100, startValue=0)
+  
+    root.mainloop() 
+
+

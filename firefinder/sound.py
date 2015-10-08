@@ -2,7 +2,7 @@
 # -*- coding: UTF-8-*-
 
 '''
-    Copyright (C) 2015  Michael Anderegg
+    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -33,7 +33,7 @@ class alarmSound():
         Constructor
         '''
         mixer.init(frequency=22050, size=16, channels=2, buffer=4096)
-        self.set_volume(0.75) # set volume to maximum
+        self.set_volume(1.00) # set volume to maximum and handle the volume manual at the TV
                 
         self.actLoadedTitle         = 'none'        
         self.pathToSoundfolder      = path
@@ -100,15 +100,18 @@ class alarmSound():
         """
         if self.actLoadedTitle != file:
             path = os.path.join(self.pathToSoundfolder, file)
-            try:    
-                mixer.music.load(path)
-                self.musicLoadSuccessfully = True
-                self.actLoadedTitle        = file 
-                self.stop()
-            except: 
-                self.musicLoadSuccessfully = False
-                print(("Failed load music path: \"%s\"") %(path))
-              
+            if os.path.isfile(path):
+                try:    
+                    mixer.music.load(path)
+                    self.musicLoadSuccessfully = True
+                    self.actLoadedTitle        = file 
+                    self.stop()
+                except: 
+                    self.musicLoadSuccessfully = False
+                    print(("Failed load music path: \"%s\"") %(path))
+            else:
+                print(("Could not locate file \"%s\"") %(path))
+                   
     #----------------------------------------------------------------------       
     def __soundThread(self):
                 

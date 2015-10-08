@@ -2,7 +2,7 @@
 # -*- coding: UTF-8-*-
 
 '''
-    Copyright (C) 2015  Michael Anderegg
+    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -165,11 +165,12 @@ class ScreenClock(tk.Frame):
         T = datetime.timetuple(datetime.now())
         year,month,day,h,m,s,x,x,x = T  # @UnusedVariable
         
-        if self.aspect_ratio >= 1.5: # If wide-screen available, show seconds too
-            self.timeLabel["text"] = ('%02i:%02i:%02i'  %(h,m,s))
-        else:
-            self.timeLabel["text"] = ('%02i:%02i'       %(h,m))
-        self.dateLabel["text"] = ('%02i.%02i.%04i'      %(day, month, year))
+#         if self.aspect_ratio >= 1.5: # If wide-screen available, show seconds too
+#             self.timeLabel["text"] = ('%02i:%02i:%02i'  %(h,m,s))
+#         else:
+#             self.timeLabel["text"] = ('%02i:%02i'       %(h,m))
+        self.timeLabel["text"] = ('%02i:%02i'       %(h,m))
+        self.dateLabel["text"] = ('%02i.%02i.%04i'  %(day, month, year))
 
         # Draw hour hand
         angle = -pi/2 + (pi/6)*h + (pi/6)*(m/60.0)
@@ -183,9 +184,9 @@ class ScreenClock(tk.Frame):
         scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, width = 12)
         
         # Draw seconds hand
-        angle = -pi/2 + (pi/30)*s
-        x, y = cos(angle)*.95,sin(angle)*.95   
-        scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, arrow = 'last', width = 5)
+#         angle = -pi/2 + (pi/30)*s
+#         x, y = cos(angle)*.95,sin(angle)*.95   
+#         scl(self.T.twopoints(*[0,0,x,y]), fill = self.timecolor, tag =self._ALL, arrow = 'last', width = 5)
            
     #----------------------------------------------------------------------
     def paintcircle(self,x,y):
