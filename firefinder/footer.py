@@ -18,9 +18,13 @@
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
 
+import os
 import tkinter as tk
-from tkinter   import font as TkFont
-from threading import Thread
+
+
+from tkinter                  import font as TkFont
+from threading                import Thread
+from firefinder.miscellaneous import createImage
 
 
 class ProgressBar:
@@ -78,7 +82,7 @@ class ProgressBar:
         self.canvas = tk.Canvas(self.frame,
                                 width=self.width, 
                                 height=self.height)
-
+        
         # create the background bar geometry
         self.backgroundBar = self.canvas.create_rectangle( 
                 self.borderwidth    , 
@@ -91,7 +95,7 @@ class ProgressBar:
         self.progressBar = self.canvas.create_rectangle(
                 self.borderwidth    , 
                 self.borderwidth    , 
-                self.width          , 
+                0                   , # Start without any progress bar
                 self.height         , 
                 fill=self.fgColor   )
         
@@ -228,21 +232,116 @@ class ProgressBar:
             self.increment = self.width
             self.updateGrafic()
         
-        return    
-                    
+        return
+    
+class ResponseOrder:
+
+    def __init__(self, width, height, master=None):
             
-###############################
+        if master is None:
+            master = tk.Toplevel()
+            master.protocol('WM_DELETE_WINDOW', self.hide )
+        self.master = master            # master of this widget
+        
+    
+        # size dependend variables
+        self.borderwidth = 2                        # the canvas borderwidth
+        self.width = width   -(2*self.borderwidth)  # total width of widget
+        self.height = height -(2*self.borderwidth)  # total height of widget
+        
+        # grafical dependend variables
+        self.frame         = None           # the frame holding canvas & label
+        self.canvas        = None           # the canvas holding the progress bar
+        
+        self.background    = 'gray'
+        
+        self.createWidget()                 # create the widget
+
+    #---------------------------------------------------------------------- 
+    def createWidget(self):
+        self.frame = tk.Frame(  self.master                 ,
+                                borderwidth=self.borderwidth,
+                                background=self.background  ,
+                                relief='sunken'             )
+        
+        # If the images doesn't fit to the full width of the screen
+        # add a dummy canvas to force filling the full width of the
+        # screen. This is a ugly hack, change it as soon as you know
+        # why the f*** this happen
+        self.canvas = tk.Canvas(self.frame                  ,
+                                width=self.width            , 
+                                height=0                    ,
+                                background=self.background  ,
+                                highlightthickness=0        )
+               
+        # Create a set of 12 labels to hold the truck and trailer-images
+        self.equipment    = {}
+        self.equipmentImg = {} 
+        for x in range(1,12):
+            self.equipment[x] = tk.Label(self.frame, background='gray')
+            self.equipment[x].pack(side='left', fill='both')   
+            
+        # store working directory
+        try:    self.wdr = os.path.dirname( __file__ )
+        except: self.wdr = os.getcwd()    
+    
+        # pack the canvas into the frame
+        self.canvas.pack(side='left', fill='both', expand=True)
+
+    #----------------------------------------------------------------------   
+    def setTruck(self, equipment):
+        
+        spaceUsed = 0
+        
+        # generate the truck pictures concerning inputs
+        for x in equipment:
+            path = os.path.join(self.wdr, 'pic', equipment[x])
+            self.equipmentImg[x] = createImage(self.master, path, height=self.height)
+            self.equipment[x]["image"] = self.equipmentImg[x]
+            spaceUsed += self.equipment[x]["width"]
+            
+        # resize the ugly hack
+#        self.canvas.config(width = self.width - 2*self.borderwidth - spaceUsed)
+        
+    #---------------------------------------------------------------------- 
+    def show(self, x=None, y=None, anchor=None):
+        self.frame.place(x=x, y=y, anchor=anchor)               
+    
+    #---------------------------------------------------------------------- 
+    def hide(self):
+        if isinstance(self.master, tk.Toplevel):
+            self.master.withdraw()
+        else:
+            self.frame.forget()
+            
+                
+######################################################################## 
 if __name__ == '__main__':
     
-    w = 1920
-    h = 200
+    wbar = 1920
+    hbar = 200
+    wres = 1920
+    hres = 100
     
     root = tk.Tk() 
-    root.geometry("%dx%d+0+0" % (w+10, h+10))
+    if wbar > wres:
+        root.geometry("%dx%d+0+0" % (wbar+10, hres+hbar+10))
+    else:
+        root.geometry("%dx%d+0+0" % (wres+10, hres+hbar+10))
     
-    bar = ProgressBar(master=root, width=w, height=h, pixelPerSlice=5) 
+    bar = ProgressBar(master=root, width=wbar, height=hbar, pixelPerSlice=1) 
     bar.show(x=0, y=0, anchor='nw')
     bar.start(timeInSeconds=100, startValue=0)
+    
+    equipment = {}
+    for x in range(1,12):
+        equipment[x] = 'Fz_5.png'
+    for x in range(6,12):
+        equipment[x] =""
+        
+    truck = ResponseOrder(master=root, width=wres, height=100)
+    truck.setTruck(equipment = equipment)
+    truck.show(x=0, y=hbar+5, anchor='nw')
   
     root.mainloop() 
 
