@@ -26,7 +26,8 @@ import codecs
 import tkinter as tk
 import subprocess
 import time
-import firefinder.miscellaneous as fms
+import functools
+#import firefinder.miscellaneous as fms
 
 
 from configparser       import ConfigParser
@@ -37,9 +38,10 @@ from PIL                import ImageTk, Image
 from itertools          import cycle
 
 # local classes
-from firefinder.sound              import alarmSound
-from firefinder.clock              import ScreenClock
-from firefinder.progressbar        import ProgressBar
+from firefinder.sound         import alarmSound
+from firefinder.clock         import ScreenClock
+from firefinder.footer        import ProgressBar, ResponseOrder
+from firefinder.miscellaneous import createImage
 
 try:   
     from firefinder.cecLibrary     import CecClient
@@ -56,15 +58,18 @@ LARGE_FONT= ("Verdana", 12)
 """ Some global settings. They include namely settings from the """
 """ config.ini file which is read in at the beginning """
 
-CEC_on_script   = 0
-CEC_off_script  = 0
+CEC_on_script     = 0
+CEC_off_script    = 0
 
 """ Visual settings """
-fullscreen      = False  
+fullscreen        = False  
+switchScreenAfter = 0
+switchToScreen    = ''
+
 
 """ Power settings """
-cec_enable      = False
-stdby_enable    = False
+cec_enable        = False
+stdby_enable      = False
 
 """ Path's """
 ffLogo      = 'firefinder/pic/Logo.png'     # Firefighter Logo
@@ -80,6 +85,8 @@ class FireFinderGUI(tk.Tk):
         
         # Store actual shown screen
         self.actScreen  = 0
+        self.startTime  = int(time.time())
+        self.lastChange = 0
         
         # Set actual window to fullscreen and bind the "Escape"
         # key with the function quit option
@@ -102,13 +109,11 @@ class FireFinderGUI(tk.Tk):
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         print(("Screensize is: %d x %d pixels") %(w, h))
         self.geometry("%dx%d+0+0" % (w, h))
-#        self.wm_state('zoomed')
 
         ''' Sets focus to the window to catch <Escape> '''
         self.focus_set()
         
         """ Bind Escape tap to the widget quit method """
-#         self.bind("<Escape>", lambda e: e.widget.quit())
         self.bind("<Escape>", lambda e: self.quit())
         
         # the container is where we'll stack a bunch of frames
@@ -121,33 +126,17 @@ class FireFinderGUI(tk.Tk):
         
         self.frame = ""
  
-#        self.frames = {}
- 
-#         for F in (ScreenOff, 
-#                   ScreenObject, 
-#                   ScreenTruck,
-#                   ScreenClock,
-#                   ScreenSlidshow):
-#  
-#             frame = F(self.container, self)
-#  
-#             self.frames[F] = frame
-#  
-#             frame.grid(row=0, column=0, sticky="nsew")
- 
         self.show_frame(ScreenOff)
 
     #----------------------------------------------------------------------
     def show_frame(self, cont):
  
         self.actScreen = cont
+        self.lastChange= int(time.time())
         self.frame = cont(self.container, self)
         self.frame.grid(row=0, column=0, sticky="nsew")
-#        frame = self.frames[cont]
         self.frame.tkraise()
-    
-    
-
+        
 ########################################################################        
 class ScreenOff(tk.Frame):
 
@@ -162,7 +151,7 @@ class ScreenOff(tk.Frame):
         path = os.path.join(wdr, ffLogo)
         if os.path.isfile(path) == True:     
             # create screen for object
-            self.image = fms.createImage(self, path=path, width=screenWidth-20, height=screenHigh-20) 
+            self.image = createImage(self, path=path, width=screenWidth-20, height=screenHigh-20) 
             
             ffEmblem = tk.Label(self)
             ffEmblem["bg"]     = "black"
@@ -248,7 +237,7 @@ class ScreenSlidshow(tk.Frame):
          
         # check if there is at least an image available
         if len(self.file_names):
-            self.pictures = fms.createImage(self, path=next(self.cycledList))          
+            self.pictures = createImage(self, path=next(self.cycledList))          
             self.picture_display.config(image=self.pictures)
             self.picture_display.config(text = "")
         else:            
@@ -307,7 +296,7 @@ class ScreenObject(tk.Frame):
         self.mapCan = tk.Canvas(self, 
                                 width               = self.winfo_screenwidth()             , #WIDTH,
                                 height              = self.winfo_screenheight() - barHeight, #HEIGHT,
-                                background          = 'yellow'                              ,
+                                background          = 'black'                              ,
                                 highlightthickness  = 0                                    )
         self.mapCan.place(x=0, y=barHeight)
         
@@ -328,7 +317,10 @@ class ScreenObject(tk.Frame):
                    cropPicture  = True  ,
                    category     = ""    ,
                    bartime      = 0     ,
-                   showbar      = False):
+                   showbar      = False ,
+                   showRO       = False , 
+                   heightPB     = 100   ,  
+                   equipmentRO  = 0     ):
         
         '''
         AlarmMsg    Set the actual Alarm Message received from the
@@ -362,8 +354,9 @@ class ScreenObject(tk.Frame):
 
         '''
         
-        self.showbar = showbar
-        
+        self.showbar    = showbar
+        self.showRO     = showRO
+        self.heightPB   = heightPB
         
         """ Set new message to the top red frame """ 
         # Set background of event bar depend of the category
@@ -380,7 +373,7 @@ class ScreenObject(tk.Frame):
         self.eventBar.itemconfig(self.eventBarTxt, text="%s" %AlarmMsg)
         
         # Calculate size of Images
-        picHeight = self.mapCan.winfo_height() - (int(showbar) * 100)
+        picHeight = self.mapCan.winfo_height() - (int(showbar)*100) - (int(showRO)*heightPB) - (int(showRO)*int(showRO)*5)
         picWidth  = self.mapCan.winfo_width() 
         
         # if picture 2 is empty, show picture 1 as fullscreen
@@ -391,9 +384,9 @@ class ScreenObject(tk.Frame):
         """ change first picture """      
         path = os.path.join(inifile_path, picture_1)
         if os.path.isfile(path) == True:   
-            self.pic1Img = fms.createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
+            self.pic1Img = createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
         else:     
-            self.pic1Img = fms.createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)             
+            self.pic1Img = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False)             
         
         # reposition picture and put it on the screen
         self.pic1.place(    x = (picWidth/2)  - (self.pic1Img.width()/2), 
@@ -406,9 +399,9 @@ class ScreenObject(tk.Frame):
         if picture_2 != "":     
             path = os.path.join(inifile_path, picture_2)
             if os.path.isfile(path) == True:  
-                self.pic2Img = fms.createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
+                self.pic2Img = createImage(self, path=path, width=picWidth, height=picHeight, crop=cropPicture)
             else:     
-                self.pic2Img = fms.createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False) 
+                self.pic2Img = createImage(self, path=noImage, width=picWidth, height=picHeight, keepRatio=False) 
            
             # reposition picture and put it on the screen
             self.pic2.place(    x = (picWidth/2)  - (self.pic1Img.width()/2)  + picWidth, 
@@ -419,41 +412,48 @@ class ScreenObject(tk.Frame):
         
         if self.showbar == True:
   
-            self.progress = ProgressBar(master=self.mapCan, 
-                                        width=self.winfo_screenwidth(), 
-                                        height=100, 
-                                        pixelPerSlice=1)
-            self.progress.show(x=0, y=self.mapCan.winfo_height()-100, anchor='nw')
+            self.progress = ProgressBar(master=self.mapCan              , 
+                                        width=self.winfo_screenwidth()  , 
+                                        height=100                      , 
+                                        pixelPerSlice=1                 )
+            self.progress.show(x=0, y=self.mapCan.winfo_height()-100-(int(showRO)*heightPB)-(int(showRO)*5), anchor='nw')
             self.progress.start(timeInSeconds=bartime, startValue=0)
-#         else:
-#             self.progress.hide()
+
+        if self.showRO == True:
+            self.responseOrder = ResponseOrder(master=self.mapCan       , 
+                                        width=self.winfo_screenwidth()  , 
+                                        height=heightPB                 )
+            self.responseOrder.show(x=0                                 , 
+                                    y=self.mapCan.winfo_height()-heightPB, 
+                                    anchor='nw'                         )
+            self.responseOrder.setTruck(equipment=equipmentRO)
             
 
 ########################################################################
-class ScreenTruck(tk.Frame):
-
-    def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
-        tk.Frame.config(self, bg='black')
-        
-        self.truckcollection = tk.Frame(self, background='gray')
-        self.truckcollection.pack(side='bottom', fill='both')
-        
-        # Create a set of 6 labels to hold the truck and trailer-images
-        self.equipment    = {}
-        self.equipmentImg = {}
-        for x in range(1,12):
-            self.equipment[x] = tk.Label(self.truckcollection, background='gray')
-            self.equipment[x].pack(side='left', fill='both')          
-
-    #----------------------------------------------------------------------   
-    def setTruck(self, equipment):
-        
-        # generate the truck pictures concerning the ini-file
-        for x in equipment:
-            path = os.path.join(wdr, 'firefinder', 'pic', equipment[x])
-            self.equipmentImg[x] = fms.createImage(self, path, height=100)
-            self.equipment[x]["image"] = self.equipmentImg[x]
+# class ScreenTruck(tk.Frame):
+# 
+#     def __init__(self, parent, controller):
+#         tk.Frame.__init__(self, parent)
+#         tk.Frame.config(self, bg='black')
+#         
+#         self.truckcollection = tk.Frame(self, background='gray')
+#         self.truckcollection.pack(side='bottom', fill='both')
+#         
+#         # Create a set of 6 labels to hold the truck and trailer-images
+#         self.equipment    = {}
+#         self.equipmentImg = {}
+#         for x in range(1,12):
+#             self.equipment[x] = tk.Label(self.truckcollection, background='gray')
+#             self.equipment[x].pack(side='left', fill='both')          
+# 
+#     #----------------------------------------------------------------------   
+#     def setTruck(self, equipment):
+#         
+#         # generate the truck pictures concerning the ini-file
+#         for x in equipment:
+#             path = os.path.join(wdr, 'firefinder', 'pic', equipment[x])
+#             self.equipmentImg[x] = createImage(self, path, height=100)
+#             self.equipment[x]["image"] = self.equipmentImg[x]
                    
          
 ########################################################################       
@@ -510,7 +510,6 @@ class MyHandler(FileSystemEventHandler):
                 self.HDMIout.set_Visual('On')
              
             if show.lower() == 'slideshow':
-                print("show slideshow")
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenSlidshow)
                 self.HDMIout.set_Visual('On')   
@@ -552,17 +551,32 @@ class MyHandler(FileSystemEventHandler):
                 
                 try:    timePB       = self.parser.getint('ObjectInfo', 'progresstime')
                 except: timePB       = 0
+  
+                try:    showRO       = self.parser.getboolean('ObjectInfo', 'show_responseOrder')
+                except: showRO       = False
+                
+                try:    heightPB     = self.parser.getint('ObjectInfo', 'responseOrderHeight')
+                except: heightPB     = 0
+                
+                equipment = {}
+                for x in range(1,12):
+                    s = (('equipment_%01i') %(x))
+                    try:    equipment[x] = self.parser.get('ObjectInfo',s)
+                    except: equipment[x] = ""
                                
                 # set ScreenObject as active frame and set addresses
                 self.controller.show_frame(ScreenObject)
-                self.controller.frame.setAddress(  AlarmMsg    = AddMsg,
-                                                   picture_1   = picture_1,
-                                                   picture_2   = picture_2,
-                                                   overlay     = overlayPic,
-                                                   cropPicture = cropPicture,
-                                                   category    = category,
-                                                   bartime     = timePB,
-                                                   showbar     = showPB)
+                self.controller.frame.setAddress(  AlarmMsg     = AddMsg,
+                                                   picture_1    = picture_1,
+                                                   picture_2    = picture_2,
+                                                   overlay      = overlayPic,
+                                                   cropPicture  = cropPicture,
+                                                   category     = category,
+                                                   bartime      = timePB,
+                                                   showbar      = showPB,
+                                                   showRO       = showRO,
+                                                   heightPB     = heightPB,
+                                                   equipmentRO  = equipment)
                 
                 # enable television
                 self.HDMIout.set_Visual('On')
@@ -574,21 +588,21 @@ class MyHandler(FileSystemEventHandler):
                 else:
                     self.alarmSound.stop()
                 
-            if show.lower() == 'truck':
-                self.alarmSound.stop()
-                
-                equipment = {}
-                for x in range(1,12):
-                    s = (('equipment_%01i') %(x))
-                    try:    equipment[x] = self.parser.get('TruckInfo',s)
-                    except: equipment[x] = ""
-                
-                self.controller.show_frame(ScreenTruck)
-                self.controller.frame.setTruck (equipment = equipment) 
-                
-                
-                self.HDMIout.set_Visual('On')
-                print("show truck")
+#             if show.lower() == 'truck':
+#                 self.alarmSound.stop()
+#                 
+#                 equipment = {}
+#                 for x in range(1,12):
+#                     s = (('equipment_%01i') %(x))
+#                     try:    equipment[x] = self.parser.get('TruckInfo',s)
+#                     except: equipment[x] = ""
+#                 
+#                 self.controller.show_frame(ScreenTruck)
+#                 self.controller.frame.setTruck (equipment = equipment) 
+#                 
+#                 
+#                 self.HDMIout.set_Visual('On')
+#                 print("show truck")
                 
             if show.lower() == 'quit':
                 self.alarmSound.stop()
@@ -704,7 +718,31 @@ def log_callback(level, time, message):
 
 # key press callback
 def key_press_callback(key, duration):
-    return cecObj.KeyPressCallback(key, duration)               
+    return cecObj.KeyPressCallback(key, duration) 
+    
+def switchScreenAfterWhile():
+    
+    # Only adapt the screen if no other change
+    # was requested by the user
+    if (app.startTime+1) <= app.lastChange:
+        print(app.startTime)
+        print(app.lastChange)
+        return
+    
+    if switchToScreen.lower() == 'time':
+        eventHandler.alarmSound.stop()
+        app.show_frame(ScreenClock)
+        eventHandler.HDMIout.set_Visual('On')
+     
+    if switchToScreen.lower() == 'slideshow':
+        eventHandler.alarmSound.stop()
+        app.show_frame(ScreenSlidshow)
+        eventHandler.HDMIout.set_Visual('On')   
+                       
+    if switchToScreen.lower() == 'off':  
+        eventHandler.alarmSound.stop()                  
+        app.show_frame(ScreenOff)
+        eventHandler.HDMIout.set_Visual('Off')            
 
 ########################################################################          
 if __name__ == "__main__":
@@ -754,11 +792,15 @@ if __name__ == "__main__":
         sys.exit("The directory for observation is missing") 
                 
     # Read variables with lower priority. If not available, work with standard values
-    try:    deltahours = sysconfig.getint('Visual', 'time_shift_UTC')
-    except: pass
     
     try:    fullscreen = sysconfig.getboolean('Visual', 'fullscreen')
     except: pass
+    
+    try:    switchScreenAfter = sysconfig.getint('Visual', 'switchScreenAfter')
+    except: switchScreenAfter = 0
+    
+    try:    switchToScreen    = sysconfig.get('Visual', 'switchToScreen')
+    except: switchToScreen    = ''
         
     try:    cec_enable   = sysconfig.getboolean('Power', 'cec_enable')
     except: pass
@@ -781,6 +823,10 @@ if __name__ == "__main__":
     else:
         cec_enable = False # Force to False if there was an error with the cec-lib
     
+    if switchScreenAfter is not 0:
+        switchTimeInSeconds = switchScreenAfter * 1000
+        app.after(switchTimeInSeconds,switchScreenAfterWhile)
+
     # configure the observer thread and start it afterward
     observer.schedule(eventHandler, inifile_path, recursive=False)
     observer.start()   
