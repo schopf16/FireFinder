@@ -31,7 +31,7 @@ ffLogo          = 'pic/Logo.png'        # Firefighter Logo
 
 class ScreenOff(tk.Frame):
 
-    def __init__(self, parent, controller, pathToIniFile):
+    def __init__(self, parent, controller):
         
         
         # store parent objects
