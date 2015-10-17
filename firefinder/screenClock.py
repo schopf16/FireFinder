@@ -27,9 +27,12 @@ principles in computer graphics" by Leendert Ammeraal.
 
 '''
 
+import tkinter as tk
+
+
 from datetime           import datetime
 from math               import sin, cos, pi, atan, hypot
-import tkinter as tk
+
 
 
 ########################################################################
@@ -70,6 +73,15 @@ class ScreenClock(tk.Frame):
         tk.Frame.__init__(self, parent)
         tk.Frame.config(self, bg='black')        
         
+        # store parent objects
+        self.parent = parent
+        self.controller = controller 
+        
+        # store size of the parent frame        
+        self.controller.update()
+        self.screenWidth = self.controller.winfo_width()
+        self.screenHeight= self.controller.winfo_height()
+        
         self.world       = [-1,-1,1,1]
         self.bgcolor     = '#000000'
         self.circlecolor = 'red'#'#A0A0A0' #'#808080'
@@ -78,41 +90,40 @@ class ScreenClock(tk.Frame):
         self._ALL        = 'all'
         self.pad         = 25
         
-        # Calculate high depend of the resolution
-        self.aspect_ratio = self.winfo_screenwidth() / self.winfo_screenheight()
+        # Calculate ratio of the resolution
+        self.aspectRatio = self.screenWidth / self.screenHeight
         
         # check if monitor has a portrait or landscape format
-        if self.aspect_ratio < 1:
+        if self.aspectRatio < 1:
             # portrait format
-            HEIGHT = self.self.winfo_screenwidth()
-            
+            HEIGHT = self.screenWidth          
         else:
             # landscape format
-            HEIGHT = self.winfo_screenheight()
+            HEIGHT = self.screenHeight
             
         
         # Create a canvas to put clock in it
         self.canvas = tk.Canvas(self, 
-                                width               = self.winfo_screenwidth(), #WIDTH,
-                                height              = self.winfo_screenheight(), #HEIGHT,
+                                width               = self.screenWidth, #WIDTH,
+                                height              = self.screenHeight, #HEIGHT,
                                 background          = self.bgcolor,
                                 highlightthickness  = 0)
       
         # divide opposite leg (Gegenkathete) with adjacent side (Ankathete)
-        ratio = (HEIGHT/2) / (self.winfo_screenwidth()/2)
+        ratio = (HEIGHT/2) / (self.screenWidth/2)
                 
         # calculate the radian of the arc tangent
         alpharad = atan(ratio)
         
         # get the hypotenuse of the smaller triangle outside of th clock circle
-        hypotenuse = hypot(HEIGHT/2, self.winfo_screenwidth()/2) - (HEIGHT/2)
+        hypotenuse = hypot(HEIGHT/2, self.screenWidth/2) - (HEIGHT/2)
         
         # get the opposite side of the triangle
         oppositeSide = sin(alpharad)*hypotenuse
         
         # calculate fontsize according the screen resolution and ratio
         # 1.77 is the ratio for a 1920x1080 resolution
-        fontsize = int(oppositeSide/(2.8+(1.77-self.aspect_ratio)))
+        fontsize = int(oppositeSide/(2.8+(1.77-self.aspectRatio)))
         
         # Create a lable for time and date inside canvas and place
         # the lable on the bottom left and right side        
@@ -121,22 +132,30 @@ class ScreenClock(tk.Frame):
             
         # if the ratio is greate than 1.5, place the time and date
         # in a digital way too
-        if self.aspect_ratio > 1.5:    
-            self.timeLabel.place(y=self.winfo_screenheight(), x=0,                        anchor='sw')
-            self.dateLabel.place(y=self.winfo_screenheight(), x=self.winfo_screenwidth(), anchor='se')
+        if self.aspectRatio > 1.5:    
+            self.timeLabel.place(y=self.screenHeight, x=0,                anchor='sw')
+            self.dateLabel.place(y=self.screenHeight, x=self.screenWidth, anchor='se')
         
         # create viewport an pack canvas to screen
         viewport = (self.pad,self.pad,HEIGHT-self.pad,HEIGHT-self.pad)
         self.T = transformer(self.world,viewport)
-        self.canvas.bind("<Configure>",self.configure())
+#         self.canvas.bind("<Configure>",self.configure())
+#         self.canvas.bind("<Configure>",self.redraw())
         self.canvas.pack(fill=tk.BOTH, expand=tk.NO)
     
         # start poll the clock
         self.poll()
  
-    #----------------------------------------------------------------------
-    def configure(self):
-        self.redraw()
+    #---------------------------------------------------------------------- 
+    def createWidget(self, parent):      
+        tk.Frame.__init__(self,parent)
+        tk.Frame.config(self, bg='black')
+        
+        
+        
+#     #----------------------------------------------------------------------
+#     def configure(self):
+#         self.redraw()
     
     #----------------------------------------------------------------------
     def redraw(self):
@@ -165,7 +184,7 @@ class ScreenClock(tk.Frame):
         T = datetime.timetuple(datetime.now())
         year,month,day,h,m,s,x,x,x = T  # @UnusedVariable
         
-#         if self.aspect_ratio >= 1.5: # If wide-screen available, show seconds too
+#         if self.aspectRatio >= 1.5: # If wide-screen available, show seconds too
 #             self.timeLabel["text"] = ('%02i:%02i:%02i'  %(h,m,s))
 #         else:
 #             self.timeLabel["text"] = ('%02i:%02i'       %(h,m))
@@ -197,7 +216,42 @@ class ScreenClock(tk.Frame):
    
     #----------------------------------------------------------------------
     def poll(self):
-        self.configure()
+        self.redraw()
         self.after(200,self.poll)
         
+    #----------------------------------------------------------------------    
+    def configure(self):
+        # nothing to do
+        pass
+    
+    #----------------------------------------------------------------------
+    def hide(self):
+        # nothing to do while hide
+        pass
         
+    #----------------------------------------------------------------------    
+    def rise(self):
+        # nothing to do while rise
+        pass
+        
+
+######################################################################## 
+if __name__ == '__main__':
+    
+    
+    root = tk.Tk() 
+    root.geometry("%dx%d+0+0" % (root.winfo_screenwidth(), root.winfo_screenheight()-200))
+    
+    container = tk.Frame(root)        
+    container.pack(side="top", fill="both", expand = True)
+    container.grid_rowconfigure(0, weight=1)
+    container.grid_columnconfigure(0, weight=1)
+
+    
+    screen = ScreenClock(container, root)
+    screen.grid(row=0, column=0, sticky="nsew")
+    screen.tkraise()
+    
+#     thread = Thread(target=testScreenAlarm, args=())
+#     thread.start()
+    root.mainloop()        
