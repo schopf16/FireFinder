@@ -51,7 +51,7 @@ class ScreenObjectConf:
         
 class ScreenObject(tk.Frame):
 
-    def __init__(self, parent, controller, pathToIniFile):
+    def __init__(self, parent, controller):
         tk.Frame.__init__(self, parent)
         
         # store parent objects
@@ -73,7 +73,7 @@ class ScreenObject(tk.Frame):
         # store working directory
         try:    self.wdr = os.path.dirname( __file__ )
         except: self.wdr = os.getcwd() 
-        self.pathToIniFile    = pathToIniFile
+        self.pathToIniFile = ''
         
         
         self.alarmMessageUseTicker  = False
@@ -198,10 +198,13 @@ class ScreenObject(tk.Frame):
             cfg['progressBarTime']   = self.progressBarTime
             cfg['showResponseOrder'] = self.showResponseOrder
             cfg['responseOrder']     = self.responseOrder
+            cfg['pathToIniFile']     = self.pathToIniFile
             return cfg
     
         else: # do a configure
             for key,value in list(kw.items()):
+                if key=='pathToIniFile':
+                    self.pathToIniFile = value
                 if key=='category':
                     if value.lower() is not self.category:
                         self.setCategory(value)
@@ -229,7 +232,10 @@ class ScreenObject(tk.Frame):
                 elif key=='progressBarTime':
                     if value is not self.progressBarTime:
                         self.setProgressBarTime(value)
-                    
+            
+            if self.pathToIniFile is '':
+                print("WARNING: Path to ini-file yet not set")
+                        
             if changePicture is True:
                 self.setPicture()
 
@@ -387,6 +393,9 @@ def testScreenAlarm():
     
     screen.configure(category = 'green')
     time.sleep(1)
+    
+    screen.configure(pathToIniFile = 'D:\Firefinder')
+    time.sleep(1)
 
     screen.configure(picture_1='detail.jpg', picture_2='direction_1.jpg')
     time.sleep(1)
@@ -479,7 +488,7 @@ if __name__ == '__main__':
     container.grid_columnconfigure(0, weight=1)
 #     container.update()
     
-    screen = ScreenObject(container, root, pathToIniFile='D:\Firefinder')
+    screen = ScreenObject(container, root)
     screen.grid(row=0, column=0, sticky="nsew")
     screen.tkraise()
     
