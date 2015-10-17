@@ -19,28 +19,27 @@
 '''
 
 import os
+import time
 import tkinter as tk
 
 
 from tkinter                  import font as TkFont
-from threading                import Thread
-from firefinder.miscellaneous import createImage
+import threading
+from firefinder.miscellaneous import createImage, getTextFontSize
 
 
-class ProgressBar:
+class ProgressBar(tk.Frame):
 
-    def __init__(self, width, height, master=None, pixelPerSlice=1):
+    def __init__(self, parent, width, height, pixelPerSlice=1):
+         
+        tk.Frame.__init__(self, parent)
 
         if pixelPerSlice <= 0:
             pixelPerSlice = 1
             
-        if master is None:
-            master = tk.Toplevel()
-            master.protocol('WM_DELETE_WINDOW', self.hide )
-        self.master = master            # master of this widget
+        self.parent = parent            # master of this widget
         
-        
-        
+              
         # size dependend variables
         self.borderwidth = 2                        # the canvas borderwidth
         self.width = width   -(2*self.borderwidth)  # total width of widget
@@ -70,16 +69,12 @@ class ProgressBar:
                               [ 90,'Bereitmachen zum Ausrücken'                         ],
                               [100,'Losfahren, auch bei zuwenig Atemschutz-Geräteträger']]
         
-        self.ONOFF = 'off'
         self.createWidget()                 # create the widget
 
     #---------------------------------------------------------------------- 
     def createWidget(self):
-        self.frame = tk.Frame(  self.master                 ,
-                                borderwidth=self.borderwidth,
-                                relief='sunken'             )
         
-        self.canvas = tk.Canvas(self.frame,
+        self.canvas = tk.Canvas(self,
                                 width=self.width, 
                                 height=self.height)
         
@@ -103,23 +98,27 @@ class ProgressBar:
         if self.text == '':
             font = TkFont.Font(family='Arial', size=10 )
         else:
-            font = TkFont.Font(family='Arial'                       , 
-                               size=self.getTextFontSize(self.text) )
+            fontSize = getTextFontSize(self                         , 
+                                       text      = self.text        , 
+                                       maxHeight = self.height      , 
+                                       maxWidth  = self.width*0.98  )
+            
+            font = TkFont.Font(family='Arial', size = fontSize )
         
         self.textLabel = self.canvas.create_text(
                             int(self.width/2)                       , 
-                            int((self.height/2)+3+self.borderwidth) ,
+                            int((self.height/2)+self.borderwidth)   ,
                             text   = self.text                      ,
                             fill   = self.txtColor                  , 
                             font   = font                           ,
-                            width  = self.width                     ,
                             justify = 'center'                      )
         
         # pack the canvas into the frame
         self.canvas.pack()
         
         # create a thread to handle the progressBar
-        self.thread = Thread(target=self.autoRunProgressBar, args=())
+        self.threadStop= threading.Event()
+        self.thread = threading.Thread(target=self.autoRunProgressBar, args=(1, self.threadStop))
                     
     #---------------------------------------------------------------------- 
     def updateGrafic(self):
@@ -129,25 +128,16 @@ class ProgressBar:
                            self.increment   , 
                            self.height      )
 
-    #---------------------------------------------------------------------- 
-    def getTextFontSize(self, text=''):
-        if text == '':
-            self.canvas.itemconfig(self.textLabel, text='')
-        else:
-            # get the max font size           
-            for i in range(1, self.height):
-                font=TkFont.Font(family='Arial', size=i)
-                lenght = font.measure(text)
-                if lenght >= self.width:
-                    return i-2          
-            return i    
- 
+
     #---------------------------------------------------------------------- 
     def setText(self, text=''):
         if text == '':
             self.canvas.itemconfig(self.textLabel, text='')
         else:
-            fontSize = self.getTextFontSize(text)
+            fontSize = getTextFontSize(self                         , 
+                                       text      = text             , 
+                                       maxHeight = self.height      , 
+                                       maxWidth  = self.width*0.98  )
             font = TkFont.Font(family='Arial', size=fontSize )           
             self.canvas.itemconfig(self.textLabel, text=text, font=font)
         
@@ -166,11 +156,12 @@ class ProgressBar:
     
     #---------------------------------------------------------------------- 
     def reset(self):
-        self.thread.stop()
+        self.stop()
         self.increment = 0
         
     #---------------------------------------------------------------------- 
     def start(self, timeInSeconds, startValue=None):
+        
         self.msPerSlice = int(  (timeInSeconds*1000           )  / 
                                 (self.width/self.pixelPerSlice)  )
         
@@ -179,69 +170,60 @@ class ProgressBar:
                 self.increment = self.width
             else:
                 self.increment = startValue
-        self.ONOFF = 'on'
-        self.thread.start()
+
+        if self.thread.isAlive() is False:
+            self.thread.start()
         
     #---------------------------------------------------------------------- 
     def stop(self):
-        self.ONOFF = 'off'
-        self.thread.stop()
-    
-    #---------------------------------------------------------------------- 
-    def show(self, x=None, y=None, anchor=None):
-        self.frame.place(x=x, y=y, anchor=anchor)
-    
-    #---------------------------------------------------------------------- 
-    def hide(self):
-        if isinstance(self.master, tk.Toplevel):
-            self.master.withdraw()
-        else:
-            self.frame.forget()
-        self.ONOFF = 'off'
+        self.threadStop.set()
               
     #----------------------------------------------------------------------
-    def autoRunProgressBar(self):
-        
-        if self.ONOFF == 'off':
-            return
-        
-        progress = (self.increment / self.width) * 100
-        colorIndex = 0
-        textIndex  = 0
-        
-        # check if the correct color scheme is chosen
-        for i in range(len(self.colorScheme)):
-            if progress >= self.colorScheme[i][0]:
-                colorIndex = i
-        if self.fgColor != self.colorScheme[colorIndex][1]:
-            self.setColor(self.colorScheme[colorIndex][1])    
-        
-        # check if the correct test scheme is chosen
-        for i in range(len(self.textScheme)):
-            if progress >= self.textScheme[i][0]:
-                textIndex = i 
-        if self.text != self.textScheme[textIndex][1]:
-            self.setText(self.textScheme[textIndex][1])
+    def autoRunProgressBar(self, arg1, stop_event):
              
-        # Update progress bar
-        if self.increment < self.width:
-            self.increment += self.pixelPerSlice
-            self.updateGrafic()
-            self.frame.after(self.msPerSlice, self.autoRunProgressBar)
-        else:
-            self.increment = self.width
-            self.updateGrafic()
+        while(not stop_event.is_set()):
+            progress = (self.increment / self.width) * 100
+            colorIndex = 0
+            textIndex  = 0
         
+            # check if the correct color scheme is chosen
+            for i in range(len(self.colorScheme)):
+                if progress >= self.colorScheme[i][0]:
+                    colorIndex = i
+            if self.fgColor != self.colorScheme[colorIndex][1]:
+                self.setColor(self.colorScheme[colorIndex][1])    
+            
+            # check if the correct text scheme is chosen
+            for i in range(len(self.textScheme)):
+                if progress >= self.textScheme[i][0]:
+                    textIndex = i 
+            if self.text != self.textScheme[textIndex][1]:
+                self.setText(self.textScheme[textIndex][1])
+                 
+            # Update progress bar
+            if self.increment < self.width:
+                self.increment += self.pixelPerSlice
+                self.updateGrafic()
+                time.sleep(self.msPerSlice/1000)
+            else:
+                self.increment = self.width
+                self.updateGrafic()
+                return        
         return
     
-class ResponseOrder:
+    #----------------------------------------------------------------------  
+    def __del__(self):
+        print (self.id, 'died')
+        for widget in self.winfo_children():
+            widget.destroy()
+    
+class ResponseOrder(tk.Frame):
 
-    def __init__(self, width, height, master=None):
-            
-        if master is None:
-            master = tk.Toplevel()
-            master.protocol('WM_DELETE_WINDOW', self.hide )
-        self.master = master            # master of this widget
+    def __init__(self, parent, width, height):
+         
+        tk.Frame.__init__(self, parent)   
+
+        self.parent = parent            # master of this widget
         
     
         # size dependend variables
@@ -251,6 +233,7 @@ class ResponseOrder:
         
         # grafical dependend variables
         self.frame         = None           # the frame holding canvas & label
+        self.frameVisual   = None
         self.canvas        = None           # the canvas holding the progress bar
         
         self.background    = 'gray'
@@ -259,62 +242,47 @@ class ResponseOrder:
 
     #---------------------------------------------------------------------- 
     def createWidget(self):
-        self.frame = tk.Frame(  self.master                 ,
-                                borderwidth=self.borderwidth,
-                                background=self.background  ,
-                                relief='sunken'             )
         
         # If the images doesn't fit to the full width of the screen
         # add a dummy canvas to force filling the full width of the
         # screen. This is a ugly hack, change it as soon as you know
         # why the f*** this happen
-        self.canvas = tk.Canvas(self.frame                  ,
+        self.canvas = tk.Canvas(self                        ,
                                 width=self.width            , 
-                                height=0                    ,
+                                height=self.height          ,
                                 background=self.background  ,
+                                borderwidth=self.borderwidth,
                                 highlightthickness=0        )
+        
+        self.canvas.pack(side='left', fill='both', expand=True)
                
         # Create a set of 12 labels to hold the truck and trailer-images
         self.equipment    = {}
         self.equipmentImg = {} 
-        for x in range(1,12):
-            self.equipment[x] = tk.Label(self.frame, background='gray')
+        for x in range(1,10):
+            self.equipment[x] = tk.Label(self.canvas, background=self.background)
             self.equipment[x].pack(side='left', fill='both')   
             
         # store working directory
         try:    self.wdr = os.path.dirname( __file__ )
         except: self.wdr = os.getcwd()    
-    
-        # pack the canvas into the frame
-        self.canvas.pack(side='left', fill='both', expand=True)
+        
 
     #----------------------------------------------------------------------   
-    def setTruck(self, equipment):
-        
-        spaceUsed = 0
-        
+    def setEquipment(self, equipment):              
         # generate the truck pictures concerning inputs
         for x in equipment:
-            path = os.path.join(self.wdr, 'pic', equipment[x])
-            self.equipmentImg[x] = createImage(self.master, path, height=self.height)
-            self.equipment[x]["image"] = self.equipmentImg[x]
-            spaceUsed += self.equipment[x]["width"]
-            
-        # resize the ugly hack
-#        self.canvas.config(width = self.width - 2*self.borderwidth - spaceUsed)
-        
-    #---------------------------------------------------------------------- 
-    def show(self, x=None, y=None, anchor=None):
-        self.frame.place(x=x, y=y, anchor=anchor)               
+            if equipment[x] is not '':
+                path = os.path.join(self.wdr, 'pic', equipment[x])
+                self.equipmentImg[x] = createImage(self.master, path, height=self.height)
+                self.equipment[x]["image"] = self.equipmentImg[x]
     
-    #---------------------------------------------------------------------- 
-    def hide(self):
-        if isinstance(self.master, tk.Toplevel):
-            self.master.withdraw()
-        else:
-            self.frame.forget()
-            
-                
+    #----------------------------------------------------------------------  
+    def __del__(self):
+        print (self.id, 'died')
+        for widget in self.winfo_children():
+            widget.destroy()
+       
 ######################################################################## 
 if __name__ == '__main__':
     
@@ -329,9 +297,11 @@ if __name__ == '__main__':
     else:
         root.geometry("%dx%d+0+0" % (wres+10, hres+hbar+10))
     
-    bar = ProgressBar(master=root, width=wbar, height=hbar, pixelPerSlice=1) 
-    bar.show(x=0, y=0, anchor='nw')
-    bar.start(timeInSeconds=100, startValue=0)
+    bar = ProgressBar(root, width=wbar, height=hbar, pixelPerSlice=1) 
+    bar.pack(fill='both')
+    bar.start(timeInSeconds=30, startValue=0)
+
+    
     
     equipment = {}
     for x in range(1,12):
@@ -339,9 +309,9 @@ if __name__ == '__main__':
     for x in range(6,12):
         equipment[x] =""
         
-    truck = ResponseOrder(master=root, width=wres, height=100)
-    truck.setTruck(equipment = equipment)
-    truck.show(x=0, y=hbar+5, anchor='nw')
+    truck = ResponseOrder(root, width=wres, height=100)
+    truck.pack(fill='both')
+    truck.setEquipment(equipment = equipment)
   
     root.mainloop() 
 
