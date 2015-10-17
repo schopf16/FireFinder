@@ -20,8 +20,8 @@
 
 import os
 
-from PIL  import ImageTk, Image
-
+from PIL        import ImageTk, Image
+from tkinter    import font as TkFont
 
 def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
     """
@@ -46,56 +46,71 @@ def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
                 
     """
     
-    # check if a file is found at given path
-    if os.path.isfile(path) != True:  
+    # check if a file is found at given path    
+    if os.path.isfile(path) is False:
+        print(("ERROR:  Failed to open picture at path \'%s\'") %(path))
         return ""
+        
+    with Image.open(path) as image:     
+          
+        # force dimension to integer
+        width  = int( width  )
+        height = int( height )
+        
+        # if one axes is equal, set this to maximum
+        if width  == 0: width = self.winfo_screenwidth()
+        if height == 0: height = self.winfo_screenheight()
     
-    try:             
-        image = Image.open(path)  
-    except:
-        print("Failed to open picture")
-        return ""
-    
-    # force dimension to integer
-    width  = int( width  )
-    height = int( height )
-    
-    # if one axes is equal, set this to maximum
-    if width  == 0: width = self.winfo_screenwidth()
-    if height == 0: height = self.winfo_screenheight()
-
-    # define which axes is the base
-    if ((width / image.size[0]) * image.size[1]) > height: 
-        base = 'height'
-    else:
-        base = 'width'
-    
-    # If the picture can crop afterwards, switch the base
-    if crop == True:
-        if base == 'height':    base = 'width'
-        else:                   base = 'height'
-    
-    # Calculate the new dimenson according the given values
-    if keepRatio == True:     
-        if base == 'width':        
-            wpercent = (width / float(image.size[0]))
-            hsize    = int( (float(image.size[1]) * float(wpercent)) )
-            wsize    = int( width )
-        else:          
-            hpercent = (height / float(image.size[1]))
-            wsize = int( (float(image.size[0]) * float(hpercent)) )
+        # define which axes is the base
+        if ((width / image.size[0]) * image.size[1]) > height: 
+            base = 'height'
+        else:
+            base = 'width'
+        
+        # If the picture can crop afterwards, switch the base
+        if crop == True:
+            if base == 'height':    base = 'width'
+            else:                   base = 'height'
+        
+        # Calculate the new dimenson according the given values
+        if keepRatio == True:     
+            if base == 'width':        
+                wpercent = (width / float(image.size[0]))
+                hsize    = int( (float(image.size[1]) * float(wpercent)) )
+                wsize    = int( width )
+            else:          
+                hpercent = (height / float(image.size[1]))
+                wsize = int( (float(image.size[0]) * float(hpercent)) )
+                hsize = int( height )
+        else:
+            wsize = int( width )
             hsize = int( height )
-    else:
-        wsize = int( width )
-        hsize = int( height )
-                                       
-    # Resize the image
-    image = image.resize((wsize, hsize), Image.ANTIALIAS)        
+                                           
+        # Resize the image
+        image = image.resize((wsize, hsize), Image.ANTIALIAS)        
+                
+        if crop == True:
+            # Crop image if its bigger than expected
+            wOffset = int( (image.size[0] - width ) / 2 )
+            hOffset = int( (image.size[1] - height) / 2 )  
+            image = image.crop((wOffset, hOffset, wOffset + width, hOffset + height)) 
+                   
+        return ImageTk.PhotoImage(image)
+
+'''
+    Get font height in pixel
+'''    
+def getTextFontSize(self, maxHeight, maxWidth, bold=False, minHeight=1, text=''):
+        i=maxHeight
+        # get the max font size        
+        for i in range(minHeight, maxHeight):
+            if bold is False:
+                font=TkFont.Font(family='Arial', size=-i)
+            else:
+                font=TkFont.Font(family='Arial', size=-i, weight='bold')
+            lenght = font.measure(text)
             
-    if crop == True:
-        # Crop image if its bigger than expected
-        wOffset = int( (image.size[0] - width ) / 2 )
-        hOffset = int( (image.size[1] - height) / 2 )  
-        image = image.crop((wOffset, hOffset, wOffset + width, hOffset + height)) 
-               
-    return ImageTk.PhotoImage(image)
+            if (lenght >= maxWidth) or (font.metrics('linespace') >= maxHeight):
+                break
+          
+        return -i 
