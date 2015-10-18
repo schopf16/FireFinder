@@ -46,9 +46,6 @@ class ScreenOff(tk.Frame):
         self.controller.update()
         self.screenWidth = self.controller.winfo_width()
         self.screenHeight= self.controller.winfo_height()
-        
-        # When the shit hits the fan is at least the background black
-        self.config(background='black')
 
         self.createWidget(parent)
         self.show()
@@ -106,12 +103,12 @@ class ScreenOff(tk.Frame):
         pass
     
     #----------------------------------------------------------------------
-    def hide(self):
+    def descentScreen(self):
         # nothing to do while hide
         pass
         
     #----------------------------------------------------------------------    
-    def rise(self):
+    def raiseScreen(self):
         # nothing to do while rise
         pass
     
