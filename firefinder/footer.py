@@ -24,7 +24,7 @@ import tkinter as tk
 
 
 from tkinter                  import font as TkFont
-import threading
+from threading                import Thread
 from firefinder.miscellaneous import createImage, getTextFontSize
 
 
@@ -56,6 +56,8 @@ class ProgressBar(tk.Frame):
         self.pixelPerSlice = pixelPerSlice  # Amount of pixel per slice
                                             # less pixel seems more fluence, but needs
                                             # more processor time
+                                            
+        self.progressActiv = False
                                             
         self.msPerSlice    = 0
         self.bgColor       = 'grey'
@@ -117,8 +119,8 @@ class ProgressBar(tk.Frame):
         self.canvas.pack()
         
         # create a thread to handle the progressBar
-        self.threadStop= threading.Event()
-        self.thread = threading.Thread(target=self.autoRunProgressBar, args=(1, self.threadStop))
+#         self.threadStop= threading.Event()
+#         self.thread = threading.Thread(target=self.autoRunProgressBar, args=(1, self.threadStop))
                     
     #---------------------------------------------------------------------- 
     def updateGrafic(self):
@@ -171,52 +173,59 @@ class ProgressBar(tk.Frame):
             else:
                 self.increment = startValue
 
-        if self.thread.isAlive() is False:
-            self.thread.start()
+        if self.progressActiv is False:
+            self.progressActiv = True
+            self.after_idle(self.autoRunProgressBar)
+#         if self.thread.isAlive() is False:
+#             self.thread.start()
         
     #---------------------------------------------------------------------- 
     def stop(self):
-        self.threadStop.set()
+        self.progressActiv = False
               
     #----------------------------------------------------------------------
-    def autoRunProgressBar(self, arg1, stop_event):
-             
-        while(not stop_event.is_set()):
-            progress = (self.increment / self.width) * 100
-            colorIndex = 0
-            textIndex  = 0
+#     def autoRunProgressBar(self, arg1, stop_event):
+    def autoRunProgressBar(self):
+         
+        progress = (self.increment / self.width) * 100
+        colorIndex = 0
+        textIndex  = 0
+    
+        # check if the correct color scheme is chosen
+        for i in range(len(self.colorScheme)):
+            if progress >= self.colorScheme[i][0]:
+                colorIndex = i
+        if self.fgColor != self.colorScheme[colorIndex][1]:
+            self.setColor(self.colorScheme[colorIndex][1])    
         
-            # check if the correct color scheme is chosen
-            for i in range(len(self.colorScheme)):
-                if progress >= self.colorScheme[i][0]:
-                    colorIndex = i
-            if self.fgColor != self.colorScheme[colorIndex][1]:
-                self.setColor(self.colorScheme[colorIndex][1])    
-            
-            # check if the correct text scheme is chosen
-            for i in range(len(self.textScheme)):
-                if progress >= self.textScheme[i][0]:
-                    textIndex = i 
-            if self.text != self.textScheme[textIndex][1]:
-                self.setText(self.textScheme[textIndex][1])
-                 
-            # Update progress bar
-            if self.increment < self.width:
-                self.increment += self.pixelPerSlice
-                self.updateGrafic()
-                time.sleep(self.msPerSlice/1000)
-            else:
-                self.increment = self.width
-                self.updateGrafic()
-                return        
-        return
+        # check if the correct text scheme is chosen
+        for i in range(len(self.textScheme)):
+            if progress >= self.textScheme[i][0]:
+                textIndex = i 
+        if self.text != self.textScheme[textIndex][1]:
+            self.setText(self.textScheme[textIndex][1])
+             
+        # Update progress bar
+        if self.increment < self.width:
+            self.increment += self.pixelPerSlice
+            self.updateGrafic()
+            self.after(self.msPerSlice, self.autoRunProgressBar)
+#             time.sleep(self.msPerSlice/1000)
+        else:
+            self.increment = self.width
+            self.updateGrafic()
+            self.progressActiv = False
+            print("quit progressbar auto")
+            return        
+
     
     #----------------------------------------------------------------------  
     def __del__(self):
-        print (self.id, 'died')
         for widget in self.winfo_children():
             widget.destroy()
-    
+
+
+########################################################################    
 class ResponseOrder(tk.Frame):
 
     def __init__(self, parent, width, height):
@@ -279,10 +288,29 @@ class ResponseOrder(tk.Frame):
     
     #----------------------------------------------------------------------  
     def __del__(self):
-        print (self.id, 'died')
         for widget in self.winfo_children():
             widget.destroy()
-       
+
+
+
+########################################################################         
+def testScreenFooter():
+    print("Start Test")
+    time.sleep(1)
+    
+    bar.start(timeInSeconds=30, startValue=0)
+    time.sleep(1)
+    
+    equipment = {}
+    for x in range(1,12):
+        equipment[x] = 'Fz_5.png'
+    for x in range(6,12):
+        equipment[x] =""
+    truck.setEquipment(equipment = equipment)
+    time.sleep(1)
+    
+    print("Test ende")
+           
 ######################################################################## 
 if __name__ == '__main__':
     
@@ -299,20 +327,15 @@ if __name__ == '__main__':
     
     bar = ProgressBar(root, width=wbar, height=hbar, pixelPerSlice=1) 
     bar.pack(fill='both')
-    bar.start(timeInSeconds=30, startValue=0)
 
-    
-    
-    equipment = {}
-    for x in range(1,12):
-        equipment[x] = 'Fz_5.png'
-    for x in range(6,12):
-        equipment[x] =""
         
     truck = ResponseOrder(root, width=wres, height=100)
     truck.pack(fill='both')
-    truck.setEquipment(equipment = equipment)
+    
   
+    thread = Thread(target=testScreenFooter, args=())
+    thread.start()
+
     root.mainloop() 
 
 
