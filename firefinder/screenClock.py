@@ -17,7 +17,7 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
 '''
-from calendar import month
+#from calendar import month
 
 '''
 A very simple  clock.
@@ -74,7 +74,7 @@ class ScreenClock(tk.Frame):
     def __init__(self, parent, controller):
         """Constructor"""     
         tk.Frame.__init__(self, parent)
-        tk.Frame.config(self, bg='black')        
+#         tk.Frame.config(self, bg='black')        
         
         # store parent objects
         self.parent = parent
@@ -117,42 +117,14 @@ class ScreenClock(tk.Frame):
         self.minuteHandThickness = HEIGHT / 90
         self.hourHandThickness   = HEIGHT / 50
         
-      
-#         # divide opposite leg (Gegenkathete) with adjacent side (Ankathete)
-#         ratio = (HEIGHT/2) / (self.screenWidth/2)
-#                 
-#         # calculate the radian of the arc tangent
-#         alpharad = atan(ratio)
-#         
-#         # get the hypotenuse of the smaller triangle outside of th clock circle
-#         hypotenuse = hypot(HEIGHT/2, self.screenWidth/2) - (HEIGHT/2)
-#         
-#         # get the opposite side of the triangle
-#         oppositeSide = sin(alpharad)*hypotenuse
-#         
-#         # calculate fontsize according the screen resolution and ratio
-#         # 1.77 is the ratio for a 1920x1080 resolution
-#         fontsize = int(oppositeSide/(2.8+(1.77-self.aspectRatio)))
-#         
-#         
-#             
-#         # if the ratio is greate than 1.5, place the time and date
-#         # in a digital way too
-#         if self.aspectRatio > 1.5:    
-#             self.timeLabel.place(y=self.screenHeight, x=0,                anchor='sw')
-#             self.dateLabel.place(y=self.screenHeight, x=self.screenWidth, anchor='se')
-        
         # create viewport an pack canvas to screen
         viewport = (self.pad,self.pad,HEIGHT-self.pad,HEIGHT-self.pad)
         self.T = transformer(self.world,viewport)
-#         self.canvas.bind("<Configure>",self.configure())
-#         self.canvas.bind("<Configure>",self.redraw())
-#         self.canvas.pack(fill=tk.BOTH, expand=tk.NO)
     
-        self.createWidget(self.parent)
+        # store a object to cancel pending jobs
+        self.__job = None
         
-        # start poll the clock
-        self.poll()
+        self.createWidget(self.parent)
  
     #---------------------------------------------------------------------- 
     def createWidget(self, parent):   
@@ -199,17 +171,11 @@ class ScreenClock(tk.Frame):
       
         font = TkFont.Font( family='Arial', size  =-70, weight='bold')
         self.timeLabel = tk.Label(self.digitalClock, bg='black', font=font, fg='white')
-        self.emptLabel = tk.Label(self.digitalClock, bg='black', font=font, fg='white', text=' // ')
         self.dateLabel = tk.Label(self.digitalClock, bg='black', font=font, fg='white')
         self.timeLabel.pack(side='left', fill='both')
-#        self.emptLabel.pack(side='left', fill='both')
         self.dateLabel.pack(side='right', fill='both')
         self.digitalClock.pack(side='top', fill='both')
-        
-        
-#     #----------------------------------------------------------------------
-#     def configure(self):
-#         self.redraw()
+
     
     #----------------------------------------------------------------------
     def redraw(self):
@@ -271,7 +237,7 @@ class ScreenClock(tk.Frame):
     #----------------------------------------------------------------------
     def poll(self):
         self.redraw()
-        self.after(200,self.poll)  
+        self.__job = self.after(200,self.poll)  
     
     #----------------------------------------------------------------------    
     def setGeometry(self, value):
@@ -293,7 +259,6 @@ class ScreenClock(tk.Frame):
         
         self.analogClock.config(width=self.screenWidth, height=self.screenHeight)
         self.digitalClock.config(width=self.screenWidth, height=self.screenHeight)
-#         self.redraw()
        
     #----------------------------------------------------------------------    
     def configure(self, **kw):
@@ -321,12 +286,15 @@ class ScreenClock(tk.Frame):
             
     #----------------------------------------------------------------------
     def descentScreen(self):
-        # nothing to do while hide
+        if self.__job is not None:
+            self.after_cancel(self.__job)
+            self.__job = None
         pass
         
     #----------------------------------------------------------------------    
     def raiseScreen(self):
-        # nothing to do while rise
+        if self.__job is None:
+            self.__job = self.after_idle(self.poll)
         pass
         
 
