@@ -128,6 +128,21 @@ exec /etc/alternatives/x-session-manager # start lxde
 ### Per Programm ###
 Sollte alles nicht funktionieren, kann das Tool 
 
+## Standby WLAN deaktivieren ##
+To improve the stability of your WiFi, it is recommended to disable power management:
+Create a new file 8192cu.conf in /etc/modprobe.d/:
+```
+#!shell
+sudo nano /etc/modprobe.d/8192cu.conf
+```
+Add this line to the file and save:
+```
+#!shell
+options 8192cu rtw_power_mgnt=0 rtw_enusbss=0
+```
+Restart device
+
+
 ## Python Skript automatisch starten ##
 
 Einen neuen Ordner autostart under ~/.config erstellen

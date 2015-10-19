@@ -176,8 +176,6 @@ class ProgressBar(tk.Frame):
         if self.progressActiv is False:
             self.progressActiv = True
             self.after_idle(self.autoRunProgressBar)
-#         if self.thread.isAlive() is False:
-#             self.thread.start()
         
     #---------------------------------------------------------------------- 
     def stop(self):
