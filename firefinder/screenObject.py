@@ -72,7 +72,7 @@ class ScreenObject(tk.Frame):
 
         # store working directory
         try:    self.wdr = os.path.dirname( __file__ )
-        except: self.wdr = os.getcwd() 
+        except: self.wdr = os.getcwd()
         self.pathToIniFile = ''
         
         
@@ -134,7 +134,6 @@ class ScreenObject(tk.Frame):
 
         """
       
-
         heightPictureBar = self.screenHeight - self.alarmMessageBarHeight      
                                           
         # Create a canvas to hold the top event bar
@@ -146,7 +145,8 @@ class ScreenObject(tk.Frame):
         self.alarmMessageBarImage = self.alarmMessageBar.create_image(
                                             0                                   , 
                                             0                                   , 
-                                            anchor = 'nw'                       ) 
+                                            anchor = 'nw'                       )
+         
         self.alarmMessageBarText  = self.alarmMessageBar.create_text(
                                             self.screenWidth/2                  , 
                                             self.alarmMessageBarHeight/2        ,                                 
@@ -163,6 +163,9 @@ class ScreenObject(tk.Frame):
         # Place both Canvas
         self.alarmMessageBar.pack(side='top')
         self.pictureBar.pack(side='top', fill='both')
+        
+        # Disable auto resize to its childs wigets
+        self.pictureBar.pack_propagate(False)
         
         """ Create a label for the left picture """
         self.pic_1 = tk.Label(self.pictureBar, bd=0, background='black', foreground='black')
@@ -205,7 +208,7 @@ class ScreenObject(tk.Frame):
             for key,value in list(kw.items()):
                 if key=='pathToIniFile':
                     self.pathToIniFile = value
-                if key=='category':
+                elif key=='category':
                     if value.lower() is not self.category:
                         self.setCategory(value)
                 elif key=='cropPicture':
@@ -227,15 +230,14 @@ class ScreenObject(tk.Frame):
                     if value is not self.responseOrder:
                         self.setResponseOrder(value)
                 elif key=='showProgressBar':
-                    if value is not self.showProgressBar:
-                        self.setShowProgressBar(value)
+                    self.setShowProgressBar(value)
                 elif key=='progressBarTime':
                     if value is not self.progressBarTime:
                         self.setProgressBarTime(value)
             
             if self.pathToIniFile is '':
                 print("WARNING: Path to ini-file yet not set")
-                        
+                                        
             if changePicture is True:
                 self.setPicture()
 
@@ -258,6 +260,7 @@ class ScreenObject(tk.Frame):
     def setCropPicture(self, value):
         self.cropPicture = value
         self.setPicture()
+
         
     #----------------------------------------------------------------------
     def setAlarmMessage(self, value):
@@ -284,15 +287,17 @@ class ScreenObject(tk.Frame):
         responseHeight = int(self.showResponseOrder)* self.responseOrderHeight
         alarmHeight    = int(self.alarmMessageBarHeight)
         
+        # calculate height and width and resize the canvas afterwards
         picHeight = int(self.screenHeight - alarmHeight - progressHeight - responseHeight)
         picWidth  = int(self.screenWidth)
+        self.pictureBar.config(width=picWidth, height=picHeight)
         
         # if picture 2 is empty, show picture 1 as fullscreen and clear picture 2
         if self.nameOfPicture_2 is not '':
             picWidth = int(picWidth / 2) 
         else:  
             self.pic_2.pack_forget()
-                  
+                 
         # Change and resize picture 1   
         path = os.path.join(self.pathToIniFile, self.nameOfPicture_1)
         if os.path.isfile(path) == True:   
@@ -301,23 +306,29 @@ class ScreenObject(tk.Frame):
                                        width  = picWidth, 
                                        height = picHeight, 
                                        crop   = self.cropPicture)
-        else:     
-            self.pic1Img = createImage(self, 
-                                       path      = noImage, 
-                                       width     = picWidth, 
-                                       height    = picHeight, 
-                                       keepRatio = False)             
+        else: 
+            path = os.path.join(self.wdr, noImage)  
+            if os.path.isfile(path) == True: 
+                self.pic1Img = createImage(self, 
+                                           path      = path, 
+                                           width     = picWidth, 
+                                           height    = picHeight, 
+                                           keepRatio = False)             
         
-        # recalculate left padding depend of the second picture        
-        if self.nameOfPicture_2 is not '':
-            leftPadding = int( (self.screenWidth/4) - (self.pic1Img.width()/2) )
-        else:
-            leftPadding = int( (self.screenWidth/2) - (self.pic1Img.width()/2) )
         
         # Put picture on the screen    
         self.pic_1["image"] = self.pic1Img
-        self.pic_1.pack(side='left', ipadx=leftPadding )
-        
+        if self.pic1Img is not '':
+            # recalculate left padding depend of the second picture        
+            if self.nameOfPicture_2 is not '':
+                leftPadding = int( (self.screenWidth/4) - (self.pic1Img.width()/2) )
+            else:
+                leftPadding = int( (self.screenWidth/2) - (self.pic1Img.width()/2) )
+            
+            
+            self.pic_1.pack(side='left', ipadx=leftPadding )
+        else:
+            print("ERROR: FAILED TO PLACE IMAGE 1")      
            
         # Change and resize picture 2
         if self.nameOfPicture_2 is not '':
@@ -328,16 +339,20 @@ class ScreenObject(tk.Frame):
                                            width  = picWidth, 
                                            height = picHeight, 
                                            crop   = self.cropPicture)
-            else:    
-                self.pic2Img = createImage(self, 
-                                           path      = noImage, 
-                                           width     = picWidth, 
-                                           height    = picHeight, 
-                                           keepRatio = False) 
+            else: 
+                path = os.path.join(self.wdr, noImage)  
+                if os.path.isfile(path) == True:    
+                    self.pic2Img = createImage(self, 
+                                               path      = path, 
+                                               width     = picWidth, 
+                                               height    = picHeight, 
+                                               keepRatio = False) 
             
             # reposition picture and put it on the screen
             self.pic_2['image'] = self.pic2Img
             self.pic_2.pack(side='left', ipadx=leftPadding)
+            
+        
         
     #----------------------------------------------------------------------
     def setShowResponseOrder(self, value):
@@ -361,6 +376,7 @@ class ScreenObject(tk.Frame):
         if self.showProgressBar is True:
             self.progressBar.pack(side='top', fill='both', after=self.pictureBar)
             self.progressBar.start(timeInSeconds=self.progressBarTime, startValue=0)
+            print("start progressbar")
         else:
             self.progressBar.pack_forget()
         
@@ -372,11 +388,11 @@ class ScreenObject(tk.Frame):
         self.progressBarTime = value
         
     #----------------------------------------------------------------------
-    def hide(self):
+    def descentScreen(self):
         self.progressBar.stop()
         
     #----------------------------------------------------------------------    
-    def rise(self):
+    def raiseScreen(self):
         # nothing to do while rise
         pass
     
@@ -397,7 +413,7 @@ def testScreenAlarm():
     screen.configure(pathToIniFile = 'D:\Firefinder')
     time.sleep(1)
 
-    screen.configure(picture_1='detail.jpg', picture_2='direction_1.jpg')
+    screen.configure(picture_1='direction_1.jpg', picture_2='direction_detail_1.jpg')
     time.sleep(1)
     
     screen.configure(alarmMessage = 'test message')    
@@ -470,7 +486,7 @@ def testScreenAlarm():
     screen.configure(showProgressBar = True)
     time.sleep(1)
     
-    screen.hide()
+    screen.descentScreen()
     time.sleep(1)
     
     print("Test ende")
@@ -483,10 +499,9 @@ if __name__ == '__main__':
     root.geometry("%dx%d+0+0" % (root.winfo_screenwidth(), root.winfo_screenheight()-200))
     
     container = tk.Frame(root)        
-    container.pack(side="top", fill="both", expand = True)
+    container.pack(side="top", fill="both", expand = False)
     container.grid_rowconfigure(0, weight=1)
     container.grid_columnconfigure(0, weight=1)
-#     container.update()
     
     screen = ScreenObject(container, root)
     screen.grid(row=0, column=0, sticky="nsew")
