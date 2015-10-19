@@ -47,8 +47,11 @@ class ScreenOff(tk.Frame):
         self.screenWidth = self.controller.winfo_width()
         self.screenHeight= self.controller.winfo_height()
 
+        # create widget
         self.createWidget(parent)
-        self.show()
+
+        # show as soon as mainloop is idle
+        self.after_idle(self.show)
             
     #---------------------------------------------------------------------- 
     def createWidget(self, parent):      
