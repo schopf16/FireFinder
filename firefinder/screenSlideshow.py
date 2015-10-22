@@ -60,7 +60,7 @@ class ScreenSlideshow(tk.Frame):
         self.fileInFolder = 0
         
         # default sort by alphabetical
-        self.sortAlphabetically = True
+        self.sortAlphabetically = False
         
         # store a object to cancel pending jobs
         self.__job = None
