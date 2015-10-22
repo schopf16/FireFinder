@@ -48,7 +48,7 @@ class ScreenSlideshow(tk.Frame):
         self.screenHeight= self.controller.winfo_height()
              
         # set time between slides in seconds
-        self.delay = 5
+        self.delay = 12
         
         # store path where the pictures for the slideshow are stored
         self.pathToIniFile = ''
