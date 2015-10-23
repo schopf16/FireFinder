@@ -89,8 +89,8 @@ class ScreenClock(tk.Frame):
         self.showSecondHand = True
         self.showMinuteHand = True
         self.showHourHand   = True
-        self.showAnalogTime = True
         self.showDigitalTime= True
+        self.showDigitalDate= True
         
                 
         self.world       = [-1,-1,1,1]
@@ -100,6 +100,14 @@ class ScreenClock(tk.Frame):
         self.circlesize  = 0.10
         self._ALL        = 'all'
         self.pad         = 25
+        
+        self.WeekDayString=['Montag'   , # Weekday 0
+                           'Dienstag'  , # Weekday 1
+                           'Mittwoch'  , # Weekday 2
+                           'Donnerstag', # Weekday 3
+                           'Freitag'   , # Weekday 4
+                           'Samstag'   , # Weekday 5
+                           'Sonntag'   ] # Weekday 6
         
         # Calculate ratio of the resolution
         self.aspectRatio = self.screenWidth / self.screenHeight
@@ -113,9 +121,10 @@ class ScreenClock(tk.Frame):
             HEIGHT = self.screenHeight
             
         
-        self.secondHandThickness = HEIGHT / 216
+        self.secondHandThickness = HEIGHT / 180
         self.minuteHandThickness = HEIGHT / 90
         self.hourHandThickness   = HEIGHT / 50
+        self.heightAnalogClock   = HEIGHT
         
         # create viewport an pack canvas to screen
         viewport = (self.pad,self.pad,HEIGHT-self.pad,HEIGHT-self.pad)
@@ -168,8 +177,9 @@ class ScreenClock(tk.Frame):
                                       height              = 5,
                                       background          = self.bgcolor      ,
                                       highlightthickness  = 0                 )     
-      
-        font = TkFont.Font( family='Arial', size  =-70, weight='bold')
+        
+
+        font = TkFont.Font( family='Arial', size  =-120, weight='bold')
         self.timeLabel = tk.Label(self.digitalClock, bg='black', font=font, fg='white')
         self.dateLabel = tk.Label(self.digitalClock, bg='black', font=font, fg='white')
         self.timeLabel.pack(side='left', fill='both')
@@ -202,10 +212,14 @@ class ScreenClock(tk.Frame):
     #----------------------------------------------------------------------
     def painthms(self):
         actTime = datetime.timetuple(datetime.now())
-        year,month,day,h,m,s,x,x,x = actTime  # @UnusedVariable
+        year,month,day,h,m,s,wd,x,x = actTime  # @UnusedVariable
         
+        # Adapt digital time
         self.timeLabel["text"] = ('%02i:%02i'       %(h,m))
-        self.dateLabel["text"] = ('%02i.%02i.%04i'  %(day, month, year))
+        if self.showDigitalTime is True:
+            self.dateLabel["text"] = ('%02i.%02i.%04i'  %(day, month, year))
+        else:
+            self.dateLabel["text"] = ('%s, %02i.%02i.%04i'  %(self.WeekDayString[wd], day, month, year))               
 
         scl = self.analogClock.create_line
         
@@ -260,6 +274,26 @@ class ScreenClock(tk.Frame):
         self.analogClock.config(width=self.screenWidth, height=self.screenHeight)
         self.digitalClock.config(width=self.screenWidth, height=self.screenHeight)
        
+    #----------------------------------------------------------------------
+    def changeDigitalTime(self):
+        # delete both from screen. They will packed below
+        self.timeLabel.pack_forget()
+        self.dateLabel.pack_forget()
+            
+        if (self.showDigitalTime is True) and (self.showDigitalDate is True):          
+            self.timeLabel.pack(side='left', fill='both')
+            self.dateLabel.pack(side='right', fill='both')
+            return
+        
+        if (self.showDigitalTime is False) and (self.showDigitalDate is True):
+            self.dateLabel.pack(ipadx=int(self.screenWidth/2))
+            return
+        
+        if (self.showDigitalTime is True) and (self.showDigitalDate is False):
+            self.timeLabel.pack(ipadx=int(self.screenWidth/2))
+            return
+        pass
+    
     #----------------------------------------------------------------------    
     def configure(self, **kw):
         
@@ -269,6 +303,8 @@ class ScreenClock(tk.Frame):
             cfg['showMinuteHand']    = self.showMinuteHand
             cfg['showHourHand']      = self.showHourHand
             cfg['setGeometry']       = [self.screenWidth, self.screenHeight] 
+            cfg['showDigitalTime']   = self.showDigitalTime
+            cfg['showDigitalDate']   = self.showDigitalDate
             return cfg
     
         else: # do a configure
@@ -281,6 +317,12 @@ class ScreenClock(tk.Frame):
                     self.showHourHand = value
                 elif key=='setGeometry':
                     self.setGeometry(value)
+                elif key=='showDigitalTime':
+                    self.showDigitalTime = value
+                    self.changeDigitalTime()
+                elif key=='showDigitalDate':
+                    self.showDigitalDate = value
+                    self.changeDigitalTime()
 
             self.redraw()
             
@@ -332,6 +374,16 @@ def testScreenClock():
     
     screen.configure(setGeometry = [800, 800])
     time.sleep(1)
+    
+    screen.configure(showDigitalDate = False)
+    time.sleep(1)
+    
+    screen.configure(showDigitalDate = True)
+    time.sleep(1)
+    
+    screen.configure(showDigitalTime = False)
+    time.sleep(1)
+    
     
     screen.descentScreen()
     time.sleep(1)
