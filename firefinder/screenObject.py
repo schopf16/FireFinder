@@ -398,7 +398,6 @@ class ScreenObject(tk.Frame):
     
     #----------------------------------------------------------------------  
     def __del__(self):
-        print (self.id, 'died')
         for widget in self.winfo_children():
             widget.destroy()
 
@@ -487,7 +486,9 @@ def testScreenAlarm():
     time.sleep(1)
     
     screen.descentScreen()
-    time.sleep(1)
+    time.sleep(5)
+    
+    screen.__del__()
     
     print("Test ende")
     
