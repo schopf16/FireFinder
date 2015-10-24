@@ -1,4 +1,4 @@
-; last modified 11. october 2015 by Michael Anderegg
+; last modified 24. october 2015 by Michael Anderegg
 
 [General]
 ; Enter the local full path of the directory in which the alert.ini
@@ -41,6 +41,15 @@ switchToScreen    = off
 ; --> Not all television support the CEC-signal <--
 ; https://en.wikipedia.org/wiki/HDMI#CEC
 cec_enable        = true
+; ------------------------------------------------------------------
+
+; Some television switch of automaticaly after some houres of 
+; inactivity. To obtain some eco-labels, it is not possible to
+; switch off this auto standby function. To prevent the television
+; to switch to standby, the system switch off and on the televison
+; after the given time below. If the programm is in show=off mode,
+; the television remain off.
+cec_reboot_after_minutes = 180
 ; ------------------------------------------------------------------
 
 ; If a computer screen is connected instead of a television, the 

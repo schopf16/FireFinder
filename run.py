@@ -26,7 +26,7 @@ import tkinter as tk
 import subprocess
 import time
 
-
+from threading          import Timer
 from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
@@ -37,8 +37,6 @@ from firefinder.screenClock     import ScreenClock
 from firefinder.screenObject    import ScreenObject
 from firefinder.screenOff       import ScreenOff
 from firefinder.screenSlideshow import ScreenSlideshow
-
-from django.utils.termcolors import background, foreground
 
 try:   
     from firefinder.cecLibrary     import CecClient
@@ -317,6 +315,7 @@ class SwitchTelevision:
     def __init__(self):
         self.__actGraficOutput      = 'On'
         self.__actTelevisionState   = 'Off'
+        self.__timerJob             = None
         
         # Try to disable power saving
         if os.name == 'posix':
@@ -343,7 +342,7 @@ class SwitchTelevision:
         (HDMI output and television on) has to be enabled, otherwise 'Off'
         will returned if at least on is disabled.
         """
-        if cec_enable == True:
+        if cecEnable == True:
             return self.__actGraficOutput & self.__actTelevisionState
         else:
             return self.__actGraficOutput
@@ -380,6 +379,12 @@ class SwitchTelevision:
             if cecEnable == True:
                 print("Switch TV on")
                 cecObj.ProcessCommandActiveSource()
+                if self.__timerJob is not None:
+                    self.__timerJob.cancel() 
+                    self.__timerJob = None
+                timeInSeconds = int(cecRebootInMinutes*60)
+                self.__timerJob = Timer(timeInSeconds, self.__rebootTelevisionOverCec)
+                self.__timerJob.start()
             
         if newState == 'Off':  
             '''
@@ -391,7 +396,10 @@ class SwitchTelevision:
             '''          
             if cecEnable == True: 
                 print("Switch TV off") 
-                cecObj.ProcessCommandTx("10:36")  
+                cecObj.ProcessCommandTx("10:36") 
+                if self.__timerJob is not None:
+                    self.__timerJob.cancel()
+                    self.__timerJob = None
 
             if (stdbyEnable == True) and (os.name == 'posix'):
                 if self.__actGraficOutput != newState:
@@ -406,6 +414,14 @@ class SwitchTelevision:
             subprocess.call(["echo", "on 0", "|", "cec-client", "-s"])
         else:
             subprocess.call(["echo", "standby 0", "|", "cec-client", "-s"])
+            
+    #----------------------------------------------------------------------                
+    def __rebootTelevisionOverCec(self):
+        print("shutdown TV")
+        self.set_Visual('Off')
+        time.sleep(2)
+        print("restart TV")
+        self.set_Visual('On')        
 
 
 ########################################################################
