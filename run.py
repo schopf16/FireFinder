@@ -21,21 +21,21 @@
 
 import sys
 import os
-import random
+#import random
 import codecs
 import tkinter as tk
 import subprocess
 import time
-import functools
+#import functools
 #import firefinder.miscellaneous as fms
 
 
 from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
-from PIL                import ImageTk, Image
-from tkinter            import ttk
-from itertools          import cycle
+#from PIL                import ImageTk, Image
+#from tkinter            import ttk
+#from itertools          import cycle
 
 # local classes
 from firefinder.sound         import alarmSound
@@ -105,7 +105,13 @@ class FireFinderGUI(tk.Tk):
         self.config(cursor="none")
         
         ''' Removes the native window boarder. '''
-        self.overrideredirect(fullscreen)
+        if fullscreen is True:
+            self.attributes('-fullscreen', True)
+            
+        # With overrideredirect program loses connection with 
+        # window manage so it seems that it can't get information 
+        # about pressed keys and even it can't be focused.
+        #self.overrideredirect(fullscreen) # doens
         
         ''' Disables resizing of the widget.  '''
         self.resizable(False, False)
@@ -117,8 +123,8 @@ class FireFinderGUI(tk.Tk):
         ''' Sets focus to the window to catch <Escape> '''
         self.focus_set()
         
-        """ Bind Escape tap to the widget quit method """
-        self.bind("<Escape>", lambda e: self.quit())
+        """ Bind Escape tap to the exit method """
+        self.bind("<Escape>", lambda e: self.exit())
         
         # the container is where we'll stack a bunch of frames
         # on top of each other, then the one we want visible
@@ -165,6 +171,15 @@ class FireFinderGUI(tk.Tk):
     #----------------------------------------------------------------------
     def getActScreen(self):
         return self.frames[self.actScreen]
+    
+    #----------------------------------------------------------------------
+    def exit(self):
+        print("Close programm")
+        self.destroy()
+        self.quit() # Fallback if the one above doesn't work properly
+        sys.exit()  # Fallback if the one above doesn't work properly 
+        os._exit(0) # Fallback if the one above doesn't work properly      
+
                
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
@@ -243,9 +258,6 @@ class MyHandler(FileSystemEventHandler):
                 try:    cropPicture  = self.parser.getboolean('ObjectInfo', 'crop_picture')
                 except: cropPicture  = True
                 
-#                 try:    overlayPic   = self.parser.getboolean('ObjectInfo', 'overlay_picture')
-#                 except: overlayPic   = True
-                
                 try:    category     = self.parser.get('ObjectInfo', 'category')
                 except: category     = ""
                 
@@ -263,9 +275,6 @@ class MyHandler(FileSystemEventHandler):
   
                 try:    showRO       = self.parser.getboolean('ObjectInfo', 'show_responseOrder')
                 except: showRO       = False
-                
-#                 try:    heightPB     = self.parser.getint('ObjectInfo', 'responseOrderHeight')
-#                 except: heightPB     = 0
                 
                 equipment = {}
                 for x in range(1,10):
@@ -302,11 +311,7 @@ class MyHandler(FileSystemEventHandler):
             if show.lower() == 'quit':
                 self.alarmSound.stop()
                 self.HDMIout.set_Visual('On')
-                print("Try to close program")
-                os._exit(0)
-                
-  
-######################################################################## 
+                self.controller.exit(self)
 
     
 ######################################################################## 
@@ -353,9 +358,6 @@ class SwitchTelevision:
         otherwise only the graphic output is driven.
         """
         self.__switchGraficOutput(newState = state)
-        
-#        if cec_enable == True:
-#            self.__switchTelevisionState(newState = state)
             
     #----------------------------------------------------------------------        
     def __switchGraficOutput(self, newState):
@@ -413,8 +415,8 @@ def log_callback(level, time, message):
     return cecObj.LogCallback(level, time, message)
 
 # key press callback
-def key_press_callback(key, duration):
-    return cecObj.KeyPressCallback(key, duration) 
+# def key_press_callback(key, duration):
+#     return cecObj.KeyPressCallback(key, duration) 
     
 def switchScreenAfterWhile():
     
@@ -433,7 +435,7 @@ def switchScreenAfterWhile():
      
     if switchToScreen.lower() == 'slideshow':
         eventHandler.alarmSound.stop()
-        app.show_frame(ScreenSlidshow)
+        app.show_frame(ScreenSlideshow)
         eventHandler.HDMIout.set_Visual('On')   
                        
     if switchToScreen.lower() == 'off':  
@@ -515,7 +517,7 @@ if __name__ == "__main__":
         print("Enable CEC")
         cecObj = CecClient()
         cecObj.SetLogCallback(log_callback)
-        cecObj.SetKeyPressCallback(key_press_callback)
+        cecObj.SetKeyPressCallback(None)
         cecObj.InitLibCec()
     else:
         cec_enable = False # Force to False if there was an error with the cec-lib
