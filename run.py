@@ -21,27 +21,18 @@
 
 import sys
 import os
-#import random
 import codecs
 import tkinter as tk
 import subprocess
 import time
-#import functools
-#import firefinder.miscellaneous as fms
 
 
 from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
-#from PIL                import ImageTk, Image
-#from tkinter            import ttk
-#from itertools          import cycle
 
 # local classes
-from firefinder.sound         import alarmSound
-# from firefinder.clock         import ScreenClock
-# from firefinder.footer        import ProgressBar, ResponseOrder
-
+from firefinder.sound           import alarmSound
 from firefinder.screenClock     import ScreenClock
 from firefinder.screenObject    import ScreenObject
 from firefinder.screenOff       import ScreenOff
@@ -111,7 +102,7 @@ class FireFinderGUI(tk.Tk):
         # With overrideredirect program loses connection with 
         # window manage so it seems that it can't get information 
         # about pressed keys and even it can't be focused.
-        #self.overrideredirect(fullscreen) # doens
+        #self.overrideredirect(fullscreen)
         
         ''' Disables resizing of the widget.  '''
         self.resizable(False, False)
@@ -136,10 +127,10 @@ class FireFinderGUI(tk.Tk):
         
         self.frames = {}
         
-        for F in (ScreenOff, 
-                  ScreenSlideshow, 
+        for F in (ScreenSlideshow, 
                   ScreenObject,
-                  ScreenClock):
+                  ScreenClock,
+                  ScreenOff):     # Load offscreen as last screen
 
             frame = F(container, self)
             self.frames[F] = frame
@@ -410,14 +401,11 @@ class SwitchTelevision:
             subprocess.call(["echo", "standby 0", "|", "cec-client", "-s"])
 
 
-# logging callback
+########################################################################
 def log_callback(level, time, message):
     return cecObj.LogCallback(level, time, message)
 
-# key press callback
-# def key_press_callback(key, duration):
-#     return cecObj.KeyPressCallback(key, duration) 
-    
+########################################################################    
 def switchScreenAfterWhile():
     
     # Only adapt the screen if no other change
@@ -517,7 +505,6 @@ if __name__ == "__main__":
         print("Enable CEC")
         cecObj = CecClient()
         cecObj.SetLogCallback(log_callback)
-        cecObj.SetKeyPressCallback(None)
         cecObj.InitLibCec()
     else:
         cec_enable = False # Force to False if there was an error with the cec-lib
