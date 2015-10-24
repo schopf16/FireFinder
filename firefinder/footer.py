@@ -117,10 +117,6 @@ class ProgressBar(tk.Frame):
         
         # pack the canvas into the frame
         self.canvas.pack()
-        
-        # create a thread to handle the progressBar
-#         self.threadStop= threading.Event()
-#         self.thread = threading.Thread(target=self.autoRunProgressBar, args=(1, self.threadStop))
                     
     #---------------------------------------------------------------------- 
     def updateGrafic(self):
@@ -184,6 +180,10 @@ class ProgressBar(tk.Frame):
     #----------------------------------------------------------------------
 #     def autoRunProgressBar(self, arg1, stop_event):
     def autoRunProgressBar(self):
+        
+        # check if progressbar has to be terminated
+        if self.progressActiv is not True:
+            return
          
         progress = (self.increment / self.width) * 100
         colorIndex = 0
@@ -208,15 +208,12 @@ class ProgressBar(tk.Frame):
             self.increment += self.pixelPerSlice
             self.updateGrafic()
             self.after(self.msPerSlice, self.autoRunProgressBar)
-#             time.sleep(self.msPerSlice/1000)
         else:
             self.increment = self.width
             self.updateGrafic()
             self.progressActiv = False
-            print("quit progressbar auto")
             return        
-
-    
+   
     #----------------------------------------------------------------------  
     def __del__(self):
         for widget in self.winfo_children():
@@ -305,6 +302,12 @@ def testScreenFooter():
     for x in range(6,12):
         equipment[x] =""
     truck.setEquipment(equipment = equipment)
+    time.sleep(1)
+    
+    bar.stop()
+    time.sleep(2)
+    
+    bar.start(timeInSeconds=15, startValue=0)
     time.sleep(1)
     
     print("Test ende")
