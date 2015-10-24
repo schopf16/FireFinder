@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: UTF-8-*-
+# -*- coding: latin-1-*-
 
 '''
     Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
@@ -38,6 +38,8 @@ from firefinder.screenObject    import ScreenObject
 from firefinder.screenOff       import ScreenOff
 from firefinder.screenSlideshow import ScreenSlideshow
 
+from django.utils.termcolors import background, foreground
+
 try:   
     from firefinder.cecLibrary     import CecClient
     cec_lib_available = True
@@ -50,26 +52,29 @@ except:
 LARGE_FONT= ("Verdana", 12)
 
 ########################################################################
-""" Some global settings. They include namely settings from the """
-""" config.ini file which is read in at the beginning """
+'''
+Some global settings out of the config.ini file which is
+read out at the beginning of the program.
+'''
+# [General] group
+observingPathName   = ''
+observingFileName   = ''
 
-CEC_on_script     = 0
-CEC_off_script    = 0
+# [Visual] group
+fullscreenEnable    = False  
+switchScreenAfter   = 0
+switchToScreen      = ''
 
-""" Visual settings """
-fullscreen        = False  
-switchScreenAfter = 0
-switchToScreen    = ''
-
-
-""" Power settings """
-cec_enable        = False
-stdby_enable      = False
+# [Power] group
+cecEnable           = False
+stdbyEnable         = False
+cecRebootInMinutes  = 0
 
 """ Path's """
 ffLogo      = 'firefinder/pic/Logo.png'     # Firefighter Logo
 noImage     = 'firefinder/pic/bg/no_image.png'
 HDMI_script = 'script/reactivate_screen.sh' # Script to enable HDMI output
+wdr         = '' # Working direcotry is set in main 
 
 ########################################################################
 class FireFinderGUI(tk.Tk):
@@ -80,8 +85,6 @@ class FireFinderGUI(tk.Tk):
         
         # Store actual shown screen
         self.actScreen  = ''
-        self.startTime  = int(time.time())
-        self.lastChange = 0
         
         # Set actual window to fullscreen and bind the "Escape"
         # key with the function quit option
@@ -96,7 +99,7 @@ class FireFinderGUI(tk.Tk):
         self.config(cursor="none")
         
         ''' Removes the native window boarder. '''
-        if fullscreen is True:
+        if fullscreenEnable is True:
             self.attributes('-fullscreen', True)
             
         # With overrideredirect program loses connection with 
@@ -137,8 +140,12 @@ class FireFinderGUI(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         # do some configurations to the screens
-        self.frames[ScreenObject].configure(pathToIniFile = inifile_path)
-        self.frames[ScreenSlideshow].configure(pathToIniFile = inifile_path)
+        self.frames[ScreenObject].configure(pathToIniFile = observingPathName)
+        self.frames[ScreenSlideshow].configure(pathToIniFile = observingPathName)
+        
+        # store some timing details
+        self.startTime  = int(time.time())
+        self.lastChange = 0
         
         # show start screen
         self.show_frame(ScreenOff)
@@ -187,7 +194,7 @@ class MyHandler(FileSystemEventHandler):
     #----------------------------------------------------------------------
     def on_modified(self, event):
         # Check if the file has ben modified I'm looking for
-        if os.path.split(event.src_path)[-1].lower() == inifile_name.lower():
+        if os.path.split(event.src_path)[-1].lower() == observingFileName.lower():
 
             """
             Do to some reasons, the watchdog trigger the FileModifiedEvent
@@ -360,7 +367,7 @@ class SwitchTelevision:
             availalbe. If done otherwise, the cec command can't be
             transmittet over a deactivatet HDMI port.
             ''' 
-            if (stdby_enable == True) and (os.name == 'posix'):
+            if (stdbyEnable == True) and (os.name == 'posix'):
                 if self.__actGraficOutput != newState:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-p"])
                     except: pass
@@ -370,7 +377,7 @@ class SwitchTelevision:
                     except: pass
                     self.__actGraficOutput = newState
             
-            if cec_enable == True:
+            if cecEnable == True:
                 print("Switch TV on")
                 cecObj.ProcessCommandActiveSource()
             
@@ -382,11 +389,11 @@ class SwitchTelevision:
             cec command can't be transmittet over a deactivatet HDMI
             port.
             '''          
-            if cec_enable == True: 
+            if cecEnable == True: 
                 print("Switch TV off") 
                 cecObj.ProcessCommandTx("10:36")  
 
-            if (stdby_enable == True) and (os.name == 'posix'):
+            if (stdbyEnable == True) and (os.name == 'posix'):
                 if self.__actGraficOutput != newState:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-o"])
                     except: pass
@@ -417,7 +424,6 @@ def switchScreenAfterWhile():
     
     if switchToScreen.lower() == 'time':
         eventHandler.alarmSound.stop()
-        print("show time")
         app.show_frame(ScreenClock)
         eventHandler.HDMIout.set_Visual('On')
      
@@ -429,7 +435,74 @@ def switchScreenAfterWhile():
     if switchToScreen.lower() == 'off':  
         eventHandler.alarmSound.stop()                  
         app.show_frame(ScreenOff)
-        eventHandler.HDMIout.set_Visual('Off')            
+        eventHandler.HDMIout.set_Visual('Off') 
+        
+######################################################################## 
+def readConfigIniFile():
+    # force python to use the global variables instead of creating
+    # them localy
+    global observingPathName
+    global observingFileName
+    global fullscreenEnable
+    global switchScreenAfter
+    global switchToScreen
+    global cecEnable
+    global stdbyEnable
+    global cecRebootInMinutes
+          
+    # Check if config.ini file exist
+    configPath = os.path.join(wdr, 'config.ini')
+    if os.path.isfile(configPath) != True:
+        # quit skript due to an error
+        errorMsg = ("The file \"config.ini\" is missing. Be sure this"
+                    "file is in the same directory like this python-script")
+        print ("ERROR: %s" %errorMsg)
+        return 'IniFileNotFound'     
+    
+    # config.ini file exist, going to read the data
+    sysconfig = ConfigParser()
+    with codecs.open(configPath, 'r', encoding='UTF-8-sig') as f:
+        sysconfig.readfp(f)
+    
+    # read informations which are required
+    try:
+        observingPathName = sysconfig.get('General', 'observing_path')
+        observingFileName = sysconfig.get('General', 'observing_file')
+    except:
+        errorMsg = ('An unexpected error occurred while reading config.ini')
+        print ("ERROR: %s" %errorMsg)
+        return 'CouldNotReadIniFile'
+    
+    # Check if the observation-directory exist. Otherwise the observer
+    # will raise a FileNotFoundError
+    if os.path.isdir(observingPathName) != True:
+        # quit script due to an error
+        errorMsg = ("The directory \"%s\" for observation is missing." %observingPathName)  
+        print ("ERROR: %s" %errorMsg) 
+        return 'PathDoesNotExist'   
+                
+    '''
+    Read variables with lower priority. 
+    If not available, work with standard values
+    '''
+    
+    # [Visual] group 
+    try:    fullscreenEnable    = sysconfig.getboolean('Visual', 'fullscreen')
+    except: fullscreenEnable    = False    
+    try:    switchScreenAfter   = sysconfig.getint('Visual', 'switchScreenAfter')
+    except: switchScreenAfter   = 0   
+    try:    switchToScreen      = sysconfig.get('Visual', 'switchToScreen')
+    except: switchToScreen      = ScreenOff
+    
+    # [Power] group   
+    try:    cecEnable           = sysconfig.getboolean('Power', 'cec_enable')
+    except: cecEnable           = False   
+    try:    stdbyEnable         = sysconfig.getboolean('Power', 'stdby_enable')
+    except: stdbyEnable         = False   
+    try:    cecRebootInMinutes  = sysconfig.getint('Power', 'cec_reboot_after_minutes')
+    except: cecRebootInMinutes  = 0
+
+    return True
 
 ########################################################################          
 if __name__ == "__main__":
@@ -443,78 +516,64 @@ if __name__ == "__main__":
     print("| redistribute it under certain conditions.       |")
     print("+-------------------------------------------------+")
     print("\n\n")
-        
+    
     # store working directory
     try:    wdr = os.path.dirname( __file__ )
     except: wdr = os.getcwd()
+    
+    # Read config.ini File & check for failure
+    returnValue = readConfigIniFile()
+    if returnValue is not True:
+        app = tk.Tk()   # Create a tkinter to put failure message on screen
+        if returnValue == 'IniFileNotFound':
+            errorMessage = ('Die Datei config.ini wurde nicht gefunden. '
+                            'Stelle sicher dass sich die Datei im selben '
+                            'Ordner befindet wie die Datei \"run.py\"')
+        elif returnValue == 'CouldNotReadIniFile':
+            errorMessage = ('Die Datei config.ini konnte nicht gelesen '
+                            'werden. Stelle sicher, dass in der Gruppe '
+                            'General die Variablen richtig aufgeführt '
+                            'sind\n\n[General]\nobserving_path = <Kompletter '
+                            'Pfad>\nobserving_file   = <Dateiname mit Endung>')
+        elif returnValue == 'PathDoesNotExist':
+            errorMessage = ('Der in der config.ini Datei angegebene Pfad'
+                            '\n\n\"%s\"\n\nwurde nicht gefunden. Stelle '
+                            'der Pfad korrekt ist. Die Gross- / Klein'
+                            'sicher das schreibung muss beachtet werden.' 
+                            %observingPathName)       
+        errorCanvas = tk.Canvas(app                                     , 
+                                width  = int(app.winfo_screenwidth()/2) , 
+                                height = int(app.winfo_screenheight()/2),
+                                background ='red') 
+        errorText = errorCanvas.create_text(
+                                int(app.winfo_screenwidth()/4)      , 
+                                int(app.winfo_screenwidth()/8)      ,
+                                text   = "!! Schwerer Systemfehler !!\n\n%s" %errorMessage,                              
+                                font=('arial', 30)                  ,                 
+                                width=int(app.winfo_screenwidth()/2))
+        errorCanvas.pack(side='top') 
 
-    #necessary to change working directory? Guess not!
-    os.chdir(wdr)
-
-      
-    # Check if config.ini file exist
-    configPath = os.path.join(wdr, 'config.ini')
-    if os.path.isfile(configPath) != True:
-        # quit skript due to an error
-        print("The file \"config.ini\" is missing. Be sure this"
-              "file is in the same directory like this python-script")     
-        sys.exit("no config file found") 
-    
-    # config.ini file exist, going to read the data
-    sysconfig = ConfigParser()
-    sysconfig.read(configPath)
-    
-    # read informations which are required
-    try:
-        inifile_path = sysconfig.get('General', 'observing_path')
-        inifile_name = sysconfig.get('General', 'observing_file')
-    except:
-        print ('An unexpected error occurred while reading config.ini')
-    
-    # Check if the observation-directory exist. Otherwise the observer
-    # will raise a FileNotFoundError
-    if os.path.isdir(inifile_path) != True:
-        # quit script due to an error
-        print("The directory \"%s\" for observation is missing." %inifile_path)     
-        sys.exit("The directory for observation is missing") 
-                
-    # Read variables with lower priority. If not available, work with standard values
-    
-    try:    fullscreen = sysconfig.getboolean('Visual', 'fullscreen')
-    except: pass
-    
-    try:    switchScreenAfter = sysconfig.getint('Visual', 'switchScreenAfter')
-    except: switchScreenAfter = 0
-    
-    try:    switchToScreen    = sysconfig.get('Visual', 'switchToScreen')
-    except: switchToScreen    = ''
+    else:            
+        # Create some objects
+        app             = FireFinderGUI()
+        eventHandler    = MyHandler(app)
+        observer        = Observer()
         
-    try:    cec_enable   = sysconfig.getboolean('Power', 'cec_enable')
-    except: pass
+        # create a object to libcec
+        if (cec_lib_available==True) and (cecEnable==True):
+            print("Enable CEC")
+            cecObj = CecClient()
+            cecObj.SetLogCallback(log_callback)
+            cecObj.InitLibCec()
+        else:
+            cecEnable = False # Force to False if there was an error with the cec-lib
+        
+        if switchScreenAfter is not 0:
+            switchTimeInSeconds = switchScreenAfter * 1000
+            app.after(switchTimeInSeconds,switchScreenAfterWhile)
     
-    try:    stdby_enable = sysconfig.getboolean('Power', 'stdby_enable')
-    except: pass
-    
-    # Create some objects
-    app             = FireFinderGUI()
-    eventHandler    = MyHandler(app)
-    observer        = Observer()
-    
-    # create a object to libcec
-    if (cec_lib_available==True) and (cec_enable==True):
-        print("Enable CEC")
-        cecObj = CecClient()
-        cecObj.SetLogCallback(log_callback)
-        cecObj.InitLibCec()
-    else:
-        cec_enable = False # Force to False if there was an error with the cec-lib
-    
-    if switchScreenAfter is not 0:
-        switchTimeInSeconds = switchScreenAfter * 1000
-        app.after(switchTimeInSeconds,switchScreenAfterWhile)
-
-    # configure the observer thread and start it afterward
-    observer.schedule(eventHandler, inifile_path, recursive=False)
-    observer.start()   
+        # configure the observer thread and start it afterward
+        observer.schedule(eventHandler, observingPathName, recursive=False)
+        observer.start()   
     
     app.mainloop()
