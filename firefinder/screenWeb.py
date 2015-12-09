@@ -20,6 +20,7 @@
 
 import os
 import time
+import webbrowser
 import subprocess
 import tkinter as tk
 
@@ -42,6 +43,13 @@ class ScreenWeb(tk.Frame):
         try:    self.wdr = os.path.dirname( __file__ )
         except: self.wdr = os.getcwd()
         
+        # define browser
+        if os.name == 'posix':
+            webbrowser.get('epiphany')
+        elif os.name == 'nt':
+            webbrowser.get('windows-default')
+            
+            
         self.url = ''
         self.local = ''
         self.pathToIniFile = ''
@@ -65,18 +73,12 @@ class ScreenWeb(tk.Frame):
     #----------------------------------------------------------------------    
     def show(self, page):
         if page is 'url':
-            homepage = self.url
+            url = self.url
         else:
-            homepage = os.path.join(self.pathToIniFile, self.local)
-            homepage = ("file:%s"%homepage)
-        print(homepage)    
-        if os.name == 'posix':
-            print("Zeige Hoempage")
-            try: subprocess.Popen(["epiphany-browser", homepage])
-            except: print("Failed to open epiphany-browser")
-        elif os.name == 'nt':
-            pass
-
+            path = os.path.join(self.pathToIniFile, self.local)
+            url = ("file:%s"%path) 
+       
+        webbrowser.open(url, 0, autoraise=True)  
             
     #----------------------------------------------------------------------
     def configure(self, **kw):
@@ -109,6 +111,7 @@ class ScreenWeb(tk.Frame):
             try: subprocess.Popen(["killall", "epiphany-browser"])
             except: print("failed to kill epiphany-browser")
         elif os.name == 'nt':
+            os.system("taskkill /F /IM chrome.exe")
             pass
         
     #----------------------------------------------------------------------    
@@ -129,16 +132,16 @@ def testScreenAlarm():
     
     screen.configure(pathToIniFile = '/home/pi/FireFinder')
     
-#    screen.configure(url = 'https://www.google.ch')
-#    time.sleep(10)
-
-    screen.configure(local = 'Bahnhofsuhr/index.html')
+    screen.configure(url = 'http://www.fwi.ch')
     time.sleep(10)
+
+#    screen.configure(local = 'Bahnhofsuhr/index.html')
+#    time.sleep(10)
     
-#    screen.descentScreen()
+    screen.descentScreen()
     time.sleep(2)
 
-#    screen.__del__()
+    screen.__del__()
     time.sleep(1)
     
     print("Test ende")

@@ -52,7 +52,7 @@ class ScreenObjectConf:
 class ScreenObject(tk.Frame):
 
     def __init__(self, parent, controller):
-        tk.Frame.__init__(self, parent)
+#         tk.Frame.__init__(self, parent)
         
         # store parent objects
         self.parent = parent
