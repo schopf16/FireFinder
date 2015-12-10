@@ -296,11 +296,28 @@ def testScreenFooter():
     bar.start(timeInSeconds=30, startValue=0)
     time.sleep(1)
     
+    # create a tulpe and clear it
     equipment = {}
     for x in range(1,12):
-        equipment[x] = 'Fz_5.png'
-    for x in range(6,12):
-        equipment[x] =""
+        equipment[x] = ''
+    
+    # add 5 car to footer   
+    equipment[1] = 'Fz_5.png'
+    equipment[2] = 'Fz_6.png'
+    equipment[3] = 'Fz_7.png'
+    equipment[4] = 'Fz_1.png'
+    equipment[5] = 'Fz_4.png'
+    print("Add cars")
+    truck.setEquipment(equipment = equipment)
+    time.sleep(1)
+    
+    # clear even car slots
+    equipment[1] = ''
+    equipment[2] = 'Fz_6.png'
+    equipment[3] = ''
+    equipment[4] = 'Fz_1.png'
+    equipment[5] = ''
+    print("Clear even car slots")
     truck.setEquipment(equipment = equipment)
     time.sleep(1)
     
