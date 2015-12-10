@@ -280,7 +280,10 @@ class ResponseOrder(tk.Frame):
                 path = os.path.join(self.wdr, 'pic', equipment[x])
                 self.equipmentImg[x] = createImage(self.master, path, height=self.height)
                 self.equipment[x]["image"] = self.equipmentImg[x]
-    
+            else:
+                print(x)
+                self.equipmentImg[x] = ''
+                
     #----------------------------------------------------------------------  
     def __del__(self):
         for widget in self.winfo_children():
@@ -311,15 +314,35 @@ def testScreenFooter():
     truck.setEquipment(equipment = equipment)
     time.sleep(1)
     
-    # clear even car slots
-    equipment[1] = ''
+    # delete the three last cars   
+    equipment[1] = 'Fz_5.png'
     equipment[2] = 'Fz_6.png'
     equipment[3] = ''
-    equipment[4] = 'Fz_1.png'
+    equipment[4] = ''
     equipment[5] = ''
-    print("Clear even car slots")
+    print("delete the three last cars")
     truck.setEquipment(equipment = equipment)
     time.sleep(1)
+    
+    # add them again  
+    equipment[1] = 'Fz_5.png'
+    equipment[2] = 'Fz_6.png'
+    equipment[3] = 'Fz_4.png'
+    equipment[4] = 'Fz_7.png'
+    equipment[5] = 'Fz_1.png'
+    print("add them again")
+    truck.setEquipment(equipment = equipment)
+    time.sleep(1)
+    
+#     # clear odd car slots
+#     equipment[1] = ''
+#     equipment[2] = 'Fz_6.png'
+#     equipment[3] = ''
+#     equipment[4] = 'Fz_1.png'
+#     equipment[5] = ''
+#     print("Clear odd car slots")
+#     truck.setEquipment(equipment = equipment)
+#     time.sleep(1)
     
     bar.stop()
     time.sleep(2)
