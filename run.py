@@ -30,6 +30,7 @@ from threading          import Timer
 from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
+#from subprocess         import Popen, PIPE
 
 # local classes
 from firefinder.sound           import alarmSound
@@ -37,13 +38,14 @@ from firefinder.screenClock     import ScreenClock
 from firefinder.screenObject    import ScreenObject
 from firefinder.screenOff       import ScreenOff
 from firefinder.screenSlideshow import ScreenSlideshow
+from firefinder.cecLibrary import tv_power
 
-try:   
-    from firefinder.cecLibrary     import CecClient
-    cec_lib_available = True
-except:
-    print("Failed load CEC")
-    cec_lib_available = False
+# try:   
+#     from firefinder.cecLibrary     import CecClient
+#     cec_lib_available = True
+# except:
+#     print("Failed load CEC")
+#     cec_lib_available = False
     
 
 
@@ -315,7 +317,6 @@ class SwitchTelevision:
     def __init__(self):
         self.__actGraficOutput      = 'On'
         self.__actTelevisionState   = 'Off'
-        self.__timerJob             = None
         
         # Try to disable power saving
         if os.name == 'posix':
@@ -378,13 +379,8 @@ class SwitchTelevision:
             
             if cecEnable == True:
                 print("Switch TV on")
-                cecObj.ProcessCommandActiveSource()
-                if self.__timerJob is not None:
-                    self.__timerJob.cancel() 
-                    self.__timerJob = None
-                timeInSeconds = int(cecRebootInMinutes*60)
-                self.__timerJob = Timer(timeInSeconds, self.__rebootTelevisionOverCec)
-                self.__timerJob.start()
+                television.run(True)
+
             
         if newState == 'Off':  
             '''
@@ -396,25 +392,15 @@ class SwitchTelevision:
             '''          
             if cecEnable == True: 
                 print("Switch TV off") 
-                cecObj.ProcessCommandTx("10:36") 
-                if self.__timerJob is not None:
-                    self.__timerJob.cancel()
-                    self.__timerJob = None
+                television.run(False)
+
 
             if (stdbyEnable == True) and (os.name == 'posix'):
                 if self.__actGraficOutput != newState:
                     try:    subprocess.call(["/opt/vc/bin/tvservice", "-o"])
                     except: pass
                     self.__actGraficOutput = newState
-               
-    #----------------------------------------------------------------------                
-    def __switchTelevisionState(self, newState):
-        
-        if newState == 'On':
-            subprocess.call(["echo", "on 0", "|", "cec-client", "-s"])
-        else:
-            subprocess.call(["echo", "standby 0", "|", "cec-client", "-s"])
-            
+                           
     #----------------------------------------------------------------------                
     def __rebootTelevisionOverCec(self):
         print("shutdown TV")
@@ -422,11 +408,6 @@ class SwitchTelevision:
         time.sleep(2)
         print("restart TV")
         self.set_Visual('On')        
-
-
-########################################################################
-def log_callback(level, time, message):
-    return cecObj.LogCallback(level, time, message)
 
 ########################################################################    
 def switchScreenAfterWhile():
@@ -574,15 +555,9 @@ if __name__ == "__main__":
         app             = FireFinderGUI()
         eventHandler    = MyHandler(app)
         observer        = Observer()
+        television      = tv_power()
+
         
-        # create a object to libcec
-        if (cec_lib_available==True) and (cecEnable==True):
-            print("Enable CEC")
-            cecObj = CecClient()
-            cecObj.SetLogCallback(log_callback)
-            cecObj.InitLibCec()
-        else:
-            cecEnable = False # Force to False if there was an error with the cec-lib
         
         if switchScreenAfter is not 0:
             switchTimeInSeconds = switchScreenAfter * 1000
