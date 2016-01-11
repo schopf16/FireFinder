@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 '''
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -30,7 +30,6 @@ from threading          import Timer
 from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
-#from subprocess         import Popen, PIPE
 
 # local classes
 from firefinder.sound           import alarmSound
@@ -38,15 +37,8 @@ from firefinder.screenClock     import ScreenClock
 from firefinder.screenObject    import ScreenObject
 from firefinder.screenOff       import ScreenOff
 from firefinder.screenSlideshow import ScreenSlideshow
-from firefinder.cecLibrary import tv_power
+from firefinder.cecLibrary      import tv_power
 
-# try:   
-#     from firefinder.cecLibrary     import CecClient
-#     cec_lib_available = True
-# except:
-#     print("Failed load CEC")
-#     cec_lib_available = False
-    
 
 
 LARGE_FONT= ("Verdana", 12)
@@ -73,7 +65,6 @@ cecRebootInMinutes  = 0
 """ Path's """
 ffLogo      = 'firefinder/pic/Logo.png'     # Firefighter Logo
 noImage     = 'firefinder/pic/bg/no_image.png'
-HDMI_script = 'script/reactivate_screen.sh' # Script to enable HDMI output
 wdr         = '' # Working direcotry is set in main 
 
 ########################################################################
