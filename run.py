@@ -176,7 +176,6 @@ class MyHandler(FileSystemEventHandler):
         
         """Constructor"""
         self.controller = controller
-        self.HDMIout    = SwitchTelevision()
 
         self.alarmSound   = alarmSound( os.path.join(wdr, 'firefinder', 'sound') )
         self.lastModified = 0
@@ -220,17 +219,17 @@ class MyHandler(FileSystemEventHandler):
             if show.lower() == 'time':
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenClock)
-                self.HDMIout.set_Visual('On')
+                grafic.set_Visual('On')
              
             if show.lower() == 'slideshow':
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenSlideshow)
-                self.HDMIout.set_Visual('On')   
+                grafic.set_Visual('On')  
                                
             if show.lower() == 'off':  
                 self.alarmSound.stop()                  
                 self.controller.show_frame(ScreenOff)
-                self.HDMIout.set_Visual('Off')
+                grafic.set_Visual('Off')
 
         
             if show.lower() == 'object':
@@ -288,7 +287,7 @@ class MyHandler(FileSystemEventHandler):
     
                 
                 # enable television
-                self.HDMIout.set_Visual('On')
+                grafic.set_Visual('On')
                 
                 # set sound
                 if sound.lower() != 'none':
@@ -299,15 +298,18 @@ class MyHandler(FileSystemEventHandler):
                 
             if show.lower() == 'quit':
                 self.alarmSound.stop()
-                self.HDMIout.set_Visual('On')
+                grafic.set_Visual('On')
                 self.controller.exit(self)
 
     
 ######################################################################## 
-class SwitchTelevision:
+class GraficOutputDriver:
     def __init__(self):
         self.__actGraficOutput      = 'On'
         self.__actTelevisionState   = 'Off'
+        
+        # Create television object to drive TV
+        self.television = tv_power()
         
         # Try to disable power saving
         if os.name == 'posix':
@@ -369,8 +371,9 @@ class SwitchTelevision:
                     self.__actGraficOutput = newState
             
             if cecEnable == True:
+                # Always enable TV. The user could switch of TV manualy
                 print("Switch TV on")
-                television.run(True)
+                self.television.run(True)
 
             
         if newState == 'Off':  
@@ -383,7 +386,7 @@ class SwitchTelevision:
             '''          
             if cecEnable == True: 
                 print("Switch TV off") 
-                television.run(False)
+                self.television.run(False)
 
 
             if (stdbyEnable == True) and (os.name == 'posix'):
@@ -396,7 +399,7 @@ class SwitchTelevision:
     def __rebootTelevisionOverCec(self):
         print("shutdown TV")
         self.set_Visual('Off')
-        time.sleep(2)
+        time.sleep(10)
         print("restart TV")
         self.set_Visual('On')        
 
@@ -546,7 +549,7 @@ if __name__ == "__main__":
         app             = FireFinderGUI()
         eventHandler    = MyHandler(app)
         observer        = Observer()
-        television      = tv_power()
+        grafic          = GraficOutputDriver()
 
         
         
