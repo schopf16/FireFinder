@@ -22,11 +22,12 @@
 import sys
 import os
 import codecs
+# import threading
 import tkinter as tk
 import subprocess
 import time
 
-from threading          import Timer
+# from threading          import Timer
 from configparser       import ConfigParser
 from watchdog.observers import Observer
 from watchdog.events    import FileSystemEventHandler
@@ -38,10 +39,11 @@ from firefinder.screenEvent     import ScreenEvent
 from firefinder.screenOff       import ScreenOff
 from firefinder.screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary      import tv_power
+from firefinder.miscellaneous import RepeatingTimer
 
 
 
-LARGE_FONT= ("Verdana", 12)
+# LARGE_FONT= ("Verdana", 12)
 
 ########################################################################
 '''
@@ -61,6 +63,7 @@ switchToScreen      = ''
 cecEnable           = False
 stdbyEnable         = False
 cecRebootInMinutes  = 0
+autoPowerOffScreen  = 0
 
 """ Path's """
 ffLogo      = 'firefinder/pic/Logo.png'     # Firefighter Logo
@@ -172,13 +175,18 @@ class FireFinderGUI(tk.Tk):
                
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
-    def __init__(self, controller):
+    def __init__(self, controller, autoPowerOffAfterScreenEventLaunch):
         
         """Constructor"""
         self.controller = controller
+        self.powerOffTimer = None
 
         self.alarmSound   = alarmSound( os.path.join(wdr, 'firefinder', 'sound') )
         self.lastModified = 0
+
+        if autoPowerOffAfterScreenEventLaunch is not 0:
+            self.powerOffTimer = RepeatingTimer(autoPowerOffAfterScreenEventLaunch*60, 
+                                                grafic.set_power_off)
         
            
     #----------------------------------------------------------------------
@@ -215,7 +223,11 @@ class MyHandler(FileSystemEventHandler):
                 return
             
             
-            show = self.parser.get('General', 'show')          
+            show = self.parser.get('General', 'show')   
+            if self.powerOffTimer:
+                self.powerOffTimer.cancel() 
+                self.powerOffTimer.join(20)
+                      
             if show.lower() == 'time':
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenClock)
@@ -287,6 +299,9 @@ class MyHandler(FileSystemEventHandler):
     
                 
                 # enable television
+                if self.powerOffTimer:
+                    print("start timer")
+                    self.powerOffTimer.start()
                 grafic.set_Visual('On')
                 
                 # set sound
@@ -304,12 +319,15 @@ class MyHandler(FileSystemEventHandler):
     
 ######################################################################## 
 class GraficOutputDriver:
-    def __init__(self):
+    def __init__(self, bypassTvPowerSave):
         self.__actGraficOutput      = 'On'
         self.__actTelevisionState   = 'Off'
         
         # Create television object to drive TV
         self.television = tv_power()
+        
+        # create a empty 'object' for a timer, if requested
+        self.rebootTvTimer = None
         
         # Try to disable power saving
         if os.name == 'posix':
@@ -329,6 +347,12 @@ class GraficOutputDriver:
             try:    subprocess.call(["powercfg.exe", "-change", "-hibernate-timeout-ac", "0"])
             except: pass
         
+        # If user enable automatic TV reboot to prevent it from power save
+        # launch a seperate thread to handle this asynchron from any ini-commands
+        if bypassTvPowerSave is not 0:
+            self.rebootTvTimer = RepeatingTimer(bypassTvPowerSave*60, 
+                                       self.__rebootTelevisionOverCec)
+
     #----------------------------------------------------------------------
     def get_Visual(self):
         """
@@ -348,8 +372,23 @@ class GraficOutputDriver:
         standby. If CEC is enabled, the television is triggered too,
         otherwise only the graphic output is driven.
         """
-        self.__switchGraficOutput(newState = state)
+        
+        if self.rebootTvTimer:
+            if state is 'On':
+                if self.rebootTvTimer.is_alive() is not True:
+                    self.rebootTvTimer.start()
             
+            if state is 'Off':
+                if self.rebootTvTimer.is_alive() is True:
+                    self.rebootTvTimer.cancel()
+                    self.rebootTvTimer.join(20) # wait to kill thread
+            
+        self.__switchGraficOutput(newState = state)
+     
+    #----------------------------------------------------------------------
+    def set_power_off(self):
+        self.set_Visual('Off')
+        
     #----------------------------------------------------------------------        
     def __switchGraficOutput(self, newState):
         
@@ -373,8 +412,7 @@ class GraficOutputDriver:
             if cecEnable == True:
                 # Always enable TV. The user could switch of TV manualy
                 print("Switch TV on")
-                self.television.run(True)
-
+                self.television.run(True)          
             
         if newState == 'Off':  
             '''
@@ -383,7 +421,7 @@ class GraficOutputDriver:
             and then disable the HDMI port. If done otherwise, the
             cec command can't be transmittet over a deactivatet HDMI
             port.
-            '''          
+            '''                          
             if cecEnable == True: 
                 print("Switch TV off") 
                 self.television.run(False)
@@ -397,11 +435,11 @@ class GraficOutputDriver:
                            
     #----------------------------------------------------------------------                
     def __rebootTelevisionOverCec(self):
-        print("shutdown TV")
-        self.set_Visual('Off')
+        print("keep alive TV requested")
+        
+        self.__switchGraficOutput('Off')
         time.sleep(10)
-        print("restart TV")
-        self.set_Visual('On')        
+        self.__switchGraficOutput('On')        
 
 ########################################################################    
 def switchScreenAfterWhile():
@@ -440,6 +478,7 @@ def readConfigIniFile():
     global cecEnable
     global stdbyEnable
     global cecRebootInMinutes
+    global autoPowerOffScreen
           
     # Check if config.ini file exist
     configPath = os.path.join(wdr, 'config.ini')
@@ -492,6 +531,8 @@ def readConfigIniFile():
     except: stdbyEnable         = False   
     try:    cecRebootInMinutes  = sysconfig.getint('Power', 'cec_reboot_after_minutes')
     except: cecRebootInMinutes  = 0
+    try:    autoPowerOffScreen  = sysconfig.getint('Power', 'power_off_screen_after_minutes')
+    except: autoPowerOffScreen  = 0 
 
     return True
 
@@ -501,7 +542,7 @@ if __name__ == "__main__":
     # Hint to GNU copy left license
     print("\n")
     print("+-------------------------------------------------+")
-    print("| FireFinder Copyright (C) 2015  Michael Anderegg |")
+    print("| FireFinder Copyright (C) 2016  Michael Anderegg |")
     print("| This program comes with ABSOLUTELY NO WARRANTY. |")
     print("| This is free software, and you are welcome to   |")
     print("| redistribute it under certain conditions.       |")
@@ -544,12 +585,13 @@ if __name__ == "__main__":
                                 width=int(app.winfo_screenwidth()/2))
         errorCanvas.pack(side='top') 
 
-    else:            
+    else:                    
         # Create some objects
+        grafic          = GraficOutputDriver(cecRebootInMinutes)
         app             = FireFinderGUI()
-        eventHandler    = MyHandler(app)
+        eventHandler    = MyHandler(app, autoPowerOffScreen)
         observer        = Observer()
-        grafic          = GraficOutputDriver()
+        
 
         
         
