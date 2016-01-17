@@ -34,7 +34,7 @@ from watchdog.events    import FileSystemEventHandler
 # local classes
 from firefinder.sound           import alarmSound
 from firefinder.screenClock     import ScreenClock
-from firefinder.screenObject    import ScreenObject
+from firefinder.screenEvent     import ScreenEvent
 from firefinder.screenOff       import ScreenOff
 from firefinder.screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary      import tv_power
@@ -122,7 +122,7 @@ class FireFinderGUI(tk.Tk):
         self.frames = {}
         
         for F in (ScreenSlideshow, 
-                  ScreenObject,
+                  ScreenEvent,
                   ScreenClock,
                   ScreenOff):     # Load offscreen as last screen
 
@@ -131,7 +131,7 @@ class FireFinderGUI(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         # do some configurations to the screens
-        self.frames[ScreenObject].configure(pathToIniFile = observingPathName)
+        self.frames[ScreenEvent].configure(pathToIniFile = observingPathName)
         self.frames[ScreenSlideshow].configure(pathToIniFile = observingPathName)
         
         # store some timing details
@@ -271,8 +271,8 @@ class MyHandler(FileSystemEventHandler):
                     try:    equipment[x] = self.parser.get('ObjectInfo',s)
                     except: equipment[x] = ""
                                
-                # set ScreenObject as active frame and set addresses
-                self.controller.show_frame(ScreenObject)
+                # set ScreenEvent as active frame and set addresses
+                self.controller.show_frame(ScreenEvent)
                 frame = self.controller.getActScreen()
                 # first configure
                 frame.configure(alarmMessage      = AddMsg,
