@@ -49,7 +49,7 @@ class ScreenObjectConf:
         self.screen.configure(*(), **kw)
  
         
-class ScreenObject(tk.Frame):
+class ScreenEvent(tk.Frame):
 
     def __init__(self, parent, controller):
 #         tk.Frame.__init__(self, parent)
@@ -265,11 +265,13 @@ class ScreenObject(tk.Frame):
     #----------------------------------------------------------------------
     def setAlarmMessage(self, value):
         self.alarmMessage = value
+
         fontSize= getTextFontSize(self,
                                   maxHeight= int(self.alarmMessageBarHeight),
                                   minHeight= 70, 
-                                  maxWidth = int(self.screenWidth*1.8), 
+                                  maxWidth = int(self.screenWidth*.95), 
                                   text     = self.alarmMessage,
+                                  lineBreak = True,
                                   bold     = True)
         
         font = TkFont.Font( family='Arial', size  =fontSize, weight='bold')
@@ -504,7 +506,7 @@ if __name__ == '__main__':
     container.grid_rowconfigure(0, weight=1)
     container.grid_columnconfigure(0, weight=1)
     
-    screen = ScreenObject(container, root)
+    screen = ScreenEvent(container, root)
     screen.grid(row=0, column=0, sticky="nsew")
     screen.tkraise()
     
