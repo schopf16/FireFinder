@@ -23,6 +23,7 @@ import math
 
 from PIL        import ImageTk, Image
 from tkinter    import font as TkFont
+from threading  import Timer
 
 def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
     """
@@ -147,3 +148,43 @@ def getTextFontSize(self, maxHeight, maxWidth, text='', bold=False, minHeight=1,
                 break
       
     return -i 
+
+########################################################################         
+class RepeatingTimer(object):
+    
+    def __init__(self, interval, f, *args, **kwargs):
+        self.interval = interval
+        self.f = f
+        self.args = args
+        self.kwargs = kwargs
+
+        self.timer = None
+
+    #---------------------------------------------------------------------- 
+    def callback(self):        
+        self.f(*self.args, **self.kwargs)
+        self.start()
+
+    #---------------------------------------------------------------------- 
+    def cancel(self):
+        self.timer.cancel()
+    
+    #----------------------------------------------------------------------    
+    def start(self):
+        self.timer = Timer(self.interval, self.callback)
+        self.timer.start()
+     
+    #----------------------------------------------------------------------    
+    def is_alive(self):
+        if self.timer is None:
+            return False
+        else:
+            return self.timer.is_alive()
+    
+    #---------------------------------------------------------------------- 
+    def join(self, timeout):
+        if self.timer is None:
+            return
+        else:
+            return self.timer.join(timeout)
+        
