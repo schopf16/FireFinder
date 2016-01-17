@@ -19,6 +19,7 @@
 '''
 
 import os
+import math
 
 from PIL        import ImageTk, Image
 from tkinter    import font as TkFont
@@ -100,17 +101,49 @@ def createImage(self, path, width=0, height=0, crop=False, keepRatio=True):
 '''
     Get font height in pixel
 '''    
-def getTextFontSize(self, maxHeight, maxWidth, bold=False, minHeight=1, text=''):
-        i=maxHeight
-        # get the max font size        
-        for i in range(minHeight, maxHeight):
-            if bold is False:
-                font=TkFont.Font(family='Arial', size=-i)
-            else:
-                font=TkFont.Font(family='Arial', size=-i, weight='bold')
-            lenght = font.measure(text)
+def getTextFontSize(self, maxHeight, maxWidth, text='', bold=False, minHeight=1, lineBreak=False):
+    """
+    The function calculates the possible maximal font height. The family is
+    fixed to Arial.
+    
+    maxHeight   Give the maximal available heigth space in pixel
+    
+    maxWidth    Give the maximal available width space in pixel
+    
+    text        String to which the maximum size is to be calculated
+    
+    bold        If set to True, the function calculates the font with
+                setting bold
+                
+    minHeight   If set, the function will not return font height smaller than
+                the given value. If not set, the minHeight is set to 1
+                
+    lineBreak   If set to True, the function will keep a possible line break
+                in mind and calculate the font with the possibility of a line
+                break.               
+    """
+    # get the max font size        
+    for i in range(minHeight, maxHeight):
+        if bold is False:
+            font=TkFont.Font(family='Arial', size=-i)
+        else:
+            font=TkFont.Font(family='Arial', size=-i, weight='bold')
+        
+        # get width and height of the string
+        w, h = (font.measure(text), font.metrics("linespace"))
+
+        # depend of available line break, decide to quit loop
+        if lineBreak is True:
+            # calculate the expected lines depend on the width of the
+            # screen. Round up to reach the save side
+            expectLines   = math.ceil(float(w) / float(maxWidth))
             
-            if (lenght >= maxWidth) or (font.metrics('linespace') >= maxHeight):
+            # calculate the over all height by considering the amount of lines
+            heightOverAll = h * expectLines
+            if heightOverAll >= maxHeight:
                 break
-          
-        return -i 
+        else:
+            if (w >= maxWidth) or (h >= maxHeight):
+                break
+      
+    return -i 
