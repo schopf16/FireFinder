@@ -167,7 +167,9 @@ class RepeatingTimer(object):
 
     #---------------------------------------------------------------------- 
     def cancel(self):
-        self.timer.cancel()
+        # increase robustness
+        if self.is_alive():
+            self.timer.cancel()
     
     #----------------------------------------------------------------------    
     def start(self):
