@@ -300,7 +300,6 @@ class MyHandler(FileSystemEventHandler):
                 
                 # enable television
                 if self.powerOffTimer:
-                    print("start timer")
                     self.powerOffTimer.start()
                 grafic.set_Visual('On')
                 
@@ -372,9 +371,11 @@ class GraficOutputDriver:
         standby. If CEC is enabled, the television is triggered too,
         otherwise only the graphic output is driven.
         """
-        
         if self.rebootTvTimer:
             if state is 'On':
+                # Start timer only if its not alive, otherwise a
+                # new screen whould restart the timer, but the TV
+                # doesn't trigger the screen, only power-changes
                 if self.rebootTvTimer.is_alive() is not True:
                     self.rebootTvTimer.start()
             
