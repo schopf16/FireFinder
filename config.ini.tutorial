@@ -60,3 +60,10 @@ cec_reboot_after_minutes = 180
 ; script-folder
 stdby_enable      = true
 ; ------------------------------------------------------------------
+
+; Define a time in minutes after which the grafical unit is going
+; automatically power off. This time starts counting on every new
+; alarm event. A new event will trigger the timer and the timer will
+; start from its very beggining. This timer is disabled for any other
+; screens.
+power_off_screen_after_minutes = 60
