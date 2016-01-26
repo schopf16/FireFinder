@@ -21,7 +21,7 @@
 import os
 import time
 import tkinter as tk
-
+from datetime       import datetime
 
 from tkinter                  import font as TkFont
 from threading                import Thread
@@ -58,6 +58,10 @@ class ProgressBar(tk.Frame):
                                             # more processor time
                                             
         self.progressActiv = False
+        
+        # Timings
+        self.timeStartMs = 0    # store the time at which the progress bar was launched
+        self.durationMs  = 0    # Store the duration of the progress bar
                                             
         self.msPerSlice    = 0
         self.bgColor       = 'grey'
@@ -160,6 +164,15 @@ class ProgressBar(tk.Frame):
     #---------------------------------------------------------------------- 
     def start(self, timeInSeconds, startValue=None):
         
+        # Store necessary tîme informations 
+        self.timeStartMs = int( round(time.time()   * 1000) )
+        self.durationMs  = int( round(timeInSeconds * 1000) )
+        
+        '''
+            To get a smooth progress, calculate the time in 
+            milliseconds in which the draw function has to be
+            called.
+        '''
         self.msPerSlice = int(  (timeInSeconds*1000           )  / 
                                 (self.width/self.pixelPerSlice)  )
         
@@ -178,14 +191,27 @@ class ProgressBar(tk.Frame):
         self.progressActiv = False
               
     #----------------------------------------------------------------------
-#     def autoRunProgressBar(self, arg1, stop_event):
     def autoRunProgressBar(self):
         
         # check if progressbar has to be terminated
         if self.progressActiv is not True:
             return
-         
-        progress = (self.increment / self.width) * 100
+        
+        '''
+            Calculate the progress accurate as possible.
+            This is done by the system time. This is more
+            precise than the calculations with msPerSlice
+            because with the system time I can decrease the
+            jitter. 
+        '''
+        actTimeMs   = int( round(time.time() * 1000) )
+        timeElapseMs= actTimeMs - self.timeStartMs
+        progress    = ( 100 / self.durationMs ) * timeElapseMs
+        
+        # handle overflow
+        if progress > 100:
+            progress = 100
+             
         colorIndex = 0
         textIndex  = 0
     
@@ -205,7 +231,7 @@ class ProgressBar(tk.Frame):
              
         # Update progress bar
         if self.increment < self.width:
-            self.increment += self.pixelPerSlice
+            self.increment = int( (self.width/100) * progress )
             self.updateGrafic()
             self.after(self.msPerSlice, self.autoRunProgressBar)
         else:
@@ -347,7 +373,7 @@ def testScreenFooter():
     bar.stop()
     time.sleep(2)
     
-    bar.start(timeInSeconds=15, startValue=0)
+    bar.start(timeInSeconds=420, startValue=0)
     time.sleep(1)
     
     print("Test ende")
