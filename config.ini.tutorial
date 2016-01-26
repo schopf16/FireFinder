@@ -65,5 +65,7 @@ stdby_enable      = true
 ; automatically power off. This time starts counting on every new
 ; alarm event. A new event will trigger the timer and the timer will
 ; start from its very beggining. This timer is disabled for any other
-; screens.
+; screens. If set to 0, this feature is disabled and the grafical
+; won't switch off
 power_off_screen_after_minutes = 60
+; ------------------------------------------------------------------
