@@ -86,11 +86,12 @@ class ScreenClock(tk.Frame):
         self.screenHeight= self.controller.winfo_height()-200
         
         # Store which hands have to be shown
-        self.showSecondHand = True
-        self.showMinuteHand = True
-        self.showHourHand   = True
-        self.showDigitalTime= True
-        self.showDigitalDate= True
+        self.showSecondHand     = True
+        self.showMinuteHand     = True
+        self.showHourHand       = True
+        self.showDigitalTime    = True
+        self.showDigitalDate    = True
+        self.showDigitalSeconds = False # self.showDigitalTime must be True
         
                 
         self.world       = [-1,-1,1,1]
@@ -215,7 +216,11 @@ class ScreenClock(tk.Frame):
         year,month,day,h,m,s,wd,x,x = actTime  # @UnusedVariable
         
         # Adapt digital time
-        self.timeLabel["text"] = ('%02i:%02i'       %(h,m))
+        if self.showDigitalSeconds is True:
+            self.timeLabel["text"] = ('%02i:%02i:%02i' %(h,m,s))
+        else:
+            self.timeLabel["text"] = ('%02i:%02i'       %(h,m)) 
+            
         if self.showDigitalTime is True:
             self.dateLabel["text"] = ('%02i.%02i.%04i'  %(day, month, year))
         else:
@@ -305,6 +310,7 @@ class ScreenClock(tk.Frame):
             cfg['setGeometry']       = [self.screenWidth, self.screenHeight] 
             cfg['showDigitalTime']   = self.showDigitalTime
             cfg['showDigitalDate']   = self.showDigitalDate
+            cfg['showDigitalSeconds']= self.showDigitalSeconds
             return cfg
     
         else: # do a configure
@@ -323,6 +329,8 @@ class ScreenClock(tk.Frame):
                 elif key=='showDigitalDate':
                     self.showDigitalDate = value
                     self.changeDigitalTime()
+                elif key=='showDigitalSeconds':
+                    self.showDigitalSeconds = value
 
             self.redraw()
             
@@ -362,6 +370,9 @@ def testScreenClock():
     
     screen.configure(showHourHand = True)
     time.sleep(1)
+    
+    screen.configure(showDigitalSeconds = True)
+    time.sleep(1)    
     
     screen.configure(setGeometry = [400, 200])
     time.sleep(1)
