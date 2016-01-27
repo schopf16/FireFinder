@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 '''
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,6 @@
 import os
 import time
 import tkinter as tk
-from datetime       import datetime
 
 from tkinter                  import font as TkFont
 from threading                import Thread
