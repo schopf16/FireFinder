@@ -228,9 +228,31 @@ class MyHandler(FileSystemEventHandler):
                 self.powerOffTimer.cancel() 
                 self.powerOffTimer.join(20)
                       
-            if show.lower() == 'time':
+            if show.lower() == 'time':                
+                # get information from ini-file
+                try:    showSecondHand    = self.parser.getboolean('Clock', 'show_second_hand')
+                except: showSecondHand    = True
+                try:    showMinuteHand    = self.parser.getboolean('Clock', 'show_minute_hand')
+                except: showMinuteHand    = True
+                try:    showHourHand      = self.parser.getboolean('Clock', 'show_hour_hand')
+                except: showHourHand      = True
+                try:    showDigitalTime   = self.parser.getboolean('Clock', 'show_digital_time')
+                except: showDigitalTime   = True
+                try:    showDigitalDate   = self.parser.getboolean('Clock', 'show_digital_date')
+                except: showDigitalDate   = True
+                try:    showDigitalSecond = self.parser.getboolean('Clock', 'show_digital_second')
+                except: showDigitalSecond = True
+     
+                # Set Clock as active screen and configure the clock
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenClock)
+                frame = self.controller.getActScreen()
+                frame.configure(showSecondHand     = showSecondHand,
+                                showMinuteHand     = showMinuteHand,
+                                showHourHand       = showHourHand,
+                                showDigitalTime    = showDigitalTime,
+                                showDigitalDate    = showDigitalDate,
+                                showDigitalSeconds = showDigitalSecond)
                 grafic.set_Visual('On')
              
             if show.lower() == 'slideshow':
@@ -247,32 +269,23 @@ class MyHandler(FileSystemEventHandler):
             if show.lower() == 'object':
                 # get information from ini-file
                 try:    AddMsg       = self.parser.get('ObjectInfo', 'entire_msg')
-                except: AddMsg       = ""
-                
+                except: AddMsg       = ""                
                 try:    picture_1    = self.parser.get('ObjectInfo', 'picture_1')
                 except: picture_1    = ""
-                
                 try:    picture_2    = self.parser.get('ObjectInfo', 'picture_2')
-                except: picture_2    = ""
-                
+                except: picture_2    = ""               
                 try:    cropPicture  = self.parser.getboolean('ObjectInfo', 'crop_picture')
-                except: cropPicture  = True
-                
+                except: cropPicture  = True                
                 try:    category     = self.parser.get('ObjectInfo', 'category')
-                except: category     = ""
-                
+                except: category     = ""          
                 try:    sound        = self.parser.get('ObjectInfo', 'sound')
-                except: sound        = "None"
-                
+                except: sound        = "None"              
                 try:    repeat       = self.parser.getint('ObjectInfo', 'repeat')
-                except: repeat       = 1
-                
+                except: repeat       = 1              
                 try:    showPB       = self.parser.getboolean('ObjectInfo', 'show_progress')
-                except: showPB       = False
-                
+                except: showPB       = False                
                 try:    timePB       = self.parser.getint('ObjectInfo', 'progresstime')
-                except: timePB       = 0
-  
+                except: timePB       = 0 
                 try:    showRO       = self.parser.getboolean('ObjectInfo', 'show_responseOrder')
                 except: showRO       = False
                 
