@@ -263,7 +263,7 @@ class MyHandler(FileSystemEventHandler):
             if show.lower() == 'splashscreen':  
                 self.alarmSound.stop()                  
                 self.controller.show_frame(ScreenOff)
-                grafic.set_Visual('on')
+                grafic.set_Visual('On')
 				
             if show.lower() == 'off':  
                 self.alarmSound.stop()                  
