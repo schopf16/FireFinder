@@ -1,7 +1,7 @@
 @echo off
 
 REM ----------------------------------------------------------------------
-REM Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+REM Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 REM 
 REM This program is free software: you can redistribute it and/or modify
 REM it under the terms of the GNU General Public License as published by
@@ -22,11 +22,12 @@ REM modify to fit to the system
 set FileName=Object
 set FileExtension=ini
 set TempPath=C:\Temp\
-set AmountOfDevice=4
-set FullDomainName=.fwi.local
+set AmountOfDevice=5
+REM set FullDomainName=.fwi.local
+set FullDomainName=
 
 REM do not modify code below here
-set version=1.00.00
+set version=1.01.00
 set FullPathAndFile=%TempPath%%FileName%.%FileExtension%
 echo.
 echo.
@@ -196,6 +197,8 @@ goto switchDeviceSuccessfully
 
 :switchDeviceClock
 @echo show=time>>  "%FullPathAndFile%" 
+@echo [Clock]>>  "%FullPathAndFile%" 
+@echo show_digital_time=False>>  "%FullPathAndFile%" 
 goto switchDeviceSuccessfully
 
 :switchDeviceSlideshow

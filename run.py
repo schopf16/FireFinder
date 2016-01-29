@@ -259,12 +259,17 @@ class MyHandler(FileSystemEventHandler):
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenSlideshow)
                 grafic.set_Visual('On')  
-                               
+            
+			if show.lower() == 'splashscreen':  
+                self.alarmSound.stop()                  
+                self.controller.show_frame(ScreenOff)
+                grafic.set_Visual('on')
+				
             if show.lower() == 'off':  
                 self.alarmSound.stop()                  
                 self.controller.show_frame(ScreenOff)
                 grafic.set_Visual('Off')
-
+				
         
             if show.lower() == 'object':
                 # get information from ini-file
