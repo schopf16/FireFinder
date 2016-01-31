@@ -43,7 +43,7 @@ class TopBar(tk.Frame):
         
     
         # size dependend variables
-        self.borderwidth = 2                        # the canvas borderwidth
+        self.borderwidth = 0                        # the canvas borderwidth
         self.width = self.winfo_screenwidth()       # total width of widget
         self.height = height -(2*self.borderwidth)  # total height of widget
         
@@ -64,12 +64,14 @@ class TopBar(tk.Frame):
         self.showLogo      = True       # True if Logo has to be display
         self.pathLogo      = None       # Path and filename with extending
         self.picLogo       = None       # Hold the picutre
+        self.companyName   = ""         # Shows the company name on the rightside of the logo
 #         self.font          = None
                
-        # grafical dependend variables
+        # store label container
         self.canvas        = None           
         self.lblLogo       = None
         self.lblTime       = None  
+        self.lblCompany    = None
         
         self.background    = 'black'
         self.foreground    = 'white'
@@ -101,15 +103,21 @@ class TopBar(tk.Frame):
         font = TkFont.Font( family='Arial', size=-self.height, weight='bold')
         
         # Create labels for logo and time
-        self.lblLogo = tk.Label(self.canvas, 
-                                background=self.background)
-        self.lblTime = tk.Label(self.canvas, 
-                                background=self.background, 
-                                font=font, 
-                                foreground=self.foreground)
+        self.lblLogo = tk.Label(   self.canvas               , 
+                                   background=self.background)
+        self.lblTime = tk.Label(   self.canvas                 , 
+                                   background = self.background, 
+                                   foreground = self.foreground,
+                                   font       = font           )
+        self.lblCompany = tk.Label(self.canvas                 ,
+                                   background = self.background,
+                                   foreground = self.foreground,
+                                   font       = font           )
+        
 
         # Pack label on canvas
         self.lblLogo.pack(side='left')
+        self.lblCompany.pack(side='left')
         self.lblTime.pack(side='right')
            
         # store working directory
@@ -136,6 +144,8 @@ class TopBar(tk.Frame):
             self.lblLogo["image"] = self.picLogo
         else:
             self.lblLogo["image"] = ""
+            
+        self.lblCompany["text"] = " " + self.companyName
         pass
     
     #----------------------------------------------------------------------
@@ -165,7 +175,7 @@ class TopBar(tk.Frame):
         if self.showTime is True and self.showDate is True:
             self.timeAndDateString = timeString + "  //  " + dateString
         
-        self.lblTime["text"] = self.timeAndDateString  
+        self.lblTime["text"] = self.timeAndDateString + "  "
 
     #----------------------------------------------------------------------    
     def configure(self, **kw):
@@ -181,6 +191,7 @@ class TopBar(tk.Frame):
             cfg['showWeekDay']       = self.showWeekDay
             cfg['setPathAndFile']    = self.pathLogo
             cfg['showLogo']          = self.showLogo
+            cfg['companyName']       = self.companyName
             cfg['background']        = self.background
             cfg['foreground']        = self.foreground
             return cfg
@@ -198,19 +209,31 @@ class TopBar(tk.Frame):
                     self.showDate = value
                     changeTimeSettings = True
                 elif key=='showWeekDay':
-                    self.showWeekDay = value
-                    changeTimeSettings = True
+                    self.showWeekDay = value                   
+                    changeTimeSettings = True                    
                 elif key=='background':
                     self.background = value
+                    self.canvas["background"]     = value
+                    self.lblTime["background"]    = value
+                    self.lblLogo["background"]    = value
+                    self.lblCompany["background"] = value
                     changeTimeSettings = True
+                    changeLogoSettings = True
                 elif key=='foreground':
                     self.foreground = value
+                    self.lblTime["foreground"]    = value
+                    self.lblLogo["foreground"]    = value
+                    self.lblCompany["foreground"] = value
                     changeTimeSettings = True
+                    changeLogoSettings = True
                 elif key=='setPathAndFile':
                     self.pathLogo = value
                     changeLogoSettings = True
                 elif key=='showLogo':
                     self.showLogo = value
+                    changeLogoSettings = True
+                elif key=='companyName':
+                    self.companyName = value
                     changeLogoSettings = True
 
             if changeTimeSettings is True:
@@ -249,7 +272,10 @@ class TopBar(tk.Frame):
 def testScreenTop():
     print("Start Test")
     bar.raiseScreen()
-    time.sleep(3)
+    time.sleep(1)
+    
+    bar.configure(companyName = "Feuerwehr Ittigen")
+    time.sleep(1)
     
     bar.configure(showLogo = False)
     time.sleep(1)
@@ -263,13 +289,31 @@ def testScreenTop():
     bar.configure(showLogo = True)
     time.sleep(1)
     
+    bar.configure(companyName = "")
+    time.sleep(1)
+    
+    bar.configure(foreground = 'blue')
+    time.sleep(1)
+    
     bar.configure(showDate = True)
+    time.sleep(1)
+    
+    bar.configure(companyName = "Feuerwehr Ittigen")
     time.sleep(1)
     
     bar.configure(showWeekDay = False)
     time.sleep(1)
     
+    bar.configure(background = 'green')
+    time.sleep(1)
+    
     bar.configure(showTime = True)
+    time.sleep(1)
+    
+    bar.configure(background = 'grey')
+    time.sleep(1)
+    
+    bar.configure(foreground = 'red')
     time.sleep(1)
     
     bar.configure(showWeekDay = True)
