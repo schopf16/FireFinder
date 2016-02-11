@@ -372,7 +372,7 @@ def testScreenClock():
     time.sleep(1)
     
     screen.configure(showDigitalSeconds = True)
-    time.sleep(1)    
+    time.sleep(10)    
     
     screen.configure(setGeometry = [400, 200])
     time.sleep(1)
