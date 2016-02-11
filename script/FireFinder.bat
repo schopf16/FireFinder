@@ -129,7 +129,7 @@ echo *  1: TV Fahrzeughalle                               *
 echo *  2: TV Pikettgarderobe                             *
 echo *  3: TV Einsatzzuggarderobe links                   *
 echo *  4: TV Einsatzzuggarderobe rechts                  *
-echo *  5: TV Fahrzeug 6 (nicht verfuegbar)               *
+echo *  5: TV neben Fahrzeug Hubi                         *
 echo * 99: Testbildschirm Anderegg                        *
 echo ******************************************************
 echo.
