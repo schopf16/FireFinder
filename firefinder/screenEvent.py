@@ -445,7 +445,7 @@ def testScreenAlarm():
     time.sleep(1)
     
     screen.configure(alarmMessage = 'Und nun folgt zum Testen eine wirklich lange Testnachricht. Damit soll ' 
-                                    'geprüft werden, ob auch bei sehr langen Texten diese Schriftgrösse nie'
+                                    'geprüft werden, ob auch bei sehr langen Texten diese Schriftgrösse nie '
                                     'kleiner als 70 Pixel sein wird...')    
     time.sleep(1)
     
