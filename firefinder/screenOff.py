@@ -24,7 +24,7 @@ import tkinter as tk
 
 # my very own classes
 from firefinder.miscellaneous import createImage
-
+from firefinder.top import TopBar
 """ Path's """
 ffLogo          = 'pic/Logo.png'        # Firefighter Logo
 
@@ -44,8 +44,10 @@ class ScreenOff(tk.Frame):
         
         # store size of the parent frame        
         self.controller.update()
-        self.screenWidth = self.controller.winfo_width()
-        self.screenHeight= self.controller.winfo_height()
+        self.screenWidth     = self.controller.winfo_width()
+        self.screenHeight    = self.controller.winfo_height()
+        self.topBarHeight    = 30
+        self.emblemBarHeight = self.screenHeight - self.topBarHeight
 
         # create widget
         self.createWidget(parent)
@@ -57,12 +59,17 @@ class ScreenOff(tk.Frame):
     def createWidget(self, parent):      
         tk.Frame.__init__(self,parent)
         
+        """ Create a TopBar object """
+        self.topHeader = TopBar(self, height = self.topBarHeight)
+        self.topHeader.configure(showLogo = False)
+        self.topHeader.pack(fill='both')
+        
         ''' Create a canvas to hold the top emblem '''
-        self.emblemBar = tk.Canvas( self                        , 
-                                    width  = self.screenWidth   , 
-                                    height = self.screenHeight  ,
-                                    background = 'black'        ,
-                                    highlightthickness = 0      )
+        self.emblemBar = tk.Canvas( self                         , 
+                                    width  = self.screenWidth    , 
+                                    height = self.emblemBarHeight,
+                                    background = 'black'         ,
+                                    highlightthickness = 0       )
 
         self.picture = tk.Label(self.emblemBar      , 
                                 bd=0                ,
@@ -70,11 +77,11 @@ class ScreenOff(tk.Frame):
                                 foreground='black'  )
 
         ''' Create a canvas to hold a failure image '''
-        self.emptyBar  = tk.Canvas( self                        , 
-                                    width  = self.screenWidth   , 
-                                    height = self.screenHeight  ,
-                                    background = 'black'        ,
-                                    highlightthickness = 0      ) 
+        self.emptyBar  = tk.Canvas( self                         , 
+                                    width  = self.screenWidth    , 
+                                    height = self.emblemBarHeight,
+                                    background = 'black'         ,
+                                    highlightthickness = 0       ) 
         
         self.emptyBar.create_line(0, 0, self.screenWidth, self.screenHeight, fill='red', width=5)
         self.emptyBar.create_line(self.screenWidth, 0, 0, self.screenHeight, fill='red', width=5)
@@ -89,12 +96,13 @@ class ScreenOff(tk.Frame):
             self.image = createImage(self                           , 
                                      path  = path                   , 
                                      width = self.screenWidth-20    , 
-                                     height= self.screenHeight-20   )
+                                     height= self.emblemBarHeight-20)
+            
                         
             self.picture['image'] = self.image
             self.emptyBar.pack_forget()          
             self.emblemBar.pack(fill='both')
-            topPaddy = int( (self.screenHeight/2)-(self.image.height()/2) )
+            topPaddy = int( (self.emblemBarHeight/2)-(self.image.height()/2) )
             self.picture.pack(fill='both', ipady=topPaddy)
         else:
             self.emblemBar.pack_forget()          
@@ -107,12 +115,12 @@ class ScreenOff(tk.Frame):
     
     #----------------------------------------------------------------------
     def descentScreen(self):
-        # nothing to do while hide
+        self.topHeader.descentScreen()
         pass
         
     #----------------------------------------------------------------------    
     def raiseScreen(self):
-        # nothing to do while rise
+        self.topHeader.raiseScreen()
         pass
     
     

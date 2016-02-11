@@ -34,6 +34,8 @@ from itertools      import cycle
 
 # my very own classes
 from firefinder.miscellaneous import createImage
+from firefinder.top import TopBar
+# from django.utils.termcolors import foreground
         
 class ScreenSlideshow(tk.Frame):
 
@@ -49,9 +51,11 @@ class ScreenSlideshow(tk.Frame):
         
         # store size of the parent frame        
         self.controller.update()
-        self.screenWidth = self.controller.winfo_width()
-        self.screenHeight= self.controller.winfo_height()
-             
+        self.screenWidth   = self.controller.winfo_width()
+        self.screenHeight  = self.controller.winfo_height()
+        self.topBarHeight  = 40
+        self.pictureHeight = self.screenHeight - self.topBarHeight
+            
         # set time between slides in seconds
         self.delay = 12
         
@@ -76,18 +80,24 @@ class ScreenSlideshow(tk.Frame):
     def createWidget(self, parent):      
         tk.Frame.__init__(self,parent)
         
+        """ Create a TopBar object """
+        self.topHeader = TopBar(self, height = self.topBarHeight)
+        self.topHeader.configure(showTime = False)
+        self.topHeader.configure(background = 'grey')
+        self.topHeader.configure(companyName = "Feuerwehr Ittigen")
+        self.topHeader.pack(fill='both')
+        
         # create a lable to show the image
-        self.picture_display = tk.Label(self)
-        self.picture_display["bg"]     = "black"
-        self.picture_display["fg"]     = "white"
-        self.picture_display["width"]  = self.screenWidth
-        self.picture_display["height"] = self.screenHeight
-        self.picture_display["font"]   = ("Arial", 60) 
+        self.picture_display = tk.Label(self,
+                                        background = 'black',
+                                        foreground = 'black',
+                                        width = self.screenWidth,
+                                        height = self.pictureHeight,
+                                        font = ("Arial", 60))
         self.picture_display.pack()
             
     #----------------------------------------------------------------------        
     def show_slides(self):
-        print("picture")
         # Check if path already set
         if self.pathToImages is '':
             print("ERROR: Path to slideshow folder not set yet")
@@ -176,13 +186,15 @@ class ScreenSlideshow(tk.Frame):
     def descentScreen(self):
         if self.__job is not None:
             self.after_cancel(self.__job)
-            self.__job = None
+            self.__job = None          
+        self.topHeader.descentScreen()
         pass
         
     #----------------------------------------------------------------------    
     def raiseScreen(self):
         if self.__job is None:
             self.__job = self.after_idle(self.show_slides)
+        self.topHeader.raiseScreen()
         pass
     
     
@@ -223,7 +235,7 @@ if __name__ == '__main__':
     
     
     root = tk.Tk() 
-    root.geometry("%dx%d+0+0" % (root.winfo_screenwidth(), root.winfo_screenheight()-200))
+    root.geometry("%dx%d+0+0" % (root.winfo_screenwidth()-100, root.winfo_screenheight()-200))
     
     container = tk.Frame(root)        
     container.pack(side="top", fill="both", expand = True)

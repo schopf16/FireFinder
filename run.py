@@ -264,12 +264,12 @@ class MyHandler(FileSystemEventHandler):
                 self.alarmSound.stop()                  
                 self.controller.show_frame(ScreenOff)
                 grafic.set_Visual('On')
-				
+
             if show.lower() == 'off':  
                 self.alarmSound.stop()                  
                 self.controller.show_frame(ScreenOff)
                 grafic.set_Visual('Off')
-				
+
         
             if show.lower() == 'object':
                 # get information from ini-file
@@ -390,14 +390,14 @@ class GraficOutputDriver:
         otherwise only the graphic output is driven.
         """
         if self.rebootTvTimer:
-            if state is 'On':
+            if state.lower() is 'on':
                 # Start timer only if its not alive, otherwise a
                 # new screen whould restart the timer, but the TV
                 # doesn't trigger the screen, only power-changes
                 if self.rebootTvTimer.is_alive() is not True:
                     self.rebootTvTimer.start()
             
-            if state is 'Off':
+            if state.lower() is 'off':
                 if self.rebootTvTimer.is_alive() is True:
                     self.rebootTvTimer.cancel()
                     self.rebootTvTimer.join(20) # wait to kill thread
@@ -411,7 +411,7 @@ class GraficOutputDriver:
     #----------------------------------------------------------------------        
     def __switchGraficOutput(self, newState):
         
-        if newState == 'On':
+        if newState.lower() == 'on':
             '''
             ORDER:
             First enable the HDMI port and the switch the TV on if
@@ -433,7 +433,7 @@ class GraficOutputDriver:
                 print("Switch TV on")
                 self.television.run(True)          
             
-        if newState == 'Off':  
+        if newState.lower() == 'off':  
             '''
             ORDER:
             First switch of the TV with the CEC commandos if availalbe
