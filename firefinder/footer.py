@@ -380,9 +380,9 @@ def testScreenFooter():
 ######################################################################## 
 if __name__ == '__main__':
     
-    wbar = 1920
+    wbar = 1700
     hbar = 200
-    wres = 1920
+    wres = 1700
     hres = 100
     
     root = tk.Tk() 
