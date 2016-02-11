@@ -237,7 +237,7 @@ class MyHandler(FileSystemEventHandler):
                 try:    showHourHand      = self.parser.getboolean('Clock', 'show_hour_hand')
                 except: showHourHand      = True
                 try:    showDigitalTime   = self.parser.getboolean('Clock', 'show_digital_time')
-                except: showDigitalTime   = True
+                except: showDigitalTime   = False
                 try:    showDigitalDate   = self.parser.getboolean('Clock', 'show_digital_date')
                 except: showDigitalDate   = True
                 try:    showDigitalSecond = self.parser.getboolean('Clock', 'show_digital_second')
