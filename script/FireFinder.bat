@@ -23,8 +23,8 @@ set FileName=Object
 set FileExtension=ini
 set TempPath=C:\Temp\
 set AmountOfDevice=5
-REM set FullDomainName=.fwi.local
-set FullDomainName=
+set FullDomainName=.fwi.local
+REM set FullDomainName=
 
 REM do not modify code below here
 set version=1.01.00
@@ -77,10 +77,11 @@ echo *                                                    *
 echo * 0: Ausschalten                                     *
 echo * 1: Uhrzeit                                         *
 echo * 2: Diashow                                         *
+echo * 3: Splashscreen                                    *
 echo ******************************************************
 echo.
 set /p switchDeviceTo=Waehle die gewuenschte Anzeige: 
-if %switchDeviceTo% GTR 2 goto wrongInput
+if %switchDeviceTo% GTR 3 goto wrongInput
 
 
  
@@ -188,6 +189,7 @@ REM check what user has chosen
 if %switchDeviceTo% == 0 goto switchDeviceOff
 if %switchDeviceTo% == 1 goto switchDeviceClock
 if %switchDeviceTo% == 2 goto switchDeviceSlideshow
+if %switchDeviceTo% == 3 goto switchDeviceSplashscreen
 echo Keine gueltige Eingabe
 goto end
 
@@ -203,6 +205,10 @@ goto switchDeviceSuccessfully
 
 :switchDeviceSlideshow
 @echo show=slideshow>>  "%FullPathAndFile%" 
+goto switchDeviceSuccessfully
+
+:switchDeviceSplashscreen
+@echo show=splashscreen>>  "%FullPathAndFile%" 
 goto switchDeviceSuccessfully
 
 :switchDeviceSuccessfully
