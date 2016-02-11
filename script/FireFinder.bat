@@ -77,7 +77,7 @@ echo *                                                    *
 echo * 0: Ausschalten                                     *
 echo * 1: Uhrzeit                                         *
 echo * 2: Diashow                                         *
-echo * 3: Splashscreen                                    *
+echo * 3: Splash Screen                                   *
 echo ******************************************************
 echo.
 set /p switchDeviceTo=Waehle die gewuenschte Anzeige: 
