@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-'''
+"""
     Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
@@ -15,17 +15,17 @@
 
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <http://www.gnu.org/licenses/>.
-'''
-
-CEC_DEBUG = True
+"""
 
 import sys
 import logging
 import logging.handlers
+from celery import Task
+
+CEC_DEBUG = True
 
 # logging
 FORMAT = "%(asctime)-15s : %(message)s"
-# logHandler = logging.handlers.RotatingFileHandler(LOG_PATH, maxBytes=2*1024*1024, backupCount=2)
 logHandler = logging.StreamHandler(sys.stdout)
 logHandler.setFormatter(logging.Formatter(FORMAT))
 logger = logging.getLogger('log')
@@ -40,32 +40,31 @@ except ImportError:
     cec = None
     logger.error("ImportError for cec lib")
 
-
 if cec:
-    class pyCecClient:
+    class PyCecClient:
         cecconfig = cec.libcec_configuration()
         lib = {}
         # don't enable debug logging by default
         log_level = cec.CEC_LOG_TRAFFIC
-        
-        #----------------------------------------------------------------------
-        def SetConfiguration(self):
+
+        # ----------------------------------------------------------------------
+        def set_configuration(self):
             # create a new libcec_configuration
             self.cecconfig.strDeviceName = "FireFinder"
             self.cecconfig.bActivateSource = 0
             self.cecconfig.deviceTypes.Add(cec.CEC_DEVICE_TYPE_RECORDING_DEVICE)
             self.cecconfig.clientVersion = cec.LIBCEC_VERSION_CURRENT
 
-        #----------------------------------------------------------------------
-        def SetLogCallback(self, callback):
-            self.cecconfig.SetLogCallback(callback)
+        # ----------------------------------------------------------------------
+        def set_log_callback(self, callback):
+            self.cecconfig.set_log_callback(callback)
 
-        #----------------------------------------------------------------------
-        def SetKeyPressCallback(self, callback):
-            self.cecconfig.SetKeyPressCallback(callback)
+        # ----------------------------------------------------------------------
+        def set_key_press_callback(self, callback):
+            self.cecconfig.set_key_press_callback(callback)
 
-        #----------------------------------------------------------------------       
-        def DetectAdapter(self):
+        # ----------------------------------------------------------------------
+        def detect_adapter(self):
             # detect an adapter and return the com port path
             retval = None
             adapters = self.lib.DetectAdapters()
@@ -77,8 +76,8 @@ if cec:
                 retval = adapter.strComName
             return retval
 
-        #----------------------------------------------------------------------     
-        def InitLibCec(self):
+        # ----------------------------------------------------------------------
+        def init_lib_cec(self):
             # initialise libCEC
             self.lib = cec.ICECAdapter.Create(self.cecconfig)
             # print libCEC version and compilation information
@@ -86,8 +85,8 @@ if cec:
                 self.cecconfig.serverVersion) + " loaded: " + self.lib.GetLibInfo())
 
             # search for adapters
-            adapter = self.DetectAdapter()
-            if adapter == None:
+            adapter = self.detect_adapter()
+            if adapter is None:
                 logger.error("No adapters found")
             else:
                 if self.lib.Open(adapter):
@@ -95,41 +94,41 @@ if cec:
                 else:
                     logger.error("failed to open a connection to the CEC adapter")
 
-        #----------------------------------------------------------------------
-        def ProcessCommandSelf(self):
+        # ----------------------------------------------------------------------
+        def process_command_self(self):
             # display the addresses controlled by libCEC
             addresses = self.lib.GetLogicalAddresses()
-            strOut = "Addresses controlled by libCEC: "
+            output_string = "Addresses controlled by libCEC: "
             x = 0
-            notFirst = False
+            not_first = False
             while x < 15:
                 if addresses.IsSet(x):
-                    if notFirst:
-                        strOut += ", "
-                    strOut += self.lib.LogicalAddressToString(x)
+                    if not_first:
+                        output_string += ", "
+                    output_string += self.lib.LogicalAddressToString(x)
                     if self.lib.IsActiveSource(x):
-                        strOut += " (*)"
-                    notFirst = True
+                        output_string += " (*)"
+                    not_first = True
                 x += 1
-            print(strOut)
+            print(output_string)
 
-        #----------------------------------------------------------------------
-        def ProcessCommandActiveSource(self):
+        # ----------------------------------------------------------------------
+        def process_command_active_source(self):
             # send an active source message
             self.lib.SetActiveSource()
 
-        #----------------------------------------------------------------------
-        def ProcessCommandStandby(self):
+        # ----------------------------------------------------------------------
+        def process_command_standby(self):
             # send a standby command
             self.lib.StandbyDevices(cec.CECDEVICE_BROADCAST)
 
-        #----------------------------------------------------------------------
-        def PowerOnTV(self):
+        # ----------------------------------------------------------------------
+        def power_on_television(self):
             # send a standby command
             self.lib.PowerOnDevices(cec.CECDEVICE_TV)
 
-        #----------------------------------------------------------------------
-        def ProcessCommandTx(self, data):
+        # ----------------------------------------------------------------------
+        def process_command_transmit(self, data):
             # send a custom command
             cmd = self.lib.CommandFromString(data)
             print("transmit " + data)
@@ -138,35 +137,41 @@ if cec:
             else:
                 print("failed to send command")
 
-        #----------------------------------------------------------------------
-        def ProcessCommandScan(self):
+        # ----------------------------------------------------------------------
+        def process_command_scan(self):
             # scan the bus and display devices that were found
             print("requesting CEC bus information ...")
-            strLog = "CEC bus information\n===================\n"
+            str_log = "CEC bus information\n===================\n"
             addresses = self.lib.GetActiveDevices()
-            activeSource = self.lib.GetActiveSource()
+            # active_source = self.lib.GetActiveSource()
             x = 0
             while x < 15:
                 if addresses.IsSet(x):
-                    vendorId = self.lib.GetDeviceVendorId(x)
-                    physicalAddress = self.lib.GetDevicePhysicalAddress(x)
+                    vendor_id = self.lib.GetDeviceVendorId(x)
+                    physical_address = self.lib.GetDevicePhysicalAddress(x)
                     active = self.lib.IsActiveSource(x)
-                    cecVersion = self.lib.GetDeviceCecVersion(x)
+                    cec_version = self.lib.GetDeviceCecVersion(x)
                     power = self.lib.GetDevicePowerStatus(x)
-                    osdName = self.lib.GetDeviceOSDName(x)
-                    strLog += "device #" + str(x) + ": " + self.lib.LogicalAddressToString(x) + "\n"
-                    strLog += "address:       " + str(physicalAddress) + "\n"
-                    strLog += "active source: " + str(active) + "\n"
-                    strLog += "vendor:        " + self.lib.VendorIdToString(vendorId) + "\n"
-                    strLog += "CEC version:   " + self.lib.CecVersionToString(cecVersion) + "\n"
-                    strLog += "OSD name:      " + osdName + "\n"
-                    strLog += "power status:  " + self.lib.PowerStatusToString(power) + "\n\n\n"
+                    osd_name = self.lib.GetDeviceOSDName(x)
+                    str_log += "device #" + str(x) + ": " + self.lib.LogicalAddressToString(x) + "\n"
+                    str_log += "address:       " + str(physical_address) + "\n"
+                    str_log += "active source: " + str(active) + "\n"
+                    str_log += "vendor:        " + self.lib.VendorIdToString(vendor_id) + "\n"
+                    str_log += "CEC version:   " + self.lib.CecVersionToString(cec_version) + "\n"
+                    str_log += "OSD name:      " + osd_name + "\n"
+                    str_log += "power status:  " + self.lib.PowerStatusToString(power) + "\n\n\n"
                 x += 1
-            print(strLog)
+            print(str_log)
 
-        #----------------------------------------------------------------------
-        def LogCallback(self, level, time, message):
+        # ----------------------------------------------------------------------
+        def log_callback(self, level, time, message):
             # logging callback
+            """
+
+            :param time: systemtime
+            :param level: loglevel
+            :param message: logmessage
+            """
             if level > self.log_level:
                 return 0
 
@@ -186,32 +191,31 @@ if cec:
             elif level == cec.CEC_LOG_DEBUG:
                 log = "%s" % message
                 logger.debug(log)
-                
+
             return 0
 
-        #----------------------------------------------------------------------
-        def KeyPressCallback(self, key, duration):
+        # ----------------------------------------------------------------------
+        @staticmethod
+        def key_press_callback(key, duration):
             # key press callback
             print("[key pressed] " + str(key))
             return 0
 
-        #----------------------------------------------------------------------
+        # ----------------------------------------------------------------------
         def __init__(self):
-            self.SetConfiguration()
+            self.set_configuration()
 
-            
-from celery import Task
 
-class tv_power(Task):
+class TvPower(Task):
     def __init__(self):
         if cec:
-            self.ceclib = pyCecClient()
+            self.ceclib = PyCecClient()
 
             # initialise libCEC and enter the main loop
-            self.ceclib.InitLibCec()
-#             self.ceclib.SetLogCallback(self.ceclib.LogCallback)
+            self.ceclib.init_lib_cec()
+            #             self.ceclib.set_log_callback(self.ceclib.log_callback)
 
-    #----------------------------------------------------------------------
+    # ----------------------------------------------------------------------
     def run(self, on):
         log = "Received: %s" % str(on)
         logger.info(log)
@@ -219,10 +223,9 @@ class tv_power(Task):
 
         if cec:
             if on:
-                self.ceclib.PowerOnTV()
-                self.ceclib.ProcessCommandActiveSource()
+                self.ceclib.power_on_television()
+                self.ceclib.process_command_active_source()
             else:
-                self.ceclib.ProcessCommandStandby()
+                self.ceclib.process_command_standby()
 
         return log
-
