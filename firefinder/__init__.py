@@ -1,13 +1,17 @@
 """Core package for FireFinder"""
-  
-from firefinder.sound           import alarmSound
-from firefinder.screenClock     import ScreenClock
-from firefinder.screenEvent     import ScreenEvent
-from firefinder.screenOff       import ScreenOff
-from firefinder.screenSlideshow import ScreenSlideshow
-from firefinder.cecLibrary      import tv_power
+
+from firefinder.cecLibrary import TvPower
+
+from firefinder.ff_footer import ProgressBar
+from firefinder.ff_footer import ResponseOrder
+from firefinder.ff_top import TopBar
+from firefinder.ff_sound import AlarmSound
+from firefinder.ff_screenClock import ScreenClock
+from firefinder.ff_screenEvent import ScreenEvent
+from firefinder.ff_screenOff import ScreenOff
+from firefinder.ff_screenSlideshow import ScreenSlideshow
 
 # miscellaneous imports
-from firefinder.miscellaneous import createImage
-from firefinder.miscellaneous import getTextFontSize
-from firefinder.miscellaneous import RepeatingTimer
+from firefinder.ff_miscellaneous import create_image
+from firefinder.ff_miscellaneous import get_text_font_size
+from firefinder.ff_miscellaneous import RepeatingTimer
