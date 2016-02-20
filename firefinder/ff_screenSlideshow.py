@@ -32,8 +32,8 @@ from threading import Thread
 from itertools import cycle
 
 # my very own classes
-from firefinder.miscellaneous import create_image
-from firefinder.top import TopBar
+from firefinder.ff_miscellaneous import create_image
+from firefinder.ff_top import TopBar
 
 
 class ScreenSlideshow(tk.Frame):

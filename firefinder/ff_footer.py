@@ -24,7 +24,7 @@ import tkinter as tk
 
 from tkinter import font as tkfont
 from threading import Thread
-from firefinder.miscellaneous import create_image, get_text_font_size
+from firefinder.ff_miscellaneous import create_image, get_text_font_size
 
 
 class ProgressBar(tk.Frame):

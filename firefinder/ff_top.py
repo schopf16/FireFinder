@@ -25,7 +25,7 @@ import tkinter as tk
 from tkinter import font as tkfont
 from datetime import datetime
 from threading import Thread
-from firefinder.miscellaneous import create_image
+from firefinder.ff_miscellaneous import create_image
 
 """ Path's """
 ffLogo = 'pic/Logo.png'  # Firefighter Logo

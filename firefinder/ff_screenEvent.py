@@ -27,8 +27,8 @@ from tkinter import font as tkfont
 from PIL import ImageTk, Image
 
 # my very own classes
-from firefinder.miscellaneous import create_image, get_text_font_size
-from firefinder.footer import ProgressBar, ResponseOrder
+from firefinder.ff_miscellaneous import create_image, get_text_font_size
+from firefinder.ff_footer import ProgressBar, ResponseOrder
 
 """ Path's """
 backgroundImage = 'pic/bg'  # Path to background Image for alarm message

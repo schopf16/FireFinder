@@ -22,8 +22,8 @@ import os
 import tkinter as tk
 
 # my very own classes
-from firefinder.miscellaneous import create_image
-from firefinder.top import TopBar
+from firefinder.ff_miscellaneous import create_image
+from firefinder.ff_top import TopBar
 
 """ Path's """
 ffLogo = 'pic/Logo.png'  # Firefighter Logo
