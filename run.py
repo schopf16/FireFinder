@@ -30,13 +30,13 @@ from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
 
 # local classes
-from firefinder.sound import AlarmSound
-from firefinder.screenClock import ScreenClock
-from firefinder.screenEvent import ScreenEvent
-from firefinder.screenOff import ScreenOff
-from firefinder.screenSlideshow import ScreenSlideshow
+from firefinder.ff_sound import AlarmSound
+from firefinder.ff_screenClock import ScreenClock
+from firefinder.ff_screenEvent import ScreenEvent
+from firefinder.ff_screenOff import ScreenOff
+from firefinder.ff_screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary import TvPower
-from firefinder.miscellaneous import RepeatingTimer
+from firefinder.ff_miscellaneous import RepeatingTimer
 
 
 ########################################################################
