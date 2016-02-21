@@ -38,7 +38,6 @@ from firefinder.ff_screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary import TvPower
 from firefinder.ff_miscellaneous import RepeatingTimer
 
-
 ########################################################################
 
 '''
@@ -401,15 +400,21 @@ class GraficOutputDriver:
 
     # ----------------------------------------------------------------------
     def get_visual(self):
+        returnvalue = 'off'
+
         """
         Return the status of the graphical output. If CEC is enabled, both
         (HDMI output and television on) has to be enabled, otherwise 'Off'
         will returned if at least on is disabled.
         """
         if cecEnable:
-            return self.__actGraficOutput & self.__actTelevisionState
+            if self.__actGraficOutput.lower() is 'on':
+                if self.__actTelevisionState.lower() is 'on':
+                    returnvalue = 'on'
         else:
-            return self.__actGraficOutput
+            returnvalue = self.__actGraficOutput
+
+        return returnvalue
 
     # ----------------------------------------------------------------------
     def set_visual(self, state):
