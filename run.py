@@ -40,36 +40,19 @@ from firefinder.ff_miscellaneous import RepeatingTimer
 
 ########################################################################
 
-'''
-Some global settings out of the config.ini file which is
-read out at the beginning of the program.
-'''
-# [General] group
-observingPathName = ''
-observingFileName = ''
-
-# [Visual] group
-fullscreenEnable = False
-switchScreenAfter = 0
-switchToScreen = ''
-
-# [Power] group
-cecEnable = False
-stdbyEnable = False
-cecRebootInMinutes = 0
-autoPowerOffScreen = 0
-
 """ Path's """
 ffLogo = 'firefinder/pic/Logo.png'  # Firefighter Logo
 noImage = 'firefinder/pic/bg/no_image.png'
-wdr = ''  # Working directory is set in main
+# wdr = ''  # Working directory is set in main
 
 
 ########################################################################
 class FireFinderGUI(tk.Tk):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, observing_path_name, *args, **kwargs):
         """Constructor"""
-        tk.Tk.__init__(self, *args, **kwargs)
+        tk.Tk.__init__(self, observing_path_name, *args, **kwargs)
+
+        fullscreen_enable = kwargs.get('fullscreen', False)
 
         # Store actual shown screen
         self.actScreen = ''
@@ -87,7 +70,7 @@ class FireFinderGUI(tk.Tk):
         self.config(cursor="none")
 
         ''' Removes the native window boarder. '''
-        if fullscreenEnable is True:
+        if fullscreen_enable is True:
             self.attributes('-fullscreen', True)
 
         # With overrideredirect program loses connection with 
@@ -121,15 +104,15 @@ class FireFinderGUI(tk.Tk):
         for F in (ScreenSlideshow,
                   ScreenEvent,
                   ScreenClock,
-                  ScreenOff):  # Load offscreen as last screen
+                  ScreenOff):  # Load 'ScreenOff' as last screen
 
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
         # do some configurations to the screens
-        self.frames[ScreenEvent].configure(pathToIniFile=observingPathName)
-        self.frames[ScreenSlideshow].configure(pathToIniFile=observingPathName)
+        self.frames[ScreenEvent].configure(pathToIniFile=observing_path_name)
+        self.frames[ScreenSlideshow].configure(pathToIniFile=observing_path_name)
 
         # store some timing details
         self.startTime = int(time.time())
@@ -163,17 +146,26 @@ class FireFinderGUI(tk.Tk):
         print("Close programm")
         self.destroy()
         self.quit()  # Fallback if the one above doesn't work properly
-        sys.exit()  # Fallback if the one above doesn't work properly
+        sys.exit()   # Fallback if the one above doesn't work properly
 
 
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
-    def __init__(self, controller, auto_power_off_after_screen_event_launch):
+    def __init__(self, controller, observing_file_name, **kwargs):
+
+        auto_power_off_after_screen_event_launch = kwargs.get("Bitte_Guten_Namen", 0)
 
         """Constructor"""
         self.parser = ConfigParser()
         self.controller = controller
         self.powerOffTimer = None
+
+        self.observing_file_name = observing_file_name
+
+        try:
+            wdr = os.path.dirname(__file__)
+        except:
+            wdr = os.getcwd()
 
         self.alarmSound = AlarmSound(os.path.join(wdr, 'firefinder', 'sound'))
         self.lastModified = 0
@@ -185,7 +177,7 @@ class MyHandler(FileSystemEventHandler):
     # ----------------------------------------------------------------------
     def on_modified(self, event):
         # Check if the file has ben modified I'm looking for
-        if os.path.split(event.src_path)[-1].lower() == observingFileName.lower():
+        if os.path.split(event.src_path)[-1].lower() == self.observing_file_name.lower():
 
             """
             Do to some reasons, the watchdog trigger the FileModifiedEvent
@@ -220,30 +212,18 @@ class MyHandler(FileSystemEventHandler):
 
             if show.lower() == 'time':
                 # get information from ini-file
-                try:
-                    show_second_hand = self.parser.getboolean('Clock', 'show_second_hand')
-                except:
-                    show_second_hand = True
-                try:
-                    show_minute_hand = self.parser.getboolean('Clock', 'show_minute_hand')
-                except:
-                    show_minute_hand = True
-                try:
-                    show_hour_hand = self.parser.getboolean('Clock', 'show_hour_hand')
-                except:
-                    show_hour_hand = True
-                try:
-                    show_digital_time = self.parser.getboolean('Clock', 'show_digital_time')
-                except:
-                    show_digital_time = False
-                try:
-                    show_ditial_date = self.parser.getboolean('Clock', 'show_digital_date')
-                except:
-                    show_ditial_date = True
-                try:
-                    show_digital_second = self.parser.getboolean('Clock', 'show_digital_second')
-                except:
-                    show_digital_second = True
+                try:    show_second_hand = self.parser.getboolean('Clock', 'show_second_hand')
+                except: show_second_hand = True
+                try:    show_minute_hand = self.parser.getboolean('Clock', 'show_minute_hand')
+                except: show_minute_hand = True
+                try:    show_hour_hand = self.parser.getboolean('Clock', 'show_hour_hand')
+                except: show_hour_hand = True
+                try:    show_digital_time = self.parser.getboolean('Clock', 'show_digital_time')
+                except: show_digital_time = False
+                try:    show_ditial_date = self.parser.getboolean('Clock', 'show_digital_date')
+                except: show_ditial_date = True
+                try:    show_digital_second = self.parser.getboolean('Clock', 'show_digital_second')
+                except: show_digital_second = True
 
                 # Set Clock as active screen and configure the clock
                 self.alarmSound.stop()
@@ -271,64 +251,47 @@ class MyHandler(FileSystemEventHandler):
 
             if show.lower() == 'object':
                 # get information from ini-file
-                try:
-                    full_event_message = self.parser.get('ObjectInfo', 'entire_msg')
-                except:
-                    full_event_message = ""
-                try:
-                    picture_1 = self.parser.get('ObjectInfo', 'picture_1')
-                except:
-                    picture_1 = ""
-                try:
-                    picture_2 = self.parser.get('ObjectInfo', 'picture_2')
-                except:
-                    picture_2 = ""
-                try:
-                    crop_pciture = self.parser.getboolean('ObjectInfo', 'crop_picture')
-                except:
-                    crop_pciture = True
-                try:
-                    category = self.parser.get('ObjectInfo', 'category')
-                except:
-                    category = ""
-                try:
-                    sound = self.parser.get('ObjectInfo', 'sound')
-                except:
-                    sound = "None"
-                try:
-                    repeat = self.parser.getint('ObjectInfo', 'repeat')
-                except:
-                    repeat = 1
-                try:
-                    progressbar_show = self.parser.getboolean('ObjectInfo', 'show_progress')
-                except:
-                    progressbar_show = False
-                try:
-                    progressbar_time = self.parser.getint('ObjectInfo', 'progresstime')
-                except:
-                    progressbar_time = 0
-                try:
-                    responseorder_show = self.parser.getboolean('ObjectInfo', 'show_responseOrder')
-                except:
-                    responseorder_show = False
+                try:    full_event_message = self.parser.get('ObjectInfo', 'entire_msg')
+                except: full_event_message = ""
+                try:    picture_1 = self.parser.get('ObjectInfo', 'picture_1')
+                except: picture_1 = ""
+                try:    picture_2 = self.parser.get('ObjectInfo', 'picture_2')
+                except: picture_2 = ""
+                try:    crop_pciture = self.parser.getboolean('ObjectInfo', 'crop_picture')
+                except: crop_pciture = True
+                try:    category = self.parser.get('ObjectInfo', 'category')
+                except: category = ""
+                try:    sound = self.parser.get('ObjectInfo', 'sound')
+                except: sound = "None"
+                try:    repeat = self.parser.getint('ObjectInfo', 'repeat')
+                except: repeat = 1
+                try:    progressbar_show = self.parser.getboolean('ObjectInfo', 'show_progress')
+                except: progressbar_show = False
+                try:    progressbar_time = self.parser.getint('ObjectInfo', 'progresstime')
+                except: progressbar_time = 0
+                try:    responseorder_show = self.parser.getboolean('ObjectInfo', 'show_responseOrder')
+                except: responseorder_show = False
 
                 equipment = {}
                 for x in range(1, 10):
                     s = ('equipment_%01i' % x)
-                    try:
-                        equipment[x] = self.parser.get('ObjectInfo', s)
-                    except:
-                        equipment[x] = ""
+                    try:    equipment[x] = self.parser.get('ObjectInfo', s)
+                    except: equipment[x] = ""
 
                 # set ScreenEvent as active frame and set addresses
                 self.controller.show_frame(ScreenEvent)
                 frame = self.controller.get_act_screen()
                 # first configure
-                frame.configure(alarmMessage=full_event_message, picture_1=picture_1, picture_2=picture_2,
-                                cropPicture=crop_pciture, category=category, progressBarTime=progressbar_time,
+                frame.configure(alarmMessage=full_event_message,
+                                picture_1=picture_1,
+                                picture_2=picture_2,
+                                cropPicture=crop_pciture,
+                                category=category,
+                                progressBarTime=progressbar_time,
                                 responseOrder=equipment)
                 # then start
-                frame.configure(showProgressBar=progressbar_show, showResponseOrder=responseorder_show)
+                frame.configure(showProgressBar=progressbar_show,
+                                showResponseOrder=responseorder_show)
 
                 # enable television
                 if self.powerOffTimer:
@@ -350,7 +313,10 @@ class MyHandler(FileSystemEventHandler):
 
 ######################################################################## 
 class GraficOutputDriver:
-    def __init__(self, bypass_tv_power_save):
+    def __init__(self, bypass_tv_power_save, **kwargs):
+        self.cec_enable = kwargs.get("cec_enable", False)
+        self.standby_enable = kwargs.get("standby_enable", False)
+
         self.__actGraficOutput = 'On'
         self.__actTelevisionState = 'Off'
 
@@ -362,59 +328,46 @@ class GraficOutputDriver:
 
         # Try to disable power saving
         if os.name == 'posix':
-            try:
-                subprocess.call(["xset", "s", "noblank"])
-            except:
-                pass
-            try:
-                subprocess.call(["xset", "s", "noblank"])
-            except:
-                pass
-            try:
-                subprocess.call(["xset", "-dpms"])
-            except:
-                pass
+            try:    subprocess.call(["xset", "s", "noblank"])
+            except: pass
+            try:    subprocess.call(["xset", "s", "noblank"])
+            except: pass
+            try:    subprocess.call(["xset", "-dpms"])
+            except: pass
+
         elif os.name == 'nt':
-            try:
-                subprocess.call(["powercfg.exe", "-change", "-monitor-timeout-ac", "0"])
-            except:
-                pass
-            try:
-                subprocess.call(["powercfg.exe", "-change", "-disk-timeout-ac", "0"])
-            except:
-                pass
-            try:
-                subprocess.call(["powercfg.exe", "-change", "-standby-timeout-ac", "0"])
-            except:
-                pass
-            try:
-                subprocess.call(["powercfg.exe", "-change", "-hibernate-timeout-ac", "0"])
-            except:
-                pass
+            try:    subprocess.call(["powercfg.exe", "-change", "-monitor-timeout-ac", "0"])
+            except: pass
+            try:    subprocess.call(["powercfg.exe", "-change", "-disk-timeout-ac", "0"])
+            except: pass
+            try:    subprocess.call(["powercfg.exe", "-change", "-standby-timeout-ac", "0"])
+            except: pass
+            try:    subprocess.call(["powercfg.exe", "-change", "-hibernate-timeout-ac", "0"])
+            except: pass
 
         # If user enable automatic TV reboot to prevent it from power save
-        # launch a seperate thread to handle this asynchron from any ini-commands
+        # launch a separate thread to handle this asynchron from any ini-commands
         if bypass_tv_power_save is not 0:
             self.rebootTvTimer = RepeatingTimer(bypass_tv_power_save * 60,
                                                 self.__reboot_television_over_cec)
 
     # ----------------------------------------------------------------------
     def get_visual(self):
-        returnvalue = 'off'
+        return_value = 'off'
 
         """
         Return the status of the graphical output. If CEC is enabled, both
         (HDMI output and television on) has to be enabled, otherwise 'Off'
         will returned if at least on is disabled.
         """
-        if cecEnable:
+        if self.cec_enable:
             if self.__actGraficOutput.lower() is 'on':
                 if self.__actTelevisionState.lower() is 'on':
-                    returnvalue = 'on'
+                    return_value = 'on'
         else:
-            returnvalue = self.__actGraficOutput
+            return_value = self.__actGraficOutput
 
-        return returnvalue
+        return return_value
 
     # ----------------------------------------------------------------------
     def set_visual(self, state):
@@ -453,23 +406,17 @@ class GraficOutputDriver:
             availalbe. If done otherwise, the cec command can't be
             transmittet over a deactivatet HDMI port.
             '''
-            if stdbyEnable and (os.name == 'posix'):
+            if self.standby_enable and (os.name == 'posix'):
                 if self.__actGraficOutput != new_state:
-                    try:
-                        subprocess.call(["/opt/vc/bin/tvservice", "-p"])
-                    except:
-                        pass
-                    try:
-                        subprocess.call(["sudo", "/bin/chvt", "6"])
-                    except:
-                        pass
-                    try:
-                        subprocess.call(["sudo", "/bin/chvt", "7"])
-                    except:
-                        pass
+                    try:    subprocess.call(["/opt/vc/bin/tvservice", "-p"])
+                    except: pass
+                    try:    subprocess.call(["sudo", "/bin/chvt", "6"])
+                    except: pass
+                    try:    subprocess.call(["sudo", "/bin/chvt", "7"])
+                    except: pass
                     self.__actGraficOutput = new_state
 
-            if cecEnable:
+            if self.cec_enable:
                 # Always enable TV. The user could switch of TV manualy
                 print("Switch TV on")
                 self.television.run(True)
@@ -482,16 +429,14 @@ class GraficOutputDriver:
             cec command can't be transmittet over a deactivatet HDMI
             port.
             '''
-            if cecEnable:
+            if self.cec_enable:
                 print("Switch TV off")
                 self.television.run(False)
 
-            if stdbyEnable and (os.name == 'posix'):
+            if self.standby_enable and (os.name == 'posix'):
                 if self.__actGraficOutput != new_state:
-                    try:
-                        subprocess.call(["/opt/vc/bin/tvservice", "-o"])
-                    except:
-                        pass
+                    try:    subprocess.call(["/opt/vc/bin/tvservice", "-o"])
+                    except: pass
                     self.__actGraficOutput = new_state
 
     # ----------------------------------------------------------------------
@@ -505,7 +450,7 @@ class GraficOutputDriver:
         ########################################################################
 
 
-def switch_screen_after_while():
+def switch_screen_after_while(switch_to_screen):
     # Only adapt the screen if no other change
     # was requested by the user
     if (app.startTime + 2) <= app.lastChange:
@@ -513,17 +458,17 @@ def switch_screen_after_while():
         print(app.lastChange)
         return
 
-    if switchToScreen.lower() == 'time':
+    if switch_to_screen.lower() == 'time':
         eventHandler.alarmSound.stop()
         app.show_frame(ScreenClock)
         grafic.set_visual('On')
 
-    if switchToScreen.lower() == 'slideshow':
+    if switch_to_screen.lower() == 'slideshow':
         eventHandler.alarmSound.stop()
         app.show_frame(ScreenSlideshow)
         grafic.set_visual('On')
 
-    if switchToScreen.lower() == 'off':
+    if switch_to_screen.lower() == 'off':
         eventHandler.alarmSound.stop()
         app.show_frame(ScreenOff)
         grafic.set_visual('Off')
@@ -533,86 +478,104 @@ def switch_screen_after_while():
 
 def read_config_ini_file():
     # force python to use the global variables instead of creating
-    # them localy
-    global observingPathName
-    global observingFileName
-    global fullscreenEnable
-    global switchScreenAfter
-    global switchToScreen
-    global cecEnable
-    global stdbyEnable
-    global cecRebootInMinutes
-    global autoPowerOffScreen
+    # them local
+
+    # Set default values
+    result                          = None
+    full_screen_enable              = False
+    switch_screen_delay_after_start = 0
+    switch_to_screen_after_start    = ScreenOff
+    switch_screen_delay_after_event = 0
+    switch_to_screen_after_event    = ScreenOff
+    cec_enable                      = False
+    standby_enable                  = False
+    reboot_hdmi_device_after        = 0
+    observing_file_name             = ''
+    observing_path_name             = ''
+
+    # Create instance for reading the ini file
+    sysconfig = ConfigParser()
+
+    try:
+        wdr = os.path.dirname(__file__)
+    except:
+        wdr = os.getcwd()
 
     # Check if config.ini file exist
     config_path = os.path.join(wdr, 'config.ini')
     if not os.path.isfile(config_path):
-        # quit skript due to an error
+        # quit script due to an error
         error_message = ("The file \"config.ini\" is missing. Be sure this"
                          "file is in the same directory like this python-script")
         print("ERROR: %s" % error_message)
-        return 'IniFileNotFound'
+        result = 'IniFileNotFound'
 
-        # config.ini file exist, going to read the data
-    sysconfig = ConfigParser()
-    with codecs.open(config_path, 'r', encoding='UTF-8-sig') as f:
-        sysconfig.read_file(f)
+    # config.ini file exist, going to read the data
+    if result is None:
+        with codecs.open(config_path, 'r', encoding='UTF-8-sig') as f:
+            sysconfig.read_file(f)
 
-    # read informations which are required
-    try:
-        observingPathName = sysconfig.get('General', 'observing_path')
-        observingFileName = sysconfig.get('General', 'observing_file')
-    except:
-        error_message = 'An unexpected error occurred while reading config.ini'
-        print("ERROR: %s" % error_message)
-        return 'CouldNotReadIniFile'
+        # read information which are required
+        try:
+            observing_path_name = sysconfig.get('General', 'observing_path')
+            observing_file_name = sysconfig.get('General', 'observing_file')
+        except:
+            error_message = 'An unexpected error occurred while reading config.ini'
+            print("ERROR: %s" % error_message)
+            result = 'CouldNotReadIniFile'
 
-    # Check if the observation-directory exist. Otherwise the observer
-    # will raise a FileNotFoundError
-    if not os.path.isdir(observingPathName):
-        # quit script due to an error
-        error_message = ("The directory \"%s\" for observation is missing." % observingPathName)
-        print("ERROR: %s" % error_message)
-        return 'PathDoesNotExist'
+    if result is None:
+        # Check if the observation-directory exist. Otherwise the observer
+        # will raise a FileNotFoundError
+        if not os.path.isdir(observing_path_name):
+            # quit script due to an error
+            error_message = ("The directory \"%s\" for observation is missing." % observing_path_name)
+            print("ERROR: %s" % error_message)
+            result = 'PathDoesNotExist'
 
-    '''
-    Read variables with lower priority. 
-    If not available, work with standard values
-    '''
+    # Read values with lower priority
+    if result is None:
+        # [Visual] group
+        try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
+        except: pass
 
-    # [Visual] group 
-    try:
-        fullscreenEnable = sysconfig.getboolean('Visual', 'fullscreen')
-    except:
-        fullscreenEnable = False
-    try:
-        switchScreenAfter = sysconfig.getint('Visual', 'switchScreenAfter')
-    except:
-        switchScreenAfter = 0
-    try:
-        switchToScreen = sysconfig.get('Visual', 'switchToScreen')
-    except:
-        switchToScreen = ScreenOff
+        try:    switch_screen_delay_after_start = sysconfig.getint('Visual', 'switchScreenAfter')
+        except: pass
 
-    # [Power] group   
-    try:
-        cecEnable = sysconfig.getboolean('Power', 'cec_enable')
-    except:
-        cecEnable = False
-    try:
-        stdbyEnable = sysconfig.getboolean('Power', 'stdby_enable')
-    except:
-        stdbyEnable = False
-    try:
-        cecRebootInMinutes = sysconfig.getint('Power', 'cec_reboot_after_minutes')
-    except:
-        cecRebootInMinutes = 0
-    try:
-        autoPowerOffScreen = sysconfig.getint('Power', 'power_off_screen_after_minutes')
-    except:
-        autoPowerOffScreen = 0
+        try:    switch_to_screen_after_start = sysconfig.get('Visual', 'switchToScreen')
+        except: pass
 
-    return True
+        try:    switch_screen_delay_after_event = sysconfig.getint('Visual', 'switchScreenAfterEvent')
+        except: pass
+
+        try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
+        except: pass
+
+        # [Power] group
+        try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
+        except: pass
+
+        try:    standby_enable = sysconfig.getboolean('Power', 'stdby_enable')
+        except: pass
+
+        try:    reboot_hdmi_device_after = sysconfig.getint('Power', 'cec_reboot_after_minutes')
+        except: pass
+
+    # Create a directory for return value
+    dict_ini = {"FullScreen"                  : full_screen_enable,
+                "switchScreenDelayAfterStart" : switch_screen_delay_after_start,
+                "switchToScreenAfterStart"    : switch_to_screen_after_start,
+                "switchScreenDelayAfterEvent" : switch_screen_delay_after_event,
+                "switchToScreenAfterEvent"    : switch_to_screen_after_event,
+                "cec_enable"                  : cec_enable,
+                "standby_hdmi_enable"         : standby_enable,
+                "rebootHDMIdeviceAfter"       : reboot_hdmi_device_after,
+                "ObserveFileForEvent"         : observing_file_name,
+                "ObservePathForEvent"         : observing_path_name}
+
+    if result is None:
+        result = True
+    return result, dict_ini
 
 
 ########################################################################
@@ -630,32 +593,26 @@ if __name__ == "__main__":
 
     errorMessage = ""
 
-    # store working directory
-    try:
-        wdr = os.path.dirname(__file__)
-    except:
-        wdr = os.getcwd()
-
     # Read config.ini File & check for failure
-    returnValue = read_config_ini_file()
-    if returnValue is not True:
+    return_value, ini_file = read_config_ini_file()
+    if return_value is not True:
         app = tk.Tk()  # Create a tkinter to put failure message on screen
-        if returnValue == 'IniFileNotFound':
+        if return_value == 'IniFileNotFound':
             errorMessage = ('Die Datei config.ini wurde nicht gefunden. '
                             'Stelle sicher dass sich die Datei im selben '
                             'Ordner befindet wie die Datei \"run.py\"')
-        elif returnValue == 'CouldNotReadIniFile':
+        elif return_value == 'CouldNotReadIniFile':
             errorMessage = ('Die Datei config.ini konnte nicht gelesen '
                             'werden. Stelle sicher, dass in der Gruppe '
-                            'General die Variablen richtig aufgef�hrt '
+                            'General die Variablen richtig aufgeführt '
                             'sind\n\n[General]\nobserving_path = <Kompletter '
                             'Pfad>\nobserving_file   = <Dateiname mit Endung>')
-        elif returnValue == 'PathDoesNotExist':
+        elif return_value == 'PathDoesNotExist':
             errorMessage = ('Der in der config.ini Datei angegebene Pfad'
-                            '\n\n\"%s\"\n\nwurde nicht gefunden. Stelle '
-                            'der Pfad korrekt ist. Die Gross- / Klein'
-                            'sicher das schreibung muss beachtet werden.'
-                            % observingPathName)
+                            '\n\n{}\n\nwurde nicht gefunden. Stelle sicher '
+                            'dass der Pfad korrekt ist. Die Gross- / Klein'
+                            'schreibung muss beachtet werden.'
+                            .format(ini_file["ObserveFileForEvent"]))
         errorCanvas = tk.Canvas(app,
                                 width=int(app.winfo_screenwidth() / 2),
                                 height=int(app.winfo_screenheight() / 2),
@@ -670,17 +627,18 @@ if __name__ == "__main__":
 
     else:
         # Create some objects
-        grafic = GraficOutputDriver(cecRebootInMinutes)
-        app = FireFinderGUI()
-        eventHandler = MyHandler(app, autoPowerOffScreen)
+        grafic = GraficOutputDriver(ini_file["rebootHDMIdeviceAfter"])
+        app = FireFinderGUI(observing_path_name=ini_file["ObservePathForEvent"])
+        eventHandler = MyHandler(app, ini_file["rebootHDMIdeviceAfter"])  # <-- Diese Variable stimmt nicht!!!
         observer = Observer()
 
-        if switchScreenAfter is not 0:
-            switchTimeInSeconds = switchScreenAfter * 1000
+        if ini_file["switchScreenDelayAfterStart"] is not 0:
+            switchTimeInSeconds = ini_file["switchScreenDelayAfterStart"] * 1000
             app.after(switchTimeInSeconds, switch_screen_after_while)
 
         # configure the observer thread and start it afterward
-        observer.schedule(eventHandler, observingPathName, recursive=False)
+        file_for_oberve = ini_file["ObservePathForEvent"]
+        observer.schedule(eventHandler, file_for_oberve, recursive=False)
         observer.start()
 
     app.mainloop()
