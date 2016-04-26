@@ -1,4 +1,4 @@
-; last modified 17. january 2016 by Michael Anderegg
+; last modified 26. april 2016 by Michael Anderegg
 
 [General]
 ; Enter the local full path of the directory in which the alert.ini
@@ -24,13 +24,24 @@ fullscreen        = false
 ; in the splash screen.
 ; If the user change the screen before the time is expired, the screen
 ; won't change any more.
-switchScreenAfter = 600
+switchScreenAfterStart = 600
 
 ; The following screens are availlable
 ; off       - switch tv off
 ; slideshow - Shows random picture
 ; time      - display a analog an digital clock
-switchToScreen    = off                  
+switchToScreenAfterStart = off   
+; ------------------------------------------------------------------
+
+; After a event occours, system may switch after a given time
+; into an other screen
+switchScreenAfterEvent = 600   
+
+; The following screens are availlable
+; off       - switch tv off
+; slideshow - Shows random picture
+; time      - display a analog an digital clock
+switchToScreenAfterEvent = off           
 ; ------------------------------------------------------------------
 
 [Power]
@@ -59,13 +70,4 @@ cec_reboot_after_minutes = 180
 ; system. The file "reactivate_screen.sh" has to be placed in the
 ; script-folder
 stdby_enable      = true
-; ------------------------------------------------------------------
-
-; Define a time in minutes after which the grafical unit is going
-; automatically power off. This time starts counting on every new
-; alarm event. A new event will trigger the timer and the timer will
-; start from its very beggining. This timer is disabled for any other
-; screens. If set to 0, this feature is disabled and the grafical
-; won't switch off
-power_off_screen_after_minutes = 60
 ; ------------------------------------------------------------------
