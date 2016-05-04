@@ -48,9 +48,8 @@ noImage = 'firefinder/pic/bg/no_image.png'
 
 ########################################################################
 class FireFinderGUI(tk.Tk):
-    def __init__(self, observing_path_name, *args, **kwargs):
-        """Constructor"""
-        tk.Tk.__init__(self, observing_path_name, *args, **kwargs)
+    def __init__(self, observing_path_name, **kwargs):
+        super(FireFinderGUI, self).__init__()
 
         fullscreen_enable = kwargs.get('fullscreen', False)
 
@@ -61,7 +60,6 @@ class FireFinderGUI(tk.Tk):
         # key with the function quit option
         self.title("FireFinder")
 
-        ''' Remove mouse cursor '''
         # The configuration works quite well on windows, but
         # very bad on linux systems if the script is loaded out
         # of the shell. To remove the mouse cursor us the "unclutter"
@@ -69,26 +67,22 @@ class FireFinderGUI(tk.Tk):
         # sudo apt-get install unclutter
         self.config(cursor="none")
 
-        ''' Removes the native window boarder. '''
+        # Removes the native window boarder
         if fullscreen_enable is True:
             self.attributes('-fullscreen', True)
 
-        # With overrideredirect program loses connection with 
-        # window manage so it seems that it can't get information 
-        # about pressed keys and even it can't be focused.
-        # self.overrideredirect(fullscreen)
-
-        ''' Disables resizing of the widget.  '''
+        # Disable resizable of the x-axis and the y-axis to keep the
+        # scree in the maximal possible resolution
         self.resizable(False, False)
 
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
         print("Screensize is: %d x %d pixels" % (w, h))
         self.geometry("%dx%d+0+0" % (w, h))
 
-        ''' Sets focus to the window to catch <Escape> '''
+        # Sets focus to the window to catch <Escape>
         self.focus_set()
 
-        """ Bind Escape tap to the exit method """
+        # Bind <Escape> tap to the exit method
         self.bind("<Escape>", lambda e: self.exit())
 
         # the container is where we'll stack a bunch of frames
@@ -123,6 +117,11 @@ class FireFinderGUI(tk.Tk):
 
     # ----------------------------------------------------------------------
     def show_frame(self, cont):
+        """
+
+        :param cont:
+        :return:
+        """
 
         # send a hide signal to the actual shown screen
         if self.actScreen is not '':
@@ -138,8 +137,20 @@ class FireFinderGUI(tk.Tk):
         frame.tkraise()
 
     # ----------------------------------------------------------------------
-    def get_act_screen(self):
+    def get_act_frame(self):
+        """
+        The method will return the instance of the actual selected frame
+        :return: Instance of the actaul shown frame
+        """
         return self.frames[self.actScreen]
+
+    # ----------------------------------------------------------------------
+    def get_act_screen(self):
+        """
+        The method will return the name of the actual shown screen
+        :return: String with the screen name
+        """
+        return self.actScreen
 
     # ----------------------------------------------------------------------
     def exit(self):
@@ -155,9 +166,8 @@ class MyHandler(FileSystemEventHandler):
 
         auto_power_off_after_screen_event_launch = kwargs.get("Bitte_Guten_Namen", 0)
 
-        """Constructor"""
-        self.parser = ConfigParser()
-        self.controller = controller
+        self.parser        = ConfigParser()
+        self.controller    = controller
         self.powerOffTimer = None
 
         self.observing_file_name = observing_file_name
@@ -179,12 +189,9 @@ class MyHandler(FileSystemEventHandler):
         # Check if the file has ben modified I'm looking for
         if os.path.split(event.src_path)[-1].lower() == self.observing_file_name.lower():
 
-            """
-            Do to some reasons, the watchdog trigger the FileModifiedEvent
-            twice. Therefore capture the time and ignore changes within
-            the next second.
-            """
-
+            # Due to some reasons, the watchdog trigger the FileModifiedEvent
+            # twice. Therefore capture the time and ignore changes within
+            # the next second.
             if self.lastModified == time.ctime(os.path.getmtime(event.src_path)):
                 return
 
@@ -212,26 +219,29 @@ class MyHandler(FileSystemEventHandler):
 
             if show.lower() == 'time':
                 # get information from ini-file
-                try:    show_second_hand = self.parser.getboolean('Clock', 'show_second_hand')
-                except: show_second_hand = True
-                try:    show_minute_hand = self.parser.getboolean('Clock', 'show_minute_hand')
-                except: show_minute_hand = True
-                try:    show_hour_hand = self.parser.getboolean('Clock', 'show_hour_hand')
-                except: show_hour_hand = True
-                try:    show_digital_time = self.parser.getboolean('Clock', 'show_digital_time')
-                except: show_digital_time = False
-                try:    show_ditial_date = self.parser.getboolean('Clock', 'show_digital_date')
-                except: show_ditial_date = True
+                try:    show_second_hand    = self.parser.getboolean('Clock', 'show_second_hand')
+                except: show_second_hand    = True
+                try:    show_minute_hand    = self.parser.getboolean('Clock', 'show_minute_hand')
+                except: show_minute_hand    = True
+                try:    show_hour_hand      = self.parser.getboolean('Clock', 'show_hour_hand')
+                except: show_hour_hand      = True
+                try:    show_digital_time   = self.parser.getboolean('Clock', 'show_digital_time')
+                except: show_digital_time   = False
+                try:    show_ditial_date    = self.parser.getboolean('Clock', 'show_digital_date')
+                except: show_ditial_date    = True
                 try:    show_digital_second = self.parser.getboolean('Clock', 'show_digital_second')
                 except: show_digital_second = True
 
-                # Set Clock as active screen and configure the clock
+                # Set Clock as active screen and configure the clock afterwards
                 self.alarmSound.stop()
                 self.controller.show_frame(ScreenClock)
-                frame = self.controller.get_act_screen()
-                frame.configure(showSecondHand=show_second_hand, showMinuteHand=show_minute_hand,
-                                showHourHand=show_hour_hand, showDigitalTime=show_digital_time,
-                                showDigitalDate=show_ditial_date, showDigitalSeconds=show_digital_second)
+                frame = self.controller.get_act_frame()
+                frame.configure(showSecondHand=show_second_hand,
+                                showMinuteHand=show_minute_hand,
+                                showHourHand=show_hour_hand,
+                                showDigitalTime=show_digital_time,
+                                showDigitalDate=show_ditial_date,
+                                showDigitalSeconds=show_digital_second)
                 grafic.set_visual('On')
 
             if show.lower() == 'slideshow':
@@ -253,22 +263,22 @@ class MyHandler(FileSystemEventHandler):
                 # get information from ini-file
                 try:    full_event_message = self.parser.get('ObjectInfo', 'entire_msg')
                 except: full_event_message = ""
-                try:    picture_1 = self.parser.get('ObjectInfo', 'picture_1')
-                except: picture_1 = ""
-                try:    picture_2 = self.parser.get('ObjectInfo', 'picture_2')
-                except: picture_2 = ""
-                try:    crop_pciture = self.parser.getboolean('ObjectInfo', 'crop_picture')
-                except: crop_pciture = True
-                try:    category = self.parser.get('ObjectInfo', 'category')
-                except: category = ""
-                try:    sound = self.parser.get('ObjectInfo', 'sound')
-                except: sound = "None"
-                try:    repeat = self.parser.getint('ObjectInfo', 'repeat')
-                except: repeat = 1
-                try:    progressbar_show = self.parser.getboolean('ObjectInfo', 'show_progress')
-                except: progressbar_show = False
-                try:    progressbar_time = self.parser.getint('ObjectInfo', 'progresstime')
-                except: progressbar_time = 0
+                try:    picture_1          = self.parser.get('ObjectInfo', 'picture_1')
+                except: picture_1          = ""
+                try:    picture_2          = self.parser.get('ObjectInfo', 'picture_2')
+                except: picture_2          = ""
+                try:    crop_pciture       = self.parser.getboolean('ObjectInfo', 'crop_picture')
+                except: crop_pciture       = True
+                try:    category           = self.parser.get('ObjectInfo', 'category')
+                except: category           = ""
+                try:    sound              = self.parser.get('ObjectInfo', 'sound')
+                except: sound              = "None"
+                try:    repeat             = self.parser.getint('ObjectInfo', 'repeat')
+                except: repeat             = 1
+                try:    progressbar_show   = self.parser.getboolean('ObjectInfo', 'show_progress')
+                except: progressbar_show   = False
+                try:    progressbar_time   = self.parser.getint('ObjectInfo', 'progresstime')
+                except: progressbar_time   = 0
                 try:    responseorder_show = self.parser.getboolean('ObjectInfo', 'show_responseOrder')
                 except: responseorder_show = False
 
@@ -280,7 +290,7 @@ class MyHandler(FileSystemEventHandler):
 
                 # set ScreenEvent as active frame and set addresses
                 self.controller.show_frame(ScreenEvent)
-                frame = self.controller.get_act_screen()
+                frame = self.controller.get_act_frame()
                 # first configure
                 frame.configure(alarmMessage=full_event_message,
                                 picture_1=picture_1,
@@ -447,9 +457,8 @@ class GraficOutputDriver:
         time.sleep(10)
         self.__switch_grafic_output('On')
 
-        ########################################################################
 
-
+########################################################################
 def switch_screen_after_while(switch_to_screen):
     # Only adapt the screen if no other change
     # was requested by the user
@@ -473,13 +482,19 @@ def switch_screen_after_while(switch_to_screen):
         app.show_frame(ScreenOff)
         grafic.set_visual('Off')
 
-        ########################################################################
 
-
+########################################################################
 def read_config_ini_file():
-    # force python to use the global variables instead of creating
-    # them local
+    """
+    This function will open the file 'config.ini' which is located in
+    the same folder as this run.py file. This configuration file holds
+    all necessary informations about the firefinder app. The informations
+    from the configuration file is stored in a dict for better handling
+    afterwards
 
+    :return: result True if no error occur, otherwise string with error
+    :return: dict_ini Holds the stored informations in a Dict
+    """
     # Set default values
     result                          = None
     full_screen_enable              = False
@@ -504,7 +519,7 @@ def read_config_ini_file():
     # Check if config.ini file exist
     config_path = os.path.join(wdr, 'config.ini')
     if not os.path.isfile(config_path):
-        # quit script due to an error
+        # Configuration file could not be found
         error_message = ("The file \"config.ini\" is missing. Be sure this"
                          "file is in the same directory like this python-script")
         print("ERROR: %s" % error_message)
@@ -535,7 +550,7 @@ def read_config_ini_file():
 
     # Read values with lower priority
     if result is None:
-        # [Visual] group
+        # [Visual]
         try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
         except: pass
 
@@ -551,7 +566,7 @@ def read_config_ini_file():
         try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
         except: pass
 
-        # [Power] group
+        # [Power]
         try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
         except: pass
 
@@ -579,6 +594,56 @@ def read_config_ini_file():
 
 
 ########################################################################
+def show_error_screen(error_code, ini_file_path):
+    """
+    This function will create a canvas and show up the given error code
+    in a way that the user can handelt it easily
+
+    :param error_code: String off error code given by the function read_config_ini_file
+    :param ini_file_path: Dict of the ini file, given by the function read_config_ini_file
+    :return: instanc of a tinker for display
+    """
+    error_code    = error_code
+    error_message = ''
+    ini_file_path = ini_file_path
+
+    if error_code == 'IniFileNotFound':
+        error_message = ('Die Datei config.ini wurde nicht gefunden. '
+                         'Stelle sicher dass sich die Datei im selben '
+                         'Ordner befindet wie die Datei \"run.py\"')
+    elif error_code == 'CouldNotReadIniFile':
+        error_message = ('Die Datei config.ini konnte nicht gelesen '
+                         'werden. Stelle sicher, dass in der Gruppe '
+                         '[General] die Variablen richtig aufgefuehrt '
+                         'sind\n\n[General]\nobserving_path = <Kompletter '
+                         'Pfad ohne Datei>\nobserving_file   = <Dateiname mit Endung>')
+    elif error_code == 'PathDoesNotExist':
+        received_path_and_file = os.path.join(ini_file_path["ObservePathForEvent"],
+                                              ini_file_path["ObserveFileForEvent"])
+        error_message = ('Der in der config.ini Datei angegebene Pfad'
+                         '\n\n{}\n\nwurde nicht gefunden. Stelle sicher '
+                         'dass der Pfad korrekt ist. Die Gross- / Klein'
+                         'schreibung muss beachtet werden.'
+                         .format(received_path_and_file))
+
+    # Create a empty canvas to hold the error text string with a red background
+    master = tk.Tk()
+    error_canvas = tk.Canvas(master,
+                             width=int(master.winfo_screenwidth() / 2),
+                             height=int(master.winfo_screenheight() / 2),
+                             background='red')
+
+    # Create a text string placed in the canvas createt above
+    error_canvas.create_text(int(master.winfo_screenwidth() / 4),
+                             int(master.winfo_screenwidth() / 8),
+                             text=u'!! Schwerer Systemfehler !!\n\n{0:s}'.format(error_message),
+                             font=('arial', 30),
+                             width=int(master.winfo_screenwidth() / 2))
+    error_canvas.pack(side='top')
+    return master
+
+
+########################################################################
 if __name__ == "__main__":
 
     # Hint to GNU copy left license
@@ -591,45 +656,13 @@ if __name__ == "__main__":
     print("+-------------------------------------------------+")
     print("\n\n")
 
-    errorMessage = ""
-
     # Read config.ini File & check for failure
     return_value, ini_file = read_config_ini_file()
-    if return_value is not True:
-        app = tk.Tk()  # Create a tkinter to put failure message on screen
-        if return_value == 'IniFileNotFound':
-            errorMessage = ('Die Datei config.ini wurde nicht gefunden. '
-                            'Stelle sicher dass sich die Datei im selben '
-                            'Ordner befindet wie die Datei \"run.py\"')
-        elif return_value == 'CouldNotReadIniFile':
-            errorMessage = ('Die Datei config.ini konnte nicht gelesen '
-                            'werden. Stelle sicher, dass in der Gruppe '
-                            'General die Variablen richtig aufgeführt '
-                            'sind\n\n[General]\nobserving_path = <Kompletter '
-                            'Pfad>\nobserving_file   = <Dateiname mit Endung>')
-        elif return_value == 'PathDoesNotExist':
-            errorMessage = ('Der in der config.ini Datei angegebene Pfad'
-                            '\n\n{}\n\nwurde nicht gefunden. Stelle sicher '
-                            'dass der Pfad korrekt ist. Die Gross- / Klein'
-                            'schreibung muss beachtet werden.'
-                            .format(ini_file["ObserveFileForEvent"]))
-        errorCanvas = tk.Canvas(app,
-                                width=int(app.winfo_screenwidth() / 2),
-                                height=int(app.winfo_screenheight() / 2),
-                                background='red')
-        errorText = errorCanvas.create_text(
-            int(app.winfo_screenwidth() / 4),
-            int(app.winfo_screenwidth() / 8),
-            text=u'!! Schwerer Systemfehler !!\n\n{0:s}'.format(errorMessage),
-            font=('arial', 30),
-            width=int(app.winfo_screenwidth() / 2))
-        errorCanvas.pack(side='top')
-
-    else:
+    if return_value is True:
         # Create some objects
         grafic = GraficOutputDriver(ini_file["rebootHDMIdeviceAfter"])
         app = FireFinderGUI(observing_path_name=ini_file["ObservePathForEvent"])
-        eventHandler = MyHandler(app, ini_file["rebootHDMIdeviceAfter"])  # <-- Diese Variable stimmt nicht!!!
+        eventHandler = MyHandler(app, ini_file["ObserveFileForEvent"])  # <-- Diese Variable stimmt nicht!!!
         observer = Observer()
 
         if ini_file["switchScreenDelayAfterStart"] is not 0:
@@ -640,5 +673,8 @@ if __name__ == "__main__":
         file_for_oberve = ini_file["ObservePathForEvent"]
         observer.schedule(eventHandler, file_for_oberve, recursive=False)
         observer.start()
+
+    else:
+        app = show_error_screen(return_value, ini_file)
 
     app.mainloop()
