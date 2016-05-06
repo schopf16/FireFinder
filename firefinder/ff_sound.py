@@ -36,7 +36,8 @@ def set_volume(volume=0.5):
 
 class AlarmSound(object):
     def __init__(self, path):
-        self.st = threading.Thread(target=self.__sound_thread)
+        # self.st = threading.Thread(target=self.__sound_thread)
+        self.st = None
         self.startOffset = 0  # starting position
         self.loops = 0  # number of repeats
         self.pauseBetweenTrack = 0  # pause between tracks in seconds
@@ -82,6 +83,7 @@ class AlarmSound(object):
                 self.pauseBetweenTrack = pause  # pause between tracks in seconds
                 self.startDelay = delay  # delay in seconds
 
+                self.st = threading.Thread(target=self.__sound_thread)
                 self.st.start()  # start the thread which plays the given music
 
     # ----------------------------------------------------------------------
@@ -122,7 +124,12 @@ class AlarmSound(object):
     def __sound_thread(self):
 
         if self.startDelay != 0:
-            time.sleep(self.startDelay)
+            _delay = self.startDelay
+            while _delay > 0:
+                time.sleep(0.1)
+                _delay -= 0.1
+                if self.threadRunning is False:
+                    return
 
         while self.loops != 0:
 
@@ -160,7 +167,7 @@ if __name__ == '__main__':
     except:
         wdr = os.getcwd()
 
-    sound = SoundGenerator(path=os.path.join(wdr, 'sound'))
+    sound = AlarmSound(path=os.path.join(wdr, 'sound'))
 
     # load music
     print("load file 01.mp3")

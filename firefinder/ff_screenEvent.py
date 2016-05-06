@@ -171,11 +171,16 @@ class ScreenEvent(tk.Frame):
         change_pciture = False
 
         if len(kw) == 0:  # return a dict of the current configuration
-            cfg = {'alarmMessage': self.alarmMessage, 'picture_1': self.nameOfPicture_1,
-                   'picture_2': self.nameOfPicture_2, 'cropPicture': self.cropPicture, 'category': self.category,
-                   'showProgressBar': self.showProgressBar, 'progressBarTime': self.progressBarTime,
-                   'showResponseOrder': self.showResponseOrder, 'responseOrder': self.responseOrder,
-                   'pathToIniFile': self.pathToIniFile}
+            cfg = {'alarmMessage'     : self.alarmMessage,
+                   'picture_1'        : self.nameOfPicture_1,
+                   'picture_2'        : self.nameOfPicture_2,
+                   'cropPicture'      : self.cropPicture,
+                   'category'         : self.category,
+                   'showProgressBar'  : self.showProgressBar,
+                   'progressBarTime'  : self.progressBarTime,
+                   'showResponseOrder': self.showResponseOrder,
+                   'responseOrder'    : self.responseOrder,
+                   'pathToIniFile'    : self.pathToIniFile}
             return cfg
 
         else:  # do a configure
@@ -348,7 +353,6 @@ class ScreenEvent(tk.Frame):
         if self.showProgressBar is True:
             self.progressBar.pack(side='top', fill='both', after=self.pictureBar)
             self.progressBar.start(time_in_seconds=self.progressBarTime, start_value=0)
-            print("start progressbar")
         else:
             self.progressBar.pack_forget()
 

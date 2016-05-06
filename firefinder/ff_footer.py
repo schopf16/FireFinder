@@ -302,7 +302,6 @@ class ResponseOrder(tk.Frame):
                 self.equipmentImg[x] = create_image(self.master, path, height=self.height)
                 self.equipment[x]["image"] = self.equipmentImg[x]
             else:
-                print(x)
                 self.equipmentImg[x] = ''
 
     # ----------------------------------------------------------------------
