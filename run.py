@@ -43,7 +43,6 @@ from firefinder.ff_miscellaneous import RepeatingTimer
 """ Path's """
 ffLogo = 'firefinder/pic/Logo.png'  # Firefighter Logo
 noImage = 'firefinder/pic/bg/no_image.png'
-# wdr = ''  # Working directory is set in main
 
 
 ########################################################################
@@ -145,6 +144,10 @@ class FireFinderGUI(tk.Tk):
         return self.frames[self.actScreen]
 
     # ----------------------------------------------------------------------
+    def get_screen_frame(self, screen_name):
+        return self.frames[screen_name]
+
+    # ----------------------------------------------------------------------
     def get_act_screen(self):
         """
         The method will return the name of the actual shown screen
@@ -162,27 +165,39 @@ class FireFinderGUI(tk.Tk):
 
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
-    def __init__(self, controller, observing_file_name, **kwargs):
+    def __init__(self, gui_handler, configuration_dict, ):
 
-        auto_power_off_after_screen_event_launch = kwargs.get("Bitte_Guten_Namen", 0)
+        # Grab all neccessery informations form the configuration dict
+        full_screen_enable              = configuration_dict['FullScreen']
+        self.switch_screen_delay_after_start = configuration_dict['switchScreenDelayAfterStart']
+        self.switch_to_screen_after_start    = configuration_dict['switchToScreenAfterStart']
+        self.switch_screen_delay_after_event = configuration_dict['switchScreenDelayAfterEvent']
+        self.switch_to_screen_after_event    = configuration_dict['switchToScreenAfterEvent']
+        cec_enable                      = configuration_dict['cec_enable']
+        standby_enable                  = configuration_dict['standby_hdmi_enable']
+        reboot_hdmi_device_after        = configuration_dict['rebootHDMIdeviceAfter']
+        self.observing_file_name             = configuration_dict['ObserveFileForEvent']
+        observing_path_name             = configuration_dict['ObservePathForEvent']
+        self.path_sound_folder               = configuration_dict['PathSoundFolder']
+        path_logo                       = configuration_dict['PathLogo']
 
-        self.parser        = ConfigParser()
-        self.controller    = controller
-        self.powerOffTimer = None
+        # Create instances
+        self.sound_handler = AlarmSound(self.path_sound_folder)
+        self.parser = ConfigParser()
 
-        self.observing_file_name = observing_file_name
+        self.gui_instance    = gui_handler
+        self.power_instance  = grafic
 
-        try:
-            wdr = os.path.dirname(__file__)
-        except:
-            wdr = os.getcwd()
+        # variable to hold the ID of the "after" job to
+        self._job_after_startup  = None
+        self._job_after_event    = None
 
-        self.alarmSound = AlarmSound(os.path.join(wdr, 'firefinder', 'sound'))
         self.lastModified = 0
 
-        if auto_power_off_after_screen_event_launch is not 0:
-            self.powerOffTimer = RepeatingTimer(auto_power_off_after_screen_event_launch * 60,
-                                                grafic.set_power_off)
+        if self.switch_screen_delay_after_start is not 0:
+            self._job_after_startup = self.gui_instance.after(self.switch_screen_delay_after_start * 1000,  # Delay in milliseconds
+                                                              self.switch_screen_frame,  # Called function after time expired
+                                                              self.switch_to_screen_after_start)  # Screen to display
 
     # ----------------------------------------------------------------------
     def on_modified(self, event):
@@ -212,11 +227,19 @@ class MyHandler(FileSystemEventHandler):
                 print("Failed to read variable \"show\" in section [General]")
                 return
 
-            show = self.parser.get('General', 'show')
-            if self.powerOffTimer:
-                self.powerOffTimer.cancel()
-                self.powerOffTimer.join(20)
+            # file was modivied by user, aboard auto_switch_screen_after_start if running
+            if self._job_after_startup is not None:
+                self.gui_instance.after_cancel(self._job_after_startup)
+                self._job_after_startup = None
 
+            if self._job_after_event is not None:
+                self.gui_instance.after_cancel(self._job_after_event)
+                self._job_after_event = None
+
+            # Parse the requestet screen
+            show = self.parser.get('General', 'show')
+
+            # If time-screen is requested, get some additional settings
             if show.lower() == 'time':
                 # get information from ini-file
                 try:    show_second_hand    = self.parser.getboolean('Clock', 'show_second_hand')
@@ -232,33 +255,15 @@ class MyHandler(FileSystemEventHandler):
                 try:    show_digital_second = self.parser.getboolean('Clock', 'show_digital_second')
                 except: show_digital_second = True
 
-                # Set Clock as active screen and configure the clock afterwards
-                self.alarmSound.stop()
-                self.controller.show_frame(ScreenClock)
-                frame = self.controller.get_act_frame()
+                frame = self.gui_instance.get_screen_frame(ScreenClock)
                 frame.configure(showSecondHand=show_second_hand,
                                 showMinuteHand=show_minute_hand,
                                 showHourHand=show_hour_hand,
                                 showDigitalTime=show_digital_time,
                                 showDigitalDate=show_ditial_date,
                                 showDigitalSeconds=show_digital_second)
-                grafic.set_visual('On')
 
-            if show.lower() == 'slideshow':
-                self.alarmSound.stop()
-                self.controller.show_frame(ScreenSlideshow)
-                grafic.set_visual('On')
-
-            if show.lower() == 'splashscreen':
-                self.alarmSound.stop()
-                self.controller.show_frame(ScreenOff)
-                grafic.set_visual('On')
-
-            if show.lower() == 'off':
-                self.alarmSound.stop()
-                self.controller.show_frame(ScreenOff)
-                grafic.set_visual('Off')
-
+            # If event-screen is requestet, get some additional settings
             if show.lower() == 'object':
                 # get information from ini-file
                 try:    full_event_message = self.parser.get('ObjectInfo', 'entire_msg')
@@ -288,37 +293,60 @@ class MyHandler(FileSystemEventHandler):
                     try:    equipment[x] = self.parser.get('ObjectInfo', s)
                     except: equipment[x] = ""
 
-                # set ScreenEvent as active frame and set addresses
-                self.controller.show_frame(ScreenEvent)
-                frame = self.controller.get_act_frame()
-                # first configure
+                frame = self.gui_instance.get_screen_frame(ScreenEvent)
                 frame.configure(alarmMessage=full_event_message,
                                 picture_1=picture_1,
                                 picture_2=picture_2,
                                 cropPicture=crop_pciture,
                                 category=category,
                                 progressBarTime=progressbar_time,
-                                responseOrder=equipment)
-                # then start
-                frame.configure(showProgressBar=progressbar_show,
+                                responseOrder=equipment,
+                                showProgressBar=progressbar_show,
                                 showResponseOrder=responseorder_show)
-
-                # enable television
-                if self.powerOffTimer:
-                    self.powerOffTimer.start()
-                grafic.set_visual('On')
+                # frame.configure(showProgressBar=progressbar_show,
+                #                 showResponseOrder=responseorder_show)
 
                 # set sound
-                if sound.lower() != 'none':
-                    self.alarmSound.load_music(sound)
-                    self.alarmSound.start(loops=repeat, start=0, delay=2, pause=15)
+                if sound.lower() != 'None':
+                    self.sound_handler.load_music(sound)
+                    self.sound_handler.start(loops=repeat, start=0, delay=2, pause=15)
                 else:
-                    self.alarmSound.stop()
+                    self.sound_handler.stop()
+
+                # Create a job to switch screen after a certain time
+                if self.switch_screen_delay_after_event is not 0:
+                    self._job_after_event = self.gui_instance.after(self.switch_screen_delay_after_event * 1000,
+                                                                    self.switch_screen_frame,
+                                                                    self.switch_to_screen_after_event)
 
             if show.lower() == 'quit':
-                self.alarmSound.stop()
-                grafic.set_visual('On')
-                self.controller.exit(self)
+                self.sound_handler.stop()
+                self.power_instance.set_visual('On')
+                self.gui_instance.exit(self)
+
+            self.switch_screen_frame(show)
+
+    # ----------------------------------------------------------------------
+    def switch_screen_frame(self, switch_to_screen_frame):
+
+        if switch_to_screen_frame.lower() == 'time':
+            self.sound_handler.stop()
+            self.gui_instance.show_frame(ScreenClock)
+            self.power_instance.set_visual('On')
+
+        if switch_to_screen_frame.lower() == 'slideshow':
+            self.sound_handler.stop()
+            self.gui_instance.show_frame(ScreenSlideshow)
+            self.power_instance.set_visual('On')
+
+        if switch_to_screen_frame.lower() == 'object':
+            self.gui_instance.show_frame(ScreenEvent)
+            self.power_instance.set_visual('On')
+
+        if switch_to_screen_frame.lower() == 'off':
+            self.sound_handler.stop()
+            self.gui_instance.show_frame(ScreenOff)
+            self.power_instance.set_visual('Off')
 
 
 ######################################################################## 
@@ -459,31 +487,6 @@ class GraficOutputDriver:
 
 
 ########################################################################
-def switch_screen_after_while(switch_to_screen):
-    # Only adapt the screen if no other change
-    # was requested by the user
-    if (app.startTime + 2) <= app.lastChange:
-        print(app.startTime)
-        print(app.lastChange)
-        return
-
-    if switch_to_screen.lower() == 'time':
-        eventHandler.alarmSound.stop()
-        app.show_frame(ScreenClock)
-        grafic.set_visual('On')
-
-    if switch_to_screen.lower() == 'slideshow':
-        eventHandler.alarmSound.stop()
-        app.show_frame(ScreenSlideshow)
-        grafic.set_visual('On')
-
-    if switch_to_screen.lower() == 'off':
-        eventHandler.alarmSound.stop()
-        app.show_frame(ScreenOff)
-        grafic.set_visual('Off')
-
-
-########################################################################
 def read_config_ini_file():
     """
     This function will open the file 'config.ini' which is located in
@@ -495,8 +498,13 @@ def read_config_ini_file():
     :return: result True if no error occur, otherwise string with error
     :return: dict_ini Holds the stored informations in a Dict
     """
+    try:
+        wdr = os.path.dirname(__file__)
+    except:
+        wdr = os.getcwd()
+
     # Set default values
-    result                          = None
+    error                           = None
     full_screen_enable              = False
     switch_screen_delay_after_start = 0
     switch_to_screen_after_start    = ScreenOff
@@ -507,14 +515,11 @@ def read_config_ini_file():
     reboot_hdmi_device_after        = 0
     observing_file_name             = ''
     observing_path_name             = ''
+    path_sound_folder               = os.path.join(wdr, 'firefinder', 'sound')
+    path_logo                       = ''
 
     # Create instance for reading the ini file
     sysconfig = ConfigParser()
-
-    try:
-        wdr = os.path.dirname(__file__)
-    except:
-        wdr = os.getcwd()
 
     # Check if config.ini file exist
     config_path = os.path.join(wdr, 'config.ini')
@@ -523,10 +528,10 @@ def read_config_ini_file():
         error_message = ("The file \"config.ini\" is missing. Be sure this"
                          "file is in the same directory like this python-script")
         print("ERROR: %s" % error_message)
-        result = 'IniFileNotFound'
+        error = 'IniFileNotFound'
 
     # config.ini file exist, going to read the data
-    if result is None:
+    if error is None:
         with codecs.open(config_path, 'r', encoding='UTF-8-sig') as f:
             sysconfig.read_file(f)
 
@@ -537,42 +542,42 @@ def read_config_ini_file():
         except:
             error_message = 'An unexpected error occurred while reading config.ini'
             print("ERROR: %s" % error_message)
-            result = 'CouldNotReadIniFile'
+            error = 'CouldNotReadIniFile'
 
-    if result is None:
+    if error is None:
         # Check if the observation-directory exist. Otherwise the observer
         # will raise a FileNotFoundError
         if not os.path.isdir(observing_path_name):
             # quit script due to an error
             error_message = ("The directory \"%s\" for observation is missing." % observing_path_name)
             print("ERROR: %s" % error_message)
-            result = 'PathDoesNotExist'
+            error = 'PathDoesNotExist'
 
     # Read values with lower priority
-    if result is None:
+    if error is None:
+        # Path]
+        try:    path_sound_folder = sysconfig.getboolean('Path', 'path_sounds')
+        except: pass
+        try:    path_logo = sysconfig.getint('Path', 'path_logo')
+        except: pass
+
         # [Visual]
         try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
         except: pass
-
-        try:    switch_screen_delay_after_start = sysconfig.getint('Visual', 'switchScreenAfter')
+        try:    switch_screen_delay_after_start = sysconfig.getint('Visual', 'switchScreenAfterStart')
         except: pass
-
-        try:    switch_to_screen_after_start = sysconfig.get('Visual', 'switchToScreen')
+        try:    switch_to_screen_after_start = sysconfig.get('Visual', 'switchToScreenAfterStart')
         except: pass
-
         try:    switch_screen_delay_after_event = sysconfig.getint('Visual', 'switchScreenAfterEvent')
         except: pass
-
         try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
         except: pass
 
         # [Power]
         try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
         except: pass
-
         try:    standby_enable = sysconfig.getboolean('Power', 'stdby_enable')
         except: pass
-
         try:    reboot_hdmi_device_after = sysconfig.getint('Power', 'cec_reboot_after_minutes')
         except: pass
 
@@ -586,11 +591,13 @@ def read_config_ini_file():
                 "standby_hdmi_enable"         : standby_enable,
                 "rebootHDMIdeviceAfter"       : reboot_hdmi_device_after,
                 "ObserveFileForEvent"         : observing_file_name,
-                "ObservePathForEvent"         : observing_path_name}
+                "ObservePathForEvent"         : observing_path_name,
+                "PathSoundFolder"             : path_sound_folder,
+                "PathLogo"                    : path_logo}
 
-    if result is None:
-        result = True
-    return result, dict_ini
+    if error is None:
+        error = True
+    return error, dict_ini
 
 
 ########################################################################
@@ -657,24 +664,20 @@ if __name__ == "__main__":
     print("\n\n")
 
     # Read config.ini File & check for failure
-    return_value, ini_file = read_config_ini_file()
-    if return_value is True:
+    result, configuration = read_config_ini_file()
+    if result is True:
         # Create some objects
-        grafic = GraficOutputDriver(ini_file["rebootHDMIdeviceAfter"])
-        app = FireFinderGUI(observing_path_name=ini_file["ObservePathForEvent"])
-        eventHandler = MyHandler(app, ini_file["ObserveFileForEvent"])  # <-- Diese Variable stimmt nicht!!!
+        grafic = GraficOutputDriver(configuration["rebootHDMIdeviceAfter"])
+        app = FireFinderGUI(observing_path_name=configuration["ObservePathForEvent"])
+        eventHandler = MyHandler(app, configuration)
         observer = Observer()
 
-        if ini_file["switchScreenDelayAfterStart"] is not 0:
-            switchTimeInSeconds = ini_file["switchScreenDelayAfterStart"] * 1000
-            app.after(switchTimeInSeconds, switch_screen_after_while)
-
         # configure the observer thread and start it afterward
-        file_for_oberve = ini_file["ObservePathForEvent"]
+        file_for_oberve = configuration["ObservePathForEvent"]
         observer.schedule(eventHandler, file_for_oberve, recursive=False)
         observer.start()
 
     else:
-        app = show_error_screen(return_value, ini_file)
+        app = show_error_screen(result, configuration)
 
     app.mainloop()

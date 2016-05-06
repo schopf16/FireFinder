@@ -11,6 +11,15 @@ observing_path  = D:\Firefinder
 observing_file    = Object.ini
 ; ------------------------------------------------------------------
 
+[Path]
+; If empty or set to 'None' the system will search in the working
+; directory in the folder ./firefinder/sound
+path_sounds   = None
+
+; If empty or set to 'None' the system won't display a image
+path_logo     = None
+
+
 [Visual]
 ; The software is designed to work in full screen. However you may
 ; use the software in a window for debug proposes
