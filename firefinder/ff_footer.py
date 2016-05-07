@@ -158,17 +158,22 @@ class ProgressBar(tk.Frame):
     # ----------------------------------------------------------------------
     def start(self, time_in_seconds, start_value=None):
 
+        # It seem senseless to have a progress time of 0 seconds...
+        if time_in_seconds == 0:
+            print("ERROR: PROGRESS-TIME CAN'T BE ZERO")
+            return
+
+        # The start_value can't be greater than the full time_in_seconds
+        if start_value > time_in_seconds:
+            start_value = time_in_seconds
+
         # Store necessary time informations
         self.timeStartMs = int(round(time.time() * 1000))
         self.durationMs = int(round(time_in_seconds * 1000))
 
-        '''
-            To get a smooth progress, calculate the time in
-            milliseconds in which the draw function has to be
-            called.
-        '''
-        self.msPerSlice = int((time_in_seconds * 1000) /
-                              (self.width / self.pixelPerSlice))
+        # To get a smooth progress, calculate the time in milliseconds in
+        # which the draw function has to be called.
+        self.msPerSlice = int((time_in_seconds * 1000) / (self.width / self.pixelPerSlice))
 
         if start_value is not None:
             if start_value > self.width:

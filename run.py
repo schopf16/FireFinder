@@ -264,33 +264,33 @@ class MyHandler(FileSystemEventHandler):
                                 showDigitalSeconds=show_digital_second)
 
             # If event-screen is requestet, get some additional settings
-            if show.lower() == 'object':
+            if show.lower() == 'event':
                 # get information from ini-file
-                try:    full_event_message = self.parser.get('ObjectInfo', 'entire_msg')
+                try:    full_event_message = self.parser.get('Event', 'message_full')
                 except: full_event_message = ""
-                try:    picture_1          = self.parser.get('ObjectInfo', 'picture_1')
+                try:    picture_1          = self.parser.get('Event', 'picture_left')
                 except: picture_1          = ""
-                try:    picture_2          = self.parser.get('ObjectInfo', 'picture_2')
+                try:    picture_2          = self.parser.get('Event', 'picture_right')
                 except: picture_2          = ""
-                try:    crop_pciture       = self.parser.getboolean('ObjectInfo', 'crop_picture')
+                try:    crop_pciture       = self.parser.getboolean('Event', 'crop_picture')
                 except: crop_pciture       = True
-                try:    category           = self.parser.get('ObjectInfo', 'category')
+                try:    category           = self.parser.get('Event', 'category')
                 except: category           = ""
-                try:    sound              = self.parser.get('ObjectInfo', 'sound')
-                except: sound              = "None"
-                try:    repeat             = self.parser.getint('ObjectInfo', 'repeat')
+                try:    sound              = self.parser.get('Sound', 'sound')
+                except: sound              = "07.mp3"
+                try:    repeat             = self.parser.getint('Event', 'repeat')
                 except: repeat             = 1
-                try:    progressbar_show   = self.parser.getboolean('ObjectInfo', 'show_progress')
+                try:    progressbar_show   = self.parser.getboolean('Progress', 'show_progress')
                 except: progressbar_show   = False
-                try:    progressbar_time   = self.parser.getint('ObjectInfo', 'progresstime')
+                try:    progressbar_time   = self.parser.getint('Progress', 'progress_time')
                 except: progressbar_time   = 0
-                try:    responseorder_show = self.parser.getboolean('ObjectInfo', 'show_responseOrder')
+                try:    responseorder_show = self.parser.getboolean('Response', 'show_responseOrder')
                 except: responseorder_show = False
 
                 equipment = {}
                 for x in range(1, 10):
                     s = ('equipment_%01i' % x)
-                    try:    equipment[x] = self.parser.get('ObjectInfo', s)
+                    try:    equipment[x] = self.parser.get('Response', s)
                     except: equipment[x] = ""
 
                 frame = self.gui_instance.get_screen_frame(ScreenEvent)
@@ -303,8 +303,6 @@ class MyHandler(FileSystemEventHandler):
                                 responseOrder=equipment,
                                 showProgressBar=progressbar_show,
                                 showResponseOrder=responseorder_show)
-                # frame.configure(showProgressBar=progressbar_show,
-                #                 showResponseOrder=responseorder_show)
 
                 # set sound
                 if sound.lower() != 'None':
@@ -339,7 +337,7 @@ class MyHandler(FileSystemEventHandler):
             self.gui_instance.show_frame(ScreenSlideshow)
             self.power_instance.set_visual('On')
 
-        if switch_to_screen_frame.lower() == 'object':
+        if switch_to_screen_frame.lower() == 'event':
             self.gui_instance.show_frame(ScreenEvent)
             self.power_instance.set_visual('On')
 
