@@ -11,15 +11,6 @@ observing_path  = D:\Firefinder
 observing_file    = Object.ini
 ; ------------------------------------------------------------------
 
-[Path]
-; If empty or set to 'None' the system will search in the working
-; directory in the folder ./firefinder/sound
-path_sounds   = None
-
-; If empty or set to 'None' the system won't display a image
-path_logo     = None
-
-
 [Visual]
 ; The software is designed to work in full screen. However you may
 ; use the software in a window for debug proposes
@@ -53,6 +44,19 @@ switchScreenAfterEvent = 600
 switchToScreenAfterEvent = off           
 ; ------------------------------------------------------------------
 
+; If empty or set to 'None' the system won't display a image. Enter
+; full path and filename with extentions. For example 
+; D:\Picutre\Logo.png
+; Default: None
+path_logo     = None
+; ------------------------------------------------------------------
+
+; The company name is shown in several screens on the top. If empty 
+; or not existing, nothing is shown
+; Default: *Empty*
+company_name   =
+; ------------------------------------------------------------------
+
 [Power]
 ; The raspberry pi is able to drive a television over CEC-signals.
 ; If software is running is on a pi, you can enable the CEC-signal.
@@ -79,4 +83,27 @@ cec_reboot_after_minutes = 180
 ; system. The file "reactivate_screen.sh" has to be placed in the
 ; script-folder
 stdby_enable      = true
+; ------------------------------------------------------------------
+
+[Sound]
+; Define the path where the sound files are stored. Enter full path.
+; If empty or none, the system will search in the working directory 
+; in the folder ./firefinder/sound
+; Default: None
+path_sounds   = None
+; ------------------------------------------------------------------
+
+; User can fore a sound file for event screen. If a file is given
+; it can only overdriven by another sound file comming with the user
+; ini-file. If there is no file or can't be found, the screen will
+; play this file. If unused, set to None or leave empty
+; default None
+force_sound_file = None
+; ------------------------------------------------------------------
+
+; Set the amount of repetitions that the sound should be repeated.
+; This hook takes place if the force_sound_file hook take effect.
+; If set to 0, the sound is repeated endless. 
+; default 1
+force_repetition = 1
 ; ------------------------------------------------------------------

@@ -38,19 +38,16 @@ from firefinder.ff_screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary import TvPower
 from firefinder.ff_miscellaneous import RepeatingTimer
 
-########################################################################
-
-""" Path's """
-ffLogo = 'firefinder/pic/Logo.png'  # Firefighter Logo
-noImage = 'firefinder/pic/bg/no_image.png'
-
 
 ########################################################################
 class FireFinderGUI(tk.Tk):
-    def __init__(self, observing_path_name, **kwargs):
+    def __init__(self, configuration_dict):
         super(FireFinderGUI, self).__init__()
 
-        fullscreen_enable = kwargs.get('fullscreen', False)
+        self.full_screen_enable = configuration_dict['FullScreen']
+        self.observing_path_name = configuration_dict['ObservePathForEvent']
+        self.path_logo = configuration_dict['PathLogo']
+        self.company_name = configuration_dict['CompanyName']
 
         # Store actual shown screen
         self.actScreen = ''
@@ -67,7 +64,7 @@ class FireFinderGUI(tk.Tk):
         self.config(cursor="none")
 
         # Removes the native window boarder
-        if fullscreen_enable is True:
+        if self.full_screen_enable is True:
             self.attributes('-fullscreen', True)
 
         # Disable resizable of the x-axis and the y-axis to keep the
@@ -104,8 +101,11 @@ class FireFinderGUI(tk.Tk):
             frame.grid(row=0, column=0, sticky="nsew")
 
         # do some configurations to the screens
-        self.frames[ScreenEvent].configure(pathToIniFile=observing_path_name)
-        self.frames[ScreenSlideshow].configure(pathToIniFile=observing_path_name)
+        self.frames[ScreenEvent].configure(pathToIniFile=self.observing_path_name)
+        self.frames[ScreenSlideshow].configure(pathToIniFile=self.observing_path_name,
+                                               logoPathAndFile=self.path_logo,
+                                               companyName=self.company_name)
+        self.frames[ScreenOff].configure(logoPathAndFile=self.path_logo)
 
         # store some timing details
         self.startTime = int(time.time())
@@ -165,24 +165,20 @@ class FireFinderGUI(tk.Tk):
 
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
-    def __init__(self, gui_handler, configuration_dict, ):
+    def __init__(self, gui_handler, configuration_dict):
 
         # Grab all neccessery informations form the configuration dict
-        full_screen_enable              = configuration_dict['FullScreen']
         self.switch_screen_delay_after_start = configuration_dict['switchScreenDelayAfterStart']
         self.switch_to_screen_after_start    = configuration_dict['switchToScreenAfterStart']
         self.switch_screen_delay_after_event = configuration_dict['switchScreenDelayAfterEvent']
         self.switch_to_screen_after_event    = configuration_dict['switchToScreenAfterEvent']
-        cec_enable                      = configuration_dict['cec_enable']
-        standby_enable                  = configuration_dict['standby_hdmi_enable']
-        reboot_hdmi_device_after        = configuration_dict['rebootHDMIdeviceAfter']
         self.observing_file_name             = configuration_dict['ObserveFileForEvent']
-        observing_path_name             = configuration_dict['ObservePathForEvent']
         self.path_sound_folder               = configuration_dict['PathSoundFolder']
-        path_logo                       = configuration_dict['PathLogo']
+        self.force_sound_file                = configuration_dict['ForceSoundFile']
+        self.force_repetition                = configuration_dict['ForceSoundRepetition']
 
         # Create instances
-        self.sound_handler = AlarmSound(self.path_sound_folder)
+        self.sound_handler = AlarmSound(self.path_sound_folder, self.force_sound_file)
         self.parser = ConfigParser()
 
         self.gui_instance    = gui_handler
@@ -304,10 +300,19 @@ class MyHandler(FileSystemEventHandler):
                                 showProgressBar=progressbar_show,
                                 showResponseOrder=responseorder_show)
 
-                # set sound
-                if sound.lower() != 'None':
-                    self.sound_handler.load_music(sound)
-                    self.sound_handler.start(loops=repeat, start=0, delay=2, pause=15)
+                # Check if a sound file needs to be played
+                if sound.lower() != 'none' or self.force_sound_file.lower() != 'none':
+                    h_result = False
+                    if sound.lower() != 'none':
+                        h_result = self.sound_handler.load_music(sound)
+
+                    # If sound-file couldn't be loaded, try to overwrite with force settings
+                    if self.force_sound_file.lower() != 'none' and not h_result:
+                        h_result = self.sound_handler.load_music(self.force_sound_file)
+                        repeat   = self.force_repetition
+
+                    if h_result:
+                        self.sound_handler.start(loops=repeat, start=0, delay=2, pause=15)
                 else:
                     self.sound_handler.stop()
 
@@ -513,8 +518,11 @@ def read_config_ini_file():
     reboot_hdmi_device_after        = 0
     observing_file_name             = ''
     observing_path_name             = ''
-    path_sound_folder               = os.path.join(wdr, 'firefinder', 'sound')
+    path_sound_folder               = 'None'
+    force_sound_file                = 'None'
+    force_sound_repetition          = 1
     path_logo                       = ''
+    company_name                    = ''
 
     # Create instance for reading the ini file
     sysconfig = ConfigParser()
@@ -553,12 +561,6 @@ def read_config_ini_file():
 
     # Read values with lower priority
     if error is None:
-        # Path]
-        try:    path_sound_folder = sysconfig.getboolean('Path', 'path_sounds')
-        except: pass
-        try:    path_logo = sysconfig.getint('Path', 'path_logo')
-        except: pass
-
         # [Visual]
         try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
         except: pass
@@ -570,6 +572,10 @@ def read_config_ini_file():
         except: pass
         try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
         except: pass
+        try:    path_logo = sysconfig.get('Visual', 'path_logo')
+        except: pass
+        try:    company_name = sysconfig.get('Visual', 'company_name')
+        except: pass
 
         # [Power]
         try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
@@ -578,6 +584,18 @@ def read_config_ini_file():
         except: pass
         try:    reboot_hdmi_device_after = sysconfig.getint('Power', 'cec_reboot_after_minutes')
         except: pass
+
+        # [Sound]
+        try:    path_sound_folder = sysconfig.get('Sound', 'path_sounds')
+        except: pass
+        try:    force_sound_file = sysconfig.get('Sound', 'force_sound_file')
+        except: pass
+        try:    force_sound_repetition = sysconfig.getint('Sound', 'force_repetition')
+        except: pass
+
+        # Check if sound-path exist. Otherwhise work with standard path
+        if not os.path.isdir(path_sound_folder):
+            path_sound_folder = os.path.join(wdr, 'firefinder', 'sound')
 
     # Create a directory for return value
     dict_ini = {"FullScreen"                  : full_screen_enable,
@@ -591,7 +609,10 @@ def read_config_ini_file():
                 "ObserveFileForEvent"         : observing_file_name,
                 "ObservePathForEvent"         : observing_path_name,
                 "PathSoundFolder"             : path_sound_folder,
-                "PathLogo"                    : path_logo}
+                "ForceSoundFile"              : force_sound_file,
+                "ForceSoundRepetition"        : force_sound_repetition,
+                "PathLogo"                    : path_logo,
+                "CompanyName"                 : company_name}
 
     if error is None:
         error = True
@@ -666,7 +687,7 @@ if __name__ == "__main__":
     if result is True:
         # Create some objects
         grafic = GraficOutputDriver(configuration["rebootHDMIdeviceAfter"])
-        app = FireFinderGUI(observing_path_name=configuration["ObservePathForEvent"])
+        app = FireFinderGUI(configuration)
         eventHandler = MyHandler(app, configuration)
         observer = Observer()
 
