@@ -2,7 +2,7 @@
 # -*- coding: UTF-8-*-
 
 """
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -60,8 +60,8 @@ class Transformer:
 class ScreenClock(tk.Frame):
     def __init__(self, parent, controller):
         """Constructor"""
-        tk.Frame.__init__(self, parent)
-        tk.Frame.config(self, bg='black')
+        super(ScreenClock, self).__init__(parent)
+        self.config(bg='black')
 
         # store parent objects
         self.parent = parent

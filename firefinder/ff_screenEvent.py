@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 """
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -41,10 +41,9 @@ Used to overwrite methods of class instances
 
 
 class ScreenEvent(tk.Frame):
-    def __init__(self, parent, controller, **kw):
+    def __init__(self, parent, controller):
 
-        super().__init__(**kw)
-        tk.Frame.__init__(self, parent)
+        super(ScreenEvent, self).__init__(parent)
 
         # store parent objects
         self.parent = parent

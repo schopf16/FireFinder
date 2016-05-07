@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 '''
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,8 +48,7 @@ class ScreenWeb(tk.Frame):
             webbrowser.get('epiphany')
         elif os.name == 'nt':
             webbrowser.get('windows-default')
-            
-            
+
         self.url = ''
         self.local = ''
         self.pathToIniFile = ''
@@ -57,7 +56,7 @@ class ScreenWeb(tk.Frame):
         self.createWidget(self.parent)
         pass
     
-    #---------------------------------------------------------------------- 
+    #----------------------------------------------------------------------
     def createWidget(self, parent):
         
         tk.Frame.__init__(self, parent) 
@@ -148,10 +147,9 @@ def testScreenAlarm():
     
 ######################################################################## 
 if __name__ == '__main__':
-    
-    
+
     root = tk.Tk() 
-    root.geometry("%dx%d+0+0" % (root.winfo_screenwidth(), root.winfo_screenheight()-200))
+    root.geometry("%dx%d+0+0" % (root.winfo_screenwidth(), root.winfo_screenheight() - 200))
     
     container = tk.Frame(root)        
     container.pack(side="top", fill="both", expand = False)

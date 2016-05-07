@@ -29,8 +29,7 @@ from firefinder.ff_miscellaneous import create_image, get_text_font_size
 
 class ProgressBar(tk.Frame):
     def __init__(self, parent, width, height, pixel_per_slice=1):
-
-        tk.Frame.__init__(self, parent)
+        super(ProgressBar, self).__init__(parent)
 
         if pixel_per_slice <= 0:
             pixel_per_slice = 1
@@ -249,7 +248,7 @@ class ProgressBar(tk.Frame):
 class ResponseOrder(tk.Frame):
     def __init__(self, parent, width, height):
 
-        tk.Frame.__init__(self, parent)
+        super(ResponseOrder, self).__init__(parent)
 
         self.parent = parent  # master of this widget
 

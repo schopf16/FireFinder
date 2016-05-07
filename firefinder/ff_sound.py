@@ -2,7 +2,7 @@
 # -*- coding: UTF-8-*-
 
 """
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ def set_volume(volume=0.5):
 
 
 class AlarmSound(object):
-    def __init__(self, path):
+    def __init__(self, path, force_sound_file):
         # self.st = threading.Thread(target=self.__sound_thread)
         self.st = None
         self.startOffset = 0  # starting position
@@ -45,6 +45,7 @@ class AlarmSound(object):
         mixer.init(frequency=22050, size=16, channels=2, buffer=4096)
         set_volume(1.00)  # set volume to maximum and handle the volume manual at the TV
 
+        self.force_sound_file = force_sound_file
         self.actLoadedTitle = 'none'
         self.pathToSoundfolder = path
         self.threadRunning = False
@@ -106,6 +107,7 @@ class AlarmSound(object):
                      the same, do not load again the path is put
                      automatically to the file
         """
+        result = True
         if self.actLoadedTitle != file:
             path = os.path.join(self.pathToSoundfolder, file)
             if os.path.isfile(path):
@@ -116,9 +118,13 @@ class AlarmSound(object):
                     self.stop()
                 except:
                     self.musicLoadSuccessfully = False
+                    result = False
                     print("Failed load music path: \"%s\"" % path)
             else:
+                result = False
                 print("Could not locate file \"%s\"" % path)
+
+        return result
 
     # ----------------------------------------------------------------------
     def __sound_thread(self):

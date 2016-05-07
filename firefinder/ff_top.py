@@ -28,14 +28,14 @@ from threading import Thread
 from firefinder.ff_miscellaneous import create_image
 
 """ Path's """
-ffLogo = 'pic/Logo.png'  # Firefighter Logo
+# ffLogo = 'pic/Logo.png'  # Firefighter Logo
 
 
 ########################################################################    
 class TopBar(tk.Frame):
     def __init__(self, parent, height):
 
-        tk.Frame.__init__(self, parent)
+        super(TopBar, self).__init__(parent)
 
         self.parent = parent  # master of this widget
         self.wdr = ""
@@ -64,7 +64,6 @@ class TopBar(tk.Frame):
         self.pathLogo = None  # Path and filename with extending
         self.picLogo = None  # Hold the picutre
         self.companyName = ""  # Shows the company name on the rightside of the logo
-        #         self.font          = None
 
         # store label container
         self.canvas = None
@@ -118,15 +117,6 @@ class TopBar(tk.Frame):
         self.lblCompany.pack(side='left')
         self.lblTime.pack(side='right')
 
-        # store working directory
-        try:
-            self.wdr = os.path.dirname(__file__)
-        except:
-            self.wdr = os.getcwd()
-
-        # set path to Logo
-        self.pathLogo = os.path.join(self.wdr, ffLogo)
-
     # ----------------------------------------------------------------------
     def paint_logo(self):
 
@@ -137,7 +127,7 @@ class TopBar(tk.Frame):
                                             path=self.pathLogo,
                                             height=self.height)
             else:
-                print("%s is not a file" % self.pathLogo)
+                print("ERROR: SLIDESOW COMPANY LOGO CAN'T BE SHOWN")
                 self.picLogo = ''
 
             self.lblLogo["image"] = self.picLogo
@@ -225,6 +215,9 @@ class TopBar(tk.Frame):
                     change_logo_settings = True
                 elif key == 'companyName':
                     self.companyName = value
+                    change_logo_settings = True
+                elif key == 'logoPathAndFile':
+                    self.pathLogo = value
                     change_logo_settings = True
 
             if change_time_settings is True:

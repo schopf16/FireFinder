@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 """
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -39,17 +39,11 @@ from firefinder.ff_top import TopBar
 class ScreenSlideshow(tk.Frame):
     def __init__(self, parent, controller):
 
-        tk.Frame.__init__(self, parent)
+        super(ScreenSlideshow, self).__init__(parent)
 
         # store parent objects
         self.parent = parent
         self.controller = controller
-
-        # store working directory
-        try:
-            self.wdr = os.path.dirname(__file__)
-        except:
-            self.wdr = os.getcwd()
 
         # store size of the parent frame        
         self.controller.update()
@@ -64,6 +58,10 @@ class ScreenSlideshow(tk.Frame):
         # store path where the pictures for the slideshow are stored
         self.pathToIniFile = ''
         self.pathToImages = ''
+
+        # Store settings for header-bar
+        self.path_logo_file = ''
+        self.company_name = ''
 
         # rebuild list of pictures
         self.pictures = 0
@@ -89,7 +87,7 @@ class ScreenSlideshow(tk.Frame):
         """ Create a TopBar object """
         self.topHeader.configure(showTime=False)
         self.topHeader.configure(background='grey')
-        self.topHeader.configure(companyName="Feuerwehr Ittigen")
+        self.topHeader.configure(companyName="")
         self.topHeader.pack(fill='both')
 
         # create a lable to show the image
@@ -176,6 +174,12 @@ class ScreenSlideshow(tk.Frame):
                 elif key == 'sortAlphabetically':
                     self.sortAlphabetically = value
                     self.fileInFolder = 0  # clear to force refresh folder
+                elif key == 'logoPathAndFile':
+                    self.path_logo_file = value
+                    self.topHeader.configure(logoPathAndFile=self.path_logo_file)
+                elif key == 'companyName':
+                    self.company_name = value
+                    self.topHeader.configure(companyName=self.company_name)
 
     # ----------------------------------------------------------------------
     def set_delay(self, value):

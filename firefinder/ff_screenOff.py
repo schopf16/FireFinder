@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 """
-    Copyright (C) 2015  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -26,23 +26,17 @@ from firefinder.ff_miscellaneous import create_image
 from firefinder.ff_top import TopBar
 
 """ Path's """
-ffLogo = 'pic/Logo.png'  # Firefighter Logo
+# ffLogo = 'pic/Logo.png'  # Firefighter Logo
 
 
 class ScreenOff(tk.Frame):
-    def __init__(self, parent, controller, **kw):
+    def __init__(self, parent, controller):
+        super(ScreenOff, self).__init__(parent)
 
-        # store parent objects
-        super().__init__(**kw)
-        tk.Frame.__init__(self, parent)
         self.parent = parent
         self.controller = controller
 
-        # store working directory
-        try:
-            self.wdr = os.path.dirname(__file__)
-        except:
-            self.wdr = os.getcwd()
+        self.logo_path_and_file = ''
 
         # store size of the parent frame        
         self.controller.update()
@@ -94,11 +88,10 @@ class ScreenOff(tk.Frame):
     def show(self):
 
         # Create a logo with the firefighter Emblem
-        path = os.path.join(self.wdr, ffLogo)
-        if os.path.isfile(path):
+        if os.path.isfile(self.logo_path_and_file):
             # create screen for object
             self.image = create_image(self,
-                                      path=path,
+                                      path=self.logo_path_and_file,
                                       width=self.screenWidth - 20,
                                       height=self.emblemBarHeight - 20)
 
@@ -113,8 +106,14 @@ class ScreenOff(tk.Frame):
 
     # ----------------------------------------------------------------------
     def configure(self, **kwargs):
-        # nothing to do
-        pass
+        if len(kwargs) == 0:  # return a dict of the current configuration
+            cfg = {'logoPathAndFile': self.logo_path_and_file}
+            return cfg
+
+        else:  # do a configure
+            for key, value in list(kwargs.items()):
+                if key == 'logoPathAndFile':
+                    self.logo_path_and_file = value
 
     # ----------------------------------------------------------------------
     def descent_screen(self):
