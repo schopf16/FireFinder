@@ -48,13 +48,13 @@ switchToScreenAfterEvent = off
 ; full path and filename with extentions. For example 
 ; D:\Picutre\Logo.png
 ; Default: None
-path_logo     = None
+company_path_logo = None
 ; ------------------------------------------------------------------
 
 ; The company name is shown in several screens on the top. If empty 
 ; or not existing, nothing is shown
 ; Default: *Empty*
-company_name   =
+company_name      =
 ; ------------------------------------------------------------------
 
 [Power]

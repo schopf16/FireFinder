@@ -521,7 +521,7 @@ def read_config_ini_file():
     path_sound_folder               = 'None'
     force_sound_file                = 'None'
     force_sound_repetition          = 1
-    path_logo                       = ''
+    company_path_logo               = ''
     company_name                    = ''
 
     # Create instance for reading the ini file
@@ -572,7 +572,7 @@ def read_config_ini_file():
         except: pass
         try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
         except: pass
-        try:    path_logo = sysconfig.get('Visual', 'path_logo')
+        try:    company_path_logo = sysconfig.get('Visual', 'company_path_logo')
         except: pass
         try:    company_name = sysconfig.get('Visual', 'company_name')
         except: pass
@@ -611,7 +611,7 @@ def read_config_ini_file():
                 "PathSoundFolder"             : path_sound_folder,
                 "ForceSoundFile"              : force_sound_file,
                 "ForceSoundRepetition"        : force_sound_repetition,
-                "PathLogo"                    : path_logo,
+                "PathLogo"                    : company_path_logo,
                 "CompanyName"                 : company_name}
 
     if error is None:
