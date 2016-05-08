@@ -236,7 +236,7 @@ class MyHandler(FileSystemEventHandler):
             show = self.parser.get('General', 'show')
 
             # If time-screen is requested, get some additional settings
-            if show.lower() == 'time':
+            if show.lower() == 'clock':
                 # get information from ini-file
                 try:    show_second_hand    = self.parser.getboolean('Clock', 'show_second_hand')
                 except: show_second_hand    = True
@@ -332,7 +332,7 @@ class MyHandler(FileSystemEventHandler):
     # ----------------------------------------------------------------------
     def switch_screen_frame(self, switch_to_screen_frame):
 
-        if switch_to_screen_frame.lower() == 'time':
+        if switch_to_screen_frame.lower() == 'clock':
             self.sound_handler.stop()
             self.gui_instance.show_frame(ScreenClock)
             self.power_instance.set_visual('On')
