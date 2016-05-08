@@ -54,7 +54,7 @@ class ScreenEvent(tk.Frame):
         self.screenWidth = self.controller.winfo_width()
         self.screenHeight = self.controller.winfo_height()
         if (self.screenWidth < 640) or (self.screenHeight < 480):
-            print("WARNING: Low screen resolution %d x %d!!" % (self.screenWidth, self.screenHeight))
+            print("WARNING: Low screen resolution {} x {}!!".format(self.screenWidth, self.screenHeight))
 
         # Store the height of the several places
         self.alarmMessageBarHeight = 220  # Pixel
