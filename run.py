@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 """
-    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <michael@anderegg.be>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -139,7 +139,7 @@ class FireFinderGUI(tk.Tk):
     def get_act_frame(self):
         """
         The method will return the instance of the actual selected frame
-        :return: Instance of the actaul shown frame
+        :return: Instance of the actual shown frame
         """
         return self.frames[self.actScreen]
 
@@ -157,7 +157,7 @@ class FireFinderGUI(tk.Tk):
 
     # ----------------------------------------------------------------------
     def exit(self):
-        print("Close programm")
+        print("Close program")
         self.destroy()
         self.quit()  # Fallback if the one above doesn't work properly
         sys.exit()   # Fallback if the one above doesn't work properly
@@ -167,7 +167,7 @@ class FireFinderGUI(tk.Tk):
 class MyHandler(FileSystemEventHandler):
     def __init__(self, gui_handler, configuration_dict):
 
-        # Grab all neccessery informations form the configuration dict
+        # Grab all necessary information's form the configuration dict
         self.switch_screen_delay_after_start = configuration_dict['switchScreenDelayAfterStart']
         self.switch_to_screen_after_start    = configuration_dict['switchToScreenAfterStart']
         self.switch_screen_delay_after_event = configuration_dict['switchScreenDelayAfterEvent']
@@ -232,7 +232,7 @@ class MyHandler(FileSystemEventHandler):
                 self.gui_instance.after_cancel(self._job_after_event)
                 self._job_after_event = None
 
-            # Parse the requestet screen
+            # Parse the requested screen
             show = self.parser.get('General', 'show')
 
             # If time-screen is requested, get some additional settings
@@ -259,7 +259,7 @@ class MyHandler(FileSystemEventHandler):
                                 showDigitalDate=show_ditial_date,
                                 showDigitalSeconds=show_digital_second)
 
-            # If event-screen is requestet, get some additional settings
+            # If event-screen is requested, get some additional settings
             if show.lower() == 'event':
                 # get information from ini-file
                 try:    full_event_message = self.parser.get('Event', 'message_full')
@@ -450,8 +450,8 @@ class GraficOutputDriver:
             '''
             ORDER:
             First enable the HDMI port and the switch the TV on if
-            availalbe. If done otherwise, the cec command can't be
-            transmittet over a deactivatet HDMI port.
+            available. If done otherwise, the cec command can't be
+            transmitted over a deactivated HDMI port.
             '''
             if self.standby_enable and (os.name == 'posix'):
                 if self.__actGraficOutput != new_state:
@@ -471,9 +471,9 @@ class GraficOutputDriver:
         if new_state.lower() == 'off':
             '''
             ORDER:
-            First switch of the TV with the CEC commandos if availalbe
+            First switch off the TV with the CEC commandos if available
             and then disable the HDMI port. If done otherwise, the
-            cec command can't be transmittet over a deactivatet HDMI
+            cec command can't be transmitted over a deactivate HDMI
             port.
             '''
             if self.cec_enable:
@@ -500,12 +500,12 @@ def read_config_ini_file():
     """
     This function will open the file 'config.ini' which is located in
     the same folder as this run.py file. This configuration file holds
-    all necessary informations about the firefinder app. The informations
+    all necessary information's about the firefinder app. The information's
     from the configuration file is stored in a dict for better handling
     afterwards
 
     :return: result True if no error occur, otherwise string with error
-    :return: dict_ini Holds the stored informations in a Dict
+    :return: dict_ini Holds the stored information's in a Dict
     """
     try:
         wdr = os.path.dirname(__file__)
@@ -629,11 +629,11 @@ def read_config_ini_file():
 def show_error_screen(error_code, ini_file_path):
     """
     This function will create a canvas and show up the given error code
-    in a way that the user can handelt it easily
+    in a way that the user can handel it easily
 
     :param error_code: String off error code given by the function read_config_ini_file
     :param ini_file_path: Dict of the ini file, given by the function read_config_ini_file
-    :return: instanc of a tinker for display
+    :return: instance of a tinker for display
     """
     error_code    = error_code
     error_message = ''
@@ -692,9 +692,9 @@ if __name__ == "__main__":
     result, configuration = read_config_ini_file()
     if result is True:
         # Create some objects
-        grafic = GraficOutputDriver(cec_enable          = configuration["cec_enable"],
-                                    standby_enable      = configuration["standby_hdmi_enable"],
-                                    bypass_tv_power_save= configuration["rebootHDMIdeviceAfter"])
+        grafic = GraficOutputDriver(cec_enable           = configuration["cec_enable"],
+                                    standby_enable       = configuration["standby_hdmi_enable"],
+                                    bypass_tv_power_save = configuration["rebootHDMIdeviceAfter"])
         app = FireFinderGUI(configuration)
         eventHandler = MyHandler(app, configuration)
         observer = Observer()
