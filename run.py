@@ -346,6 +346,11 @@ class MyHandler(FileSystemEventHandler):
             self.gui_instance.show_frame(ScreenEvent)
             self.power_instance.set_visual('On')
 
+        if switch_to_screen_frame.lower() == 'splashscreen':
+            self.sound_handler.stop()
+            self.gui_instance.show_frame(ScreenOff)
+            self.power_instance.set_visual('On')
+
         if switch_to_screen_frame.lower() == 'off':
             self.sound_handler.stop()
             self.gui_instance.show_frame(ScreenOff)

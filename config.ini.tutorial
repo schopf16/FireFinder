@@ -24,7 +24,7 @@ fullscreen        = false
 ; in the splash screen.
 ; If the user change the screen before the time is expired, the screen
 ; won't change any more.
-switchScreenAfterStart = 600
+switchScreenAfterStart = 300
 
 ; The following screens are availlable
 ; off       - switch tv off
@@ -64,7 +64,16 @@ company_name      =
 ; switched of automatically. 
 ; --> Not all television support the CEC-signal <--
 ; https://en.wikipedia.org/wiki/HDMI#CEC
-cec_enable        = true
+cec_enable               = true
+; ------------------------------------------------------------------
+
+; If a computer screen is connected instead of a television, the 
+; software can't put screen into standby by sending CEC-signals. 
+; Therefore the system deactivate the monitor output which puts the
+; screen automatically into standby. This works only for unix
+; system. The file "reactivate_screen.sh" has to be placed in the
+; script-folder
+stdby_enable             = false
 ; ------------------------------------------------------------------
 
 ; Some television switch of automaticaly after some houres of 
@@ -76,14 +85,6 @@ cec_enable        = true
 cec_reboot_after_minutes = 180
 ; ------------------------------------------------------------------
 
-; If a computer screen is connected instead of a television, the 
-; software can't put screen into standby by sending CEC-signals. 
-; Therefore the system deactivate the monitor output which puts the
-; screen automatically into standby. This works only for unix
-; system. The file "reactivate_screen.sh" has to be placed in the
-; script-folder
-stdby_enable      = true
-; ------------------------------------------------------------------
 
 [Sound]
 ; Define the path where the sound files are stored. Enter full path.
