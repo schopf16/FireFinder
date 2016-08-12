@@ -178,7 +178,7 @@ class MyHandler(FileSystemEventHandler):
         self.force_repetition                = configuration_dict['ForceSoundRepetition']
 
         # Create instances
-        self.sound_handler = AlarmSound(self.path_sound_folder, self.force_sound_file)
+        self.sound_handler = AlarmSound(self.path_sound_folder)
         self.parser = ConfigParser()
 
         self.gui_instance    = gui_handler

@@ -2,7 +2,7 @@
 # -*- coding: latin-1-*-
 
 """
-    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <michael@anderegg.be>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -356,16 +356,6 @@ def test_screen_footer():
     print("add them again")
     truck.set_equipment(equipment=equipment)
     time.sleep(1)
-
-    #     # clear odd car slots
-    #     equipment[1] = ''
-    #     equipment[2] = 'Fz_6.png'
-    #     equipment[3] = ''
-    #     equipment[4] = 'Fz_1.png'
-    #     equipment[5] = ''
-    #     print("Clear odd car slots")
-    #     truck.set_equipment(equipment = equipment)
-    #     time.sleep(1)
 
     bar.stop()
     time.sleep(2)

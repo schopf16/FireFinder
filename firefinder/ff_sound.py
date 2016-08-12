@@ -2,7 +2,7 @@
 # -*- coding: UTF-8-*-
 
 """
-    Copyright (C) 2016  Michael Anderegg <m.anderegg@gmail.com>
+    Copyright (C) 2016  Michael Anderegg <michael@anderegg.be>
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -35,7 +35,7 @@ def set_volume(volume=0.5):
 
 
 class AlarmSound(object):
-    def __init__(self, path, force_sound_file):
+    def __init__(self, path):
         # self.st = threading.Thread(target=self.__sound_thread)
         self.st = None
         self.startOffset = 0  # starting position
@@ -45,7 +45,6 @@ class AlarmSound(object):
         mixer.init(frequency=22050, size=16, channels=2, buffer=4096)
         set_volume(1.00)  # set volume to maximum and handle the volume manual at the TV
 
-        self.force_sound_file = force_sound_file
         self.actLoadedTitle = 'none'
         self.pathToSoundfolder = path
         self.threadRunning = False
