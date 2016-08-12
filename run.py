@@ -359,9 +359,10 @@ class MyHandler(FileSystemEventHandler):
 
 ######################################################################## 
 class GraficOutputDriver:
-    def __init__(self, bypass_tv_power_save, **kwargs):
-        self.cec_enable = kwargs.get("cec_enable", False)
-        self.standby_enable = kwargs.get("standby_enable", False)
+    def __init__(self, **kwargs):
+        self.cec_enable           = kwargs.get("cec_enable", False)
+        self.standby_enable       = kwargs.get("standby_enable", False)
+        self.bypass_tv_power_save = kwargs.get("bypass_tv_power_save", 0)
 
         self.__actGraficOutput = 'On'
         self.__actTelevisionState = 'Off'
@@ -393,8 +394,8 @@ class GraficOutputDriver:
 
         # If user enable automatic TV reboot to prevent it from power save
         # launch a separate thread to handle this asynchron from any ini-commands
-        if bypass_tv_power_save is not 0:
-            self.rebootTvTimer = RepeatingTimer(bypass_tv_power_save * 60,
+        if self.bypass_tv_power_save is not 0:
+            self.rebootTvTimer = RepeatingTimer(self.bypass_tv_power_save * 60,
                                                 self.__reboot_television_over_cec)
 
     # ----------------------------------------------------------------------
@@ -691,7 +692,9 @@ if __name__ == "__main__":
     result, configuration = read_config_ini_file()
     if result is True:
         # Create some objects
-        grafic = GraficOutputDriver(configuration["rebootHDMIdeviceAfter"])
+        grafic = GraficOutputDriver(cec_enable          = configuration["cec_enable"],
+                                    standby_enable      = configuration["standby_hdmi_enable"],
+                                    bypass_tv_power_save= configuration["rebootHDMIdeviceAfter"])
         app = FireFinderGUI(configuration)
         eventHandler = MyHandler(app, configuration)
         observer = Observer()

@@ -85,7 +85,6 @@ stdby_enable             = false
 cec_reboot_after_minutes = 180
 ; ------------------------------------------------------------------
 
-
 [Sound]
 ; Define the path where the sound files are stored. Enter full path.
 ; If empty or none, the system will search in the working directory 
