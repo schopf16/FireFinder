@@ -217,15 +217,17 @@ class TvPower(Task):
 
     # ----------------------------------------------------------------------
     def run(self, on):
-        log = "Received: %s" % str(on)
+        log = "Received: {}".format(on)
         logger.info(log)
         # self.last_message = time.time() # can use it for monitoring later on
 
         if cec:
             if on:
+                print("switching tv on now")
                 self.ceclib.power_on_television()
                 self.ceclib.process_command_active_source()
             else:
+                print("switching tv off now")
                 self.ceclib.process_command_standby()
 
         return log
