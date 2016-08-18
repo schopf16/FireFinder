@@ -42,15 +42,15 @@ from firefinder.ff_miscellaneous import RepeatingTimer
 ########################################################################
 # create logger
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
-logger.setLevel(logging.INFO)
-
-# create console handler and set level to debug
-console_handler = logging.StreamHandler(sys.stdout)
-console_handler.setLevel(logging.DEBUG)
+logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.INFO)
 
 # create formatter
 formatter = logging.Formatter('%(asctime)-15s - %(levelname)-8s : %(message)s')
+
+# create console handler and set level to debug
+console_handler = logging.StreamHandler(sys.stdout)
+# console_handler.setLevel(logging.DEBUG)
 
 # add formatter to ch
 console_handler.setFormatter(formatter)
@@ -607,7 +607,7 @@ def read_config_ini_file():
         error_message = ("The file \"config.ini\" is missing. Be sure this"
                          "file is in the same directory like this python-script")
         error = 'IniFileNotFound'
-        logging.critical(error_message)
+        logger.critical(error_message)
 
     # config.ini file exist, going to read the data
     if error is None:
@@ -621,7 +621,7 @@ def read_config_ini_file():
         except:
             error_message = 'An unexpected error occurred while reading config.ini'
             error = 'CouldNotReadIniFile'
-            logging.critical(error_message)
+            logger.critical(error_message)
 
     if error is None:
         # Check if the observation-directory exist. Otherwise the observer
@@ -630,52 +630,52 @@ def read_config_ini_file():
             # quit script due to an error
             error_message = ("The directory \"%s\" for observation is missing." % observing_path_name)
             error = 'PathDoesNotExist'
-            logging.critical(error_message)
+            logger.critical(error_message)
 
     # Read values with lower priority
     # [Visual]
     try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
-    except: pass
+    except: logger.debug("System configuration missing [Visual] --> fullscreen")
     try:    switch_screen_delay_after_start = sysconfig.getint('Visual', 'switchScreenAfterStart')
-    except: pass
+    except: logger.debug("System configuration missing [Visual] --> switchScreenAfterStart")
     try:    switch_to_screen_after_start = sysconfig.get('Visual', 'switchToScreenAfterStart')
-    except: pass
+    except: logger.debug("System configuration missing [Visual] --> switchToScreenAfterStart")
     try:    switch_screen_delay_after_event = sysconfig.getint('Visual', 'switchScreenAfterEvent')
-    except: pass
+    except: logger.debug("System configuration missing [Visual] --> switchScreenAfterEvent")
     try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
-    except: pass
+    except: logger.debug("System configuration missing [Visual] --> switchToScreenAfterEvent")
     try:    company_path_logo = sysconfig.get('Visual', 'company_path_logo')
-    except: pass
+    except: logger.debug("System configuration missing [Visual] --> company_path_logo")
     try:    company_name = sysconfig.get('Visual', 'company_name')
-    except: pass
+    except: logger.debug("System configuration missing [Visual] --> company_name")
 
     # [Power]
     try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
-    except: pass
+    except: logger.debug("System configuration missing [Power] --> cec_enable")
     try:    standby_enable = sysconfig.getboolean('Power', 'stdby_enable')
-    except: pass
+    except: logger.debug("System configuration missing [Power] --> stdby_enable")
     try:    reboot_hdmi_device_after = sysconfig.getint('Power', 'cec_reboot_after_minutes')
-    except: pass
+    except: logger.debug("System configuration missing [Power] --> cec_reboot_after_minutes")
 
     # [Sound]
     try:    path_sound_folder = sysconfig.get('Sound', 'path_sounds')
-    except: pass
+    except: logger.debug("System configuration missing [Sound] --> path_sounds")
     try:    force_sound_file = sysconfig.get('Sound', 'force_sound_file')
-    except: pass
+    except: logger.debug("System configuration missing [Sound] --> force_sound_file")
     try:    force_sound_repetition = sysconfig.getint('Sound', 'force_repetition')
-    except: pass
+    except: logger.debug("System configuration missing [Sound] --> force_repetition")
 
     # [Logger]
     try:    enable_logging = sysconfig.getboolean('Logging', 'enable_logging')
-    except: pass
+    except: logger.debug("System configuration missing [Logging] --> enable_logging")
     try:    logging_file = sysconfig.get('Logging', 'logging_file')
-    except: pass
+    except: logger.debug("System configuration missing [Logging] --> logging_file")
     try:    logging_file_max_byte = sysconfig.getint('Logging', 'logging_file_max_byte')
-    except: pass
+    except: logger.debug("System configuration missing [Logging] --> logging_file_max_byte")
     try:    logging_backup_count = sysconfig.getint('Logging', 'logging_backup_count')
-    except: pass
+    except: logger.debug("System configuration missing [Logging] --> logging_backup_count")
     try:    logging_level = sysconfig.get('Logging', 'logging_level')
-    except: pass
+    except: logger.debug("System configuration missing [Logging] --> logging_level")
 
     # Check if sound-path exist. Otherwhise work with standard path
     if not os.path.isdir(path_sound_folder):
