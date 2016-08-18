@@ -19,7 +19,7 @@ REM ----------------------------------------------------------------------
 
 
 REM modify to fit to the system
-set FileName=Object
+set FileName=Object_new
 set FileExtension=ini
 set TempPath=C:\Temp\
 set AmountOfDevice=5
@@ -27,7 +27,7 @@ set FullDomainName=.fwi.local
 REM set FullDomainName=
 
 REM do not modify code below here
-set version=1.01.00
+set version=1.02.00
 set FullPathAndFile=%TempPath%%FileName%.%FileExtension%
 echo.
 echo.
@@ -60,7 +60,7 @@ echo.
 echo.
 echo.
 echo //////////////////////////////////////////////////////
-echo /   FireFinder Copyright (C) 2015  Michael Anderegg  /
+echo /   FireFinder Copyright (C) 2016  Michael Anderegg  /
 echo /   This program comes with ABSOLUTELY NO WARRANTY.  /
 echo /   This is free software, and you are welcome to    /
 echo /   redistribute it under certain conditions.        /
@@ -76,12 +76,13 @@ echo * Was sollen die Geraete Anzeigen?                   *
 echo *                                                    *
 echo * 0: Ausschalten                                     *
 echo * 1: Uhrzeit                                         *
-echo * 2: Diashow                                         *
-echo * 3: Splash Screen                                   *
+echo * 2: Diashow - Alphabetischer Reihenfolge            *
+echo * 3: Diashow - Zufaellige Reihenfolge                *
+echo * 4: Splash Screen                                   *
 echo ******************************************************
 echo.
 set /p switchDeviceTo=Waehle die gewuenschte Anzeige: 
-if %switchDeviceTo% GTR 3 goto wrongInput
+if %switchDeviceTo% GTR 4 goto wrongInput
 
 
  
@@ -189,7 +190,8 @@ REM check what user has chosen
 if %switchDeviceTo% == 0 goto switchDeviceOff
 if %switchDeviceTo% == 1 goto switchDeviceClock
 if %switchDeviceTo% == 2 goto switchDeviceSlideshow
-if %switchDeviceTo% == 3 goto switchDeviceSplashscreen
+if %switchDeviceTo% == 3 goto switchDeviceSlideshow
+if %switchDeviceTo% == 4 goto switchDeviceSplashscreen
 echo Keine gueltige Eingabe
 goto end
 
@@ -198,13 +200,23 @@ goto end
 goto switchDeviceSuccessfully
 
 :switchDeviceClock
-@echo show=time>>  "%FullPathAndFile%" 
+@echo show=clock>>  "%FullPathAndFile%" 
 @echo [Clock]>>  "%FullPathAndFile%" 
 @echo show_digital_time=False>>  "%FullPathAndFile%" 
 goto switchDeviceSuccessfully
 
 :switchDeviceSlideshow
 @echo show=slideshow>>  "%FullPathAndFile%" 
+@echo [Slideshow]>>  "%FullPathAndFile%" 
+@echo seconds_between_images=12>>  "%FullPathAndFile%" 
+if %switchDeviceTo% == 2 (
+@echo sort_images_alphabetically=True>>  "%FullPathAndFile%" 
+@echo show_header_bar=False>>  "%FullPathAndFile%" 
+)
+if %switchDeviceTo% == 3 (
+@echo sort_images_alphabetically=False>>  "%FullPathAndFile%" 
+@echo show_header_bar=True>>  "%FullPathAndFile%" 
+)
 goto switchDeviceSuccessfully
 
 :switchDeviceSplashscreen
@@ -290,7 +302,7 @@ goto loop
 :loopDone
 
 REM delete file, it is no longer used	
-del "%FullPathAndFile%"
+rem del "%FullPathAndFile%"
 goto end
 
 :wrongInput
