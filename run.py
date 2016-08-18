@@ -296,7 +296,7 @@ class MyHandler(FileSystemEventHandler):
                                 showDigitalSeconds=show_digital_second)
 
             # If event-screen is requested, get some additional settings
-            if show.lower() == 'event':
+            elif show.lower() == 'event':
                 # get information from ini-file
                 try:    full_event_message = self.parser.get('Event', 'message_full')
                 except: full_event_message = ""
@@ -358,8 +358,23 @@ class MyHandler(FileSystemEventHandler):
                                                                     self.switch_screen_frame,
                                                                     self.switch_to_screen_after_event)
 
+            # If slideshow-screen is requested, get some additional settings
+            elif show.lower() == 'slideshow':
+                # get information from ini-file
+                try:    sort_images_alphabetically = self.parser.getboolean('Slideshow', 'sort_images_alphabetically')
+                except: sort_images_alphabetically = True
+                try:    show_header_bar = self.parser.getboolean('Slideshow', 'show_header_bar')
+                except: show_header_bar = True
+                try:    seconds_between_images = self.parser.getint('Slideshow', 'seconds_between_images')
+                except: seconds_between_images = 10
+
+                frame = self.gui_instance.get_screen_frame(ScreenSlideshow)
+                frame.configure(sortAlphabetically=sort_images_alphabetically,
+                                secondsBetweenImages=seconds_between_images,
+                                showHeaderBar=show_header_bar)
+
             # If software close is requested, do some additional settings
-            if show.lower() == 'quit':
+            elif show.lower() == 'quit':
                 self.sound_handler.stop()
                 self.power_instance.set_visual('On')
                 self.gui_instance.exit(self)
