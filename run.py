@@ -24,7 +24,8 @@ import subprocess
 import sys
 import time
 import logging.handlers
-import tkinter as tk
+# import tkinter as tk
+import pygame
 from configparser import ConfigParser
 
 from watchdog.events import FileSystemEventHandler
@@ -38,6 +39,10 @@ from firefinder.ff_screenOff import ScreenOff
 from firefinder.ff_screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary import TvPower
 from firefinder.ff_miscellaneous import RepeatingTimer
+
+# Überprüfen, ob die optionalen Text- und Sound-Module geladen werden konnten.
+if not pygame.font: print('Fehler pygame.font Modul konnte nicht geladen werden!')
+if not pygame.mixer: print('Fehler pygame.mixer Modul konnte nicht geladen werden!')
 
 ########################################################################
 # create logger
@@ -60,7 +65,7 @@ logger.addHandler(console_handler)
 
 
 ########################################################################
-class FireFinderGUI(tk.Tk):
+class FireFinderGUI(pygame):
     def __init__(self, configuration_dict, **kwargs):
         super(FireFinderGUI, self).__init__()
 
@@ -76,7 +81,7 @@ class FireFinderGUI(tk.Tk):
 
         # Set actual window to fullscreen and bind the "Escape"
         # key with the function quit option
-        self.title("FireFinder")
+        pygame.display.set_caption("FireFinder")
         self.logger.debug("Set title to FireFinder")
 
         # The configuration works quite well on windows, but
@@ -86,6 +91,17 @@ class FireFinderGUI(tk.Tk):
         # sudo apt-get install unclutter
         self.config(cursor="none")
         self.logger.debug("Disable cursor")
+
+
+        infoObject = pygame.display.Info()
+        width = infoObject.current_w
+        height = infoObject.current_h
+        resolution = (width, height)
+        if self.full_screen_enable:
+            resolution = pygame.display.list_modes()[0]
+            main_surface = pygame.display.set_mode(resolution, pygame.FULLSCREEN)
+        else:
+            main_surface = pygame.display.set_mode(resolution)
 
         # Removes the native window boarder
         if self.full_screen_enable is True:

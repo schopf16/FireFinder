@@ -26,7 +26,10 @@
 import os
 import time
 import random
-import tkinter as tk
+# import tkinter as tk
+import pygame
+import platform
+from pygame.locals import *
 
 from threading import Thread
 from itertools import cycle
@@ -36,10 +39,11 @@ from firefinder.ff_miscellaneous import create_image
 from firefinder.ff_top import TopBar
 
 
-class ScreenSlideshow(tk.Frame):
-    def __init__(self, parent, controller):
+class ScreenSlideshow(pygame.Surface):
+    def __init__(self):
 
-        super(ScreenSlideshow, self).__init__(parent)
+        # super(ScreenSlideshow, self).__init__(parent)
+        pygame.Surface.__init__(self)
 
         # store parent objects
         self.parent = parent
@@ -275,23 +279,48 @@ def test_screenslideshow():
 
 ######################################################################## 
 if __name__ == '__main__':
-    root = tk.Tk()
-    # width = root.winfo_screenwidth() - 100
-    # height= root.winfo_screenheight() - 200
-    width = root.winfo_screenwidth()
-    height= root.winfo_screenheight()
+
+    fps = 30
+
+    if platform.system == "Windows":
+        os.environ['SDL_VIDEODRIVER'] = 'windib'
+
+    pygame.init()
+    infoObject = pygame.display.Info()
+    # width = infoObject.current_w
+    # height= infoObject.current_h
+    width = infoObject.current_w - 100
+    height = infoObject.current_h - 200
     print("Screen size {} x {}".format(width, height))
-    root.geometry("%dx%d+0+0" % (width, height))
+    screen = pygame.display.set_mode((width, height))
 
-    container = tk.Frame(root)
-    container.pack(side="top", fill="both", expand=True)
-    container.grid_rowconfigure(0, weight=1)
-    container.grid_columnconfigure(0, weight=1)
+    # Clock-Objekt erstellen, das wir benötigen, um die Framerate zu begrenzen.
+    clock = pygame.time.Clock()
 
-    screen = ScreenSlideshow(container, root)
-    screen.grid(row=0, column=0, sticky="nsew")
-    screen.tkraise()
+    # Titel des Fensters setzen, Mauszeiger verstecken.
+    pygame.display.set_caption("Test ff_screenSlideshow")
+    pygame.mouse.set_visible(False)
 
-    thread = Thread(target=test_screenslideshow, args=())
-    thread.start()
-    root.mainloop()
+    surface_slideshow = ScreenSlideshow()
+
+    running = True
+    while running:
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                running = False
+
+        screen.blit(surface_slideshow)
+        pygame.display.update()
+        clock.tick(fps)
+    # container = tk.Frame(root)
+    # container.pack(side="top", fill="both", expand=True)
+    # container.grid_rowconfigure(0, weight=1)
+    # container.grid_columnconfigure(0, weight=1)
+    #
+    # screen = ScreenSlideshow(container, root)
+    # screen.grid(row=0, column=0, sticky="nsew")
+    # screen.tkraise()
+    #
+    # thread = Thread(target=test_screenslideshow, args=())
+    # thread.start()
+    # root.mainloop()
