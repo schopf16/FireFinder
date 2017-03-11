@@ -60,6 +60,7 @@ class ScreenSlideshow(tk.Frame):
         self.pathToImages = ''
 
         # Store settings for header-bar
+        self.show_header_bar = True
         self.path_logo_file = ''
         self.company_name = ''
 
@@ -77,7 +78,8 @@ class ScreenSlideshow(tk.Frame):
 
         # create some instance for the widget
         self.topHeader = TopBar(self, height=self.topBarHeight)
-        self.picture_display = tk.Label(self)
+        self.picture_area = tk.Canvas(self)
+        self.pic_1 = tk.Label(self.picture_area)
 
         self.create_widget()
 
@@ -88,15 +90,35 @@ class ScreenSlideshow(tk.Frame):
         self.topHeader.configure(showTime=False)
         self.topHeader.configure(background='grey')
         self.topHeader.configure(companyName="")
-        self.topHeader.pack(fill='both')
 
-        # create a lable to show the image
-        self.picture_display.config(background='black',
-                                    foreground='black',
-                                    width=self.screenWidth,
-                                    height=self.pictureHeight,
-                                    font=("Arial", 60))
-        self.picture_display.pack()
+        # Configure the canvas and the label for the picture inside the canvas
+        self.picture_area.config(width=self.screenWidth,  # WIDTH,
+                                 height=self.pictureHeight,  # HEIGHT,
+                                 background='black',
+                                 highlightthickness=0)
+
+        self.pic_1.config(bd=0, background='black', foreground='black', font=("Arial", 60))
+
+        # Refresh the widget structure
+        self.refresh_widget_structure()
+
+    # ----------------------------------------------------------------------
+    def refresh_widget_structure(self):
+        # First delete all widgets
+        self.topHeader.pack_forget()
+        self.picture_area.pack_forget()
+
+        # Show top header if available and calculate the max height of the
+        # canvas which is shown below
+        if self.show_header_bar is True:
+            self.topHeader.pack(side='top', fill='both')
+            self.pictureHeight = self.screenHeight - self.topBarHeight
+        else:
+            self.pictureHeight = self.screenHeight
+
+        # Configure canvas depended of the header bar
+        self.picture_area.config(width=self.screenWidth, height=self.pictureHeight)
+        self.picture_area.pack(side='top', fill='both')
 
     # ----------------------------------------------------------------------
     def show_slides(self):
@@ -145,12 +167,12 @@ class ScreenSlideshow(tk.Frame):
         # check if there is at least an image available
         if len(self.file_names):
             path = next(self.cycledList)  # get next picture from cycle
-            self.pictures = create_image(self, path=path)
-            self.picture_display.config(image=self.pictures)
-            self.picture_display.config(text="")
+            self.pictures = create_image(self, path=path, keep_ratio=True, height=self.pictureHeight, width=self.screenWidth)
+            left_padding = int((self.screenWidth / 2) - (self.pictures.width() / 2))
+            self.pic_1.config(text="", image=self.pictures)
+            self.pic_1.pack(side='left', ipadx=left_padding)
         else:
-            self.picture_display.config(image="")
-            self.picture_display.config(text="Keine Bilder zum Anzeigen :-(")
+            self.pic_1.config(text="Keine Bilder zum Anzeigen :-(", image='')
 
             # wait to show the next picture
         self.__job = self.after(int(self.delay * 1000), self.show_slides)
@@ -180,12 +202,17 @@ class ScreenSlideshow(tk.Frame):
                 elif key == 'companyName':
                     self.company_name = value
                     self.topHeader.configure(companyName=self.company_name)
+                elif key == 'showHeaderBar':
+                    self.show_header_bar = value
+                    self.refresh_widget_structure()
 
     # ----------------------------------------------------------------------
     def set_delay(self, value):
         self.delay = value
         # force restart slideshow
-        self.after_cancel(self.__job)
+        if self.__job is not None:
+            self.after_cancel(self.__job)
+            self.__job = None
         self.__job = self.after_idle(self.show_slides)
         pass
 
@@ -223,6 +250,14 @@ def test_screenslideshow():
     screen.configure(secondsBetweenImages=3)
     time.sleep(15)
 
+    print("delete header")
+    screen.configure(showHeaderBar=False)
+    time.sleep(10)
+
+    print("set header")
+    screen.configure(showHeaderBar=True)
+    time.sleep(5)
+
     print("change display time to 6 seconds")
     screen.configure(secondsBetweenImages=6)
     time.sleep(15)
@@ -241,7 +276,12 @@ def test_screenslideshow():
 ######################################################################## 
 if __name__ == '__main__':
     root = tk.Tk()
-    root.geometry("%dx%d+0+0" % (root.winfo_screenwidth() - 100, root.winfo_screenheight() - 200))
+    # width = root.winfo_screenwidth() - 100
+    # height= root.winfo_screenheight() - 200
+    width = root.winfo_screenwidth()
+    height= root.winfo_screenheight()
+    print("Screen size {} x {}".format(width, height))
+    root.geometry("%dx%d+0+0" % (width, height))
 
     container = tk.Frame(root)
     container.pack(side="top", fill="both", expand=True)

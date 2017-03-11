@@ -23,6 +23,7 @@ import os
 import subprocess
 import sys
 import time
+import logging.handlers
 import tkinter as tk
 from configparser import ConfigParser
 
@@ -38,16 +39,37 @@ from firefinder.ff_screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary import TvPower
 from firefinder.ff_miscellaneous import RepeatingTimer
 
+########################################################################
+# create logger
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.INFO)
+
+# create formatter
+formatter = logging.Formatter('%(asctime)-15s - %(levelname)-8s : %(message)s')
+
+# create console handler and set level to debug
+console_handler = logging.StreamHandler(sys.stdout)
+# console_handler.setLevel(logging.DEBUG)
+
+# add formatter to ch
+console_handler.setFormatter(formatter)
+
+# add handler to logger
+logger.addHandler(console_handler)
+
 
 ########################################################################
 class FireFinderGUI(tk.Tk):
-    def __init__(self, configuration_dict):
+    def __init__(self, configuration_dict, **kwargs):
         super(FireFinderGUI, self).__init__()
 
-        self.full_screen_enable = configuration_dict['FullScreen']
+        self.logger = kwargs.get("logger", logging.getLogger('FireFinderGUI'))
+
+        self.full_screen_enable  = configuration_dict['FullScreen']
         self.observing_path_name = configuration_dict['ObservePathForEvent']
-        self.path_logo = configuration_dict['PathLogo']
-        self.company_name = configuration_dict['CompanyName']
+        self.path_logo           = configuration_dict['PathLogo']
+        self.company_name        = configuration_dict['CompanyName']
 
         # Store actual shown screen
         self.actScreen = ''
@@ -55,6 +77,7 @@ class FireFinderGUI(tk.Tk):
         # Set actual window to fullscreen and bind the "Escape"
         # key with the function quit option
         self.title("FireFinder")
+        self.logger.debug("Set title to FireFinder")
 
         # The configuration works quite well on windows, but
         # very bad on linux systems if the script is loaded out
@@ -62,21 +85,27 @@ class FireFinderGUI(tk.Tk):
         # package instead
         # sudo apt-get install unclutter
         self.config(cursor="none")
+        self.logger.debug("Disable cursor")
 
         # Removes the native window boarder
         if self.full_screen_enable is True:
             self.attributes('-fullscreen', True)
+            self.logger.info("Set window to fullscreen")
+        else:
+            self.logger.info("Do not use window in fullscreen")
 
         # Disable resizable of the x-axis and the y-axis to keep the
         # scree in the maximal possible resolution
         self.resizable(False, False)
+        self.logger.debug("Disable resizable of the windwos")
 
         w, h = self.winfo_screenwidth(), self.winfo_screenheight()
-        print("Screensize is: %d x %d pixels" % (w, h))
+        self.logger.info("Screensize of monitor is: %d x %d" % (w, h))
         self.geometry("%dx%d+0+0" % (w, h))
 
         # Sets focus to the window to catch <Escape>
         self.focus_set()
+        self.logger.debug("Get focus of the window to catch <Escape>")
 
         # Bind <Escape> tap to the exit method
         self.bind("<Escape>", lambda e: self.exit())
@@ -95,16 +124,17 @@ class FireFinderGUI(tk.Tk):
                   ScreenEvent,
                   ScreenClock,
                   ScreenOff):  # Load 'ScreenOff' as last screen
-
+            self.logger.debug("Create a container for frame {}".format(F))
             frame = F(container, self)
             self.frames[F] = frame
             frame.grid(row=0, column=0, sticky="nsew")
 
         # do some configurations to the screens
+        self.logger.debug("Configure the created frames")
         self.frames[ScreenEvent].configure(pathToIniFile=self.observing_path_name)
-        self.frames[ScreenSlideshow].configure(pathToIniFile=self.observing_path_name,
-                                               logoPathAndFile=self.path_logo,
-                                               companyName=self.company_name)
+        self.frames[ScreenSlideshow].configure(pathToIniFile   = self.observing_path_name,
+                                               logoPathAndFile = self.path_logo,
+                                               companyName     = self.company_name)
         self.frames[ScreenOff].configure(logoPathAndFile=self.path_logo)
 
         # store some timing details
@@ -112,6 +142,7 @@ class FireFinderGUI(tk.Tk):
         self.lastChange = 0
 
         # show start screen
+        self.logger.info("Load splashscreen as start screen")
         self.show_frame(ScreenOff)
 
     # ----------------------------------------------------------------------
@@ -121,6 +152,7 @@ class FireFinderGUI(tk.Tk):
         :param cont:
         :return:
         """
+        self.logger.info("Load {} frame in front".format(cont))
 
         # send a hide signal to the actual shown screen
         if self.actScreen is not '':
@@ -157,7 +189,7 @@ class FireFinderGUI(tk.Tk):
 
     # ----------------------------------------------------------------------
     def exit(self):
-        print("Close program")
+        self.logger.info("Close program")
         self.destroy()
         self.quit()  # Fallback if the one above doesn't work properly
         sys.exit()   # Fallback if the one above doesn't work properly
@@ -165,7 +197,9 @@ class FireFinderGUI(tk.Tk):
 
 ########################################################################       
 class MyHandler(FileSystemEventHandler):
-    def __init__(self, gui_handler, configuration_dict):
+    def __init__(self, gui_handler, configuration_dict, **kwargs):
+
+        self.logger = kwargs.get("logger", logging.getLogger())
 
         # Grab all necessary information's form the configuration dict
         self.switch_screen_delay_after_start = configuration_dict['switchScreenDelayAfterStart']
@@ -207,6 +241,7 @@ class MyHandler(FileSystemEventHandler):
                 return
 
             self.lastModified = time.ctime(os.path.getmtime(event.src_path))
+            self.logger.debug("FileModifiedEvent raised")
 
             # The parser-file has to be converted as UTF-8 file. Otherwise
             # special character like umlaut could not successfully read.
@@ -214,21 +249,22 @@ class MyHandler(FileSystemEventHandler):
                 with codecs.open(event.src_path, 'r', encoding='UTF-8-sig') as f:
                     self.parser.read_file(f)
             except:
-                print("Failed to open ini-file \"%s\"" % event.src_path)
-                print("--> Be sure file is encode as \"UTF-8 BOM\"")
-                print("--------------------------------------------------\n\n")
+                self.logger.exception("Failed to open ini-file \"{}\", be sure"
+                                      "file is encoded as \"UTF-8 BOM\"".format(event.src_path))
                 return
 
             if not self.parser.has_option('General', 'show'):
-                print("Failed to read variable \"show\" in section [General]")
+                self.logger.error("Failed to read variable \"show\" in section [General]")
                 return
 
             # file was modivied by user, aboard auto_switch_screen_after_start if running
             if self._job_after_startup is not None:
+                self.logger.debug("Aboard switchToScreenAfterStart")
                 self.gui_instance.after_cancel(self._job_after_startup)
                 self._job_after_startup = None
 
             if self._job_after_event is not None:
+                self.logger.debug("Aboard switchToScreenAfterEvent")
                 self.gui_instance.after_cancel(self._job_after_event)
                 self._job_after_event = None
 
@@ -260,7 +296,7 @@ class MyHandler(FileSystemEventHandler):
                                 showDigitalSeconds=show_digital_second)
 
             # If event-screen is requested, get some additional settings
-            if show.lower() == 'event':
+            elif show.lower() == 'event':
                 # get information from ini-file
                 try:    full_event_message = self.parser.get('Event', 'message_full')
                 except: full_event_message = ""
@@ -322,7 +358,23 @@ class MyHandler(FileSystemEventHandler):
                                                                     self.switch_screen_frame,
                                                                     self.switch_to_screen_after_event)
 
-            if show.lower() == 'quit':
+            # If slideshow-screen is requested, get some additional settings
+            elif show.lower() == 'slideshow':
+                # get information from ini-file
+                try:    sort_images_alphabetically = self.parser.getboolean('Slideshow', 'sort_images_alphabetically')
+                except: sort_images_alphabetically = True
+                try:    show_header_bar = self.parser.getboolean('Slideshow', 'show_header_bar')
+                except: show_header_bar = True
+                try:    seconds_between_images = self.parser.getint('Slideshow', 'seconds_between_images')
+                except: seconds_between_images = 10
+
+                frame = self.gui_instance.get_screen_frame(ScreenSlideshow)
+                frame.configure(sortAlphabetically=sort_images_alphabetically,
+                                secondsBetweenImages=seconds_between_images,
+                                showHeaderBar=show_header_bar)
+
+            # If software close is requested, do some additional settings
+            elif show.lower() == 'quit':
                 self.sound_handler.stop()
                 self.power_instance.set_visual('On')
                 self.gui_instance.exit(self)
@@ -337,29 +389,33 @@ class MyHandler(FileSystemEventHandler):
             self.gui_instance.show_frame(ScreenClock)
             self.power_instance.set_visual('On')
 
-        if switch_to_screen_frame.lower() == 'slideshow':
+        elif switch_to_screen_frame.lower() == 'slideshow':
             self.sound_handler.stop()
             self.gui_instance.show_frame(ScreenSlideshow)
             self.power_instance.set_visual('On')
 
-        if switch_to_screen_frame.lower() == 'event':
+        elif switch_to_screen_frame.lower() == 'event':
             self.gui_instance.show_frame(ScreenEvent)
             self.power_instance.set_visual('On')
 
-        if switch_to_screen_frame.lower() == 'splashscreen':
+        elif switch_to_screen_frame.lower() == 'splashscreen':
             self.sound_handler.stop()
             self.gui_instance.show_frame(ScreenOff)
             self.power_instance.set_visual('On')
 
-        if switch_to_screen_frame.lower() == 'off':
+        elif switch_to_screen_frame.lower() == 'off':
             self.sound_handler.stop()
             self.gui_instance.show_frame(ScreenOff)
             self.power_instance.set_visual('Off')
+
+        else:
+            self.logger.warning("No visual frame with name \"{}\" avialable".format(switch_to_screen_frame))
 
 
 ######################################################################## 
 class GraficOutputDriver:
     def __init__(self, **kwargs):
+        self.logger               = kwargs.get("logger", logging.getLogger('GraficOutputDriver'))
         self.cec_enable           = kwargs.get("cec_enable", False)
         self.standby_enable       = kwargs.get("standby_enable", False)
         self.bypass_tv_power_save = kwargs.get("bypass_tv_power_save", 0)
@@ -375,6 +431,7 @@ class GraficOutputDriver:
 
         # Try to disable power saving
         if os.name == 'posix':
+            self.logger.debug("Try to disable power save on unix system")
             try:    subprocess.call(["xset", "s", "noblank"])
             except: pass
             try:    subprocess.call(["xset", "s", "noblank"])
@@ -383,6 +440,7 @@ class GraficOutputDriver:
             except: pass
 
         elif os.name == 'nt':
+            self.logger.debug("Try to disable power save on windows system")
             try:    subprocess.call(["powercfg.exe", "-change", "-monitor-timeout-ac", "0"])
             except: pass
             try:    subprocess.call(["powercfg.exe", "-change", "-disk-timeout-ac", "0"])
@@ -395,6 +453,7 @@ class GraficOutputDriver:
         # If user enable automatic TV reboot to prevent it from power save
         # launch a separate thread to handle this asynchron from any ini-commands
         if self.bypass_tv_power_save is not 0:
+            self.logger.debug("Load timer for reboot TV")
             self.rebootTvTimer = RepeatingTimer(self.bypass_tv_power_save * 60,
                                                 self.__reboot_television_over_cec)
 
@@ -465,7 +524,7 @@ class GraficOutputDriver:
 
             if self.cec_enable:
                 # Always enable TV. The user could switch of TV manualy
-                print("Switch TV on")
+                self.logger.info("Switch TV on")
                 self.television.run(True)
 
         if new_state.lower() == 'off':
@@ -477,7 +536,7 @@ class GraficOutputDriver:
             port.
             '''
             if self.cec_enable:
-                print("Switch TV off")
+                self.logger.info("Switch TV off")
                 self.television.run(False)
 
             if self.standby_enable and (os.name == 'posix'):
@@ -486,9 +545,12 @@ class GraficOutputDriver:
                     except: pass
                     self.__actGraficOutput = new_state
 
+        if (self.cec_enable is False) and (self.standby_enable is False):
+            self.logger.warning("CEC and Standby is disabled. Monitor can't switch on or off")
+
     # ----------------------------------------------------------------------
     def __reboot_television_over_cec(self):
-        print("keep alive TV requested")
+        self.logger.debug("keep alive TV requested")
 
         self.__switch_grafic_output('Off')
         time.sleep(10)
@@ -529,6 +591,11 @@ def read_config_ini_file():
     force_sound_repetition          = 1
     company_path_logo               = ''
     company_name                    = ''
+    enable_logging                  = False
+    logging_file                    = ''
+    logging_file_max_byte           = 1000
+    logging_backup_count            = 2
+    logging_level                   = 'Warning'
 
     # Create instance for reading the ini file
     sysconfig = ConfigParser()
@@ -539,8 +606,8 @@ def read_config_ini_file():
         # Configuration file could not be found
         error_message = ("The file \"config.ini\" is missing. Be sure this"
                          "file is in the same directory like this python-script")
-        print("ERROR: %s" % error_message)
         error = 'IniFileNotFound'
+        logger.critical(error_message)
 
     # config.ini file exist, going to read the data
     if error is None:
@@ -553,8 +620,8 @@ def read_config_ini_file():
             observing_file_name = sysconfig.get('General', 'observing_file')
         except:
             error_message = 'An unexpected error occurred while reading config.ini'
-            print("ERROR: %s" % error_message)
             error = 'CouldNotReadIniFile'
+            logger.critical(error_message)
 
     if error is None:
         # Check if the observation-directory exist. Otherwise the observer
@@ -562,46 +629,57 @@ def read_config_ini_file():
         if not os.path.isdir(observing_path_name):
             # quit script due to an error
             error_message = ("The directory \"%s\" for observation is missing." % observing_path_name)
-            print("ERROR: %s" % error_message)
             error = 'PathDoesNotExist'
+            logger.critical(error_message)
 
     # Read values with lower priority
-    if error is None:
-        # [Visual]
-        try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
-        except: pass
-        try:    switch_screen_delay_after_start = sysconfig.getint('Visual', 'switchScreenAfterStart')
-        except: pass
-        try:    switch_to_screen_after_start = sysconfig.get('Visual', 'switchToScreenAfterStart')
-        except: pass
-        try:    switch_screen_delay_after_event = sysconfig.getint('Visual', 'switchScreenAfterEvent')
-        except: pass
-        try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
-        except: pass
-        try:    company_path_logo = sysconfig.get('Visual', 'company_path_logo')
-        except: pass
-        try:    company_name = sysconfig.get('Visual', 'company_name')
-        except: pass
+    # [Visual]
+    try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
+    except: logger.debug("System configuration missing [Visual] --> fullscreen")
+    try:    switch_screen_delay_after_start = sysconfig.getint('Visual', 'switchScreenAfterStart')
+    except: logger.debug("System configuration missing [Visual] --> switchScreenAfterStart")
+    try:    switch_to_screen_after_start = sysconfig.get('Visual', 'switchToScreenAfterStart')
+    except: logger.debug("System configuration missing [Visual] --> switchToScreenAfterStart")
+    try:    switch_screen_delay_after_event = sysconfig.getint('Visual', 'switchScreenAfterEvent')
+    except: logger.debug("System configuration missing [Visual] --> switchScreenAfterEvent")
+    try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
+    except: logger.debug("System configuration missing [Visual] --> switchToScreenAfterEvent")
+    try:    company_path_logo = sysconfig.get('Visual', 'company_path_logo')
+    except: logger.debug("System configuration missing [Visual] --> company_path_logo")
+    try:    company_name = sysconfig.get('Visual', 'company_name')
+    except: logger.debug("System configuration missing [Visual] --> company_name")
 
-        # [Power]
-        try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
-        except: pass
-        try:    standby_enable = sysconfig.getboolean('Power', 'stdby_enable')
-        except: pass
-        try:    reboot_hdmi_device_after = sysconfig.getint('Power', 'cec_reboot_after_minutes')
-        except: pass
+    # [Power]
+    try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
+    except: logger.debug("System configuration missing [Power] --> cec_enable")
+    try:    standby_enable = sysconfig.getboolean('Power', 'stdby_enable')
+    except: logger.debug("System configuration missing [Power] --> stdby_enable")
+    try:    reboot_hdmi_device_after = sysconfig.getint('Power', 'cec_reboot_after_minutes')
+    except: logger.debug("System configuration missing [Power] --> cec_reboot_after_minutes")
 
-        # [Sound]
-        try:    path_sound_folder = sysconfig.get('Sound', 'path_sounds')
-        except: pass
-        try:    force_sound_file = sysconfig.get('Sound', 'force_sound_file')
-        except: pass
-        try:    force_sound_repetition = sysconfig.getint('Sound', 'force_repetition')
-        except: pass
+    # [Sound]
+    try:    path_sound_folder = sysconfig.get('Sound', 'path_sounds')
+    except: logger.debug("System configuration missing [Sound] --> path_sounds")
+    try:    force_sound_file = sysconfig.get('Sound', 'force_sound_file')
+    except: logger.debug("System configuration missing [Sound] --> force_sound_file")
+    try:    force_sound_repetition = sysconfig.getint('Sound', 'force_repetition')
+    except: logger.debug("System configuration missing [Sound] --> force_repetition")
 
-        # Check if sound-path exist. Otherwhise work with standard path
-        if not os.path.isdir(path_sound_folder):
-            path_sound_folder = os.path.join(wdr, 'firefinder', 'sound')
+    # [Logger]
+    try:    enable_logging = sysconfig.getboolean('Logging', 'enable_logging')
+    except: logger.debug("System configuration missing [Logging] --> enable_logging")
+    try:    logging_file = sysconfig.get('Logging', 'logging_file')
+    except: logger.debug("System configuration missing [Logging] --> logging_file")
+    try:    logging_file_max_byte = sysconfig.getint('Logging', 'logging_file_max_byte')
+    except: logger.debug("System configuration missing [Logging] --> logging_file_max_byte")
+    try:    logging_backup_count = sysconfig.getint('Logging', 'logging_backup_count')
+    except: logger.debug("System configuration missing [Logging] --> logging_backup_count")
+    try:    logging_level = sysconfig.get('Logging', 'logging_level')
+    except: logger.debug("System configuration missing [Logging] --> logging_level")
+
+    # Check if sound-path exist. Otherwhise work with standard path
+    if not os.path.isdir(path_sound_folder):
+        path_sound_folder = os.path.join(wdr, 'firefinder', 'sound')
 
     # Create a directory for return value
     dict_ini = {"FullScreen"                  : full_screen_enable,
@@ -618,10 +696,16 @@ def read_config_ini_file():
                 "ForceSoundFile"              : force_sound_file,
                 "ForceSoundRepetition"        : force_sound_repetition,
                 "PathLogo"                    : company_path_logo,
-                "CompanyName"                 : company_name}
+                "CompanyName"                 : company_name,
+                "LoggingEnable"               : enable_logging,
+                "LoggingFilePathName"         : logging_file,
+                "LoggingFileMaxByte"          : logging_file_max_byte,
+                "LoggingBackupCount"          : logging_backup_count,
+                "LoggingLevel"                : logging_level}
 
     if error is None:
         error = True
+        logger.info('Load configuration file done')
     return error, dict_ini
 
 
@@ -679,24 +763,54 @@ def show_error_screen(error_code, ini_file_path):
 if __name__ == "__main__":
 
     # Hint to GNU copy left license
-    print("\n")
-    print("+-------------------------------------------------+")
-    print("| FireFinder Copyright (C) 2016  Michael Anderegg |")
-    print("| This program comes with ABSOLUTELY NO WARRANTY. |")
-    print("| This is free software, and you are welcome to   |")
-    print("| redistribute it under certain conditions.       |")
-    print("+-------------------------------------------------+")
-    print("\n\n")
+    logger.info("")
+    logger.info("+-------------------------------------------------+")
+    logger.info("| FireFinder Copyright (C) 2016  Michael Anderegg |")
+    logger.info("| This program comes with ABSOLUTELY NO WARRANTY. |")
+    logger.info("| This is free software, and you are welcome to   |")
+    logger.info("| redistribute it under certain conditions.       |")
+    logger.info("+-------------------------------------------------+")
+    logger.info("")
 
     # Read config.ini File & check for failure
     result, configuration = read_config_ini_file()
+
+    # set up logger to file
+    if configuration["LoggingEnable"] is True:
+        # create a rotating file handler
+        file_logger = logging.handlers.RotatingFileHandler(filename=configuration["LoggingFilePathName"],
+                                                           maxBytes=configuration["LoggingFileMaxByte"],
+                                                           backupCount=configuration["LoggingBackupCount"])
+
+        # set the logging level
+        if configuration["LoggingLevel"].lower() == 'debug':
+            file_logger.setLevel(level=logging.DEBUG)
+        elif configuration["LoggingLevel"].lower() == 'info':
+            file_logger.setLevel(level=logging.INFO)
+        elif configuration["LoggingLevel"].lower() == 'warning':
+            file_logger.setLevel(level=logging.WARNING)
+        elif configuration["LoggingLevel"].lower() == 'error':
+            file_logger.setLevel(level=logging.ERROR)
+        elif configuration["LoggingLevel"].lower() == 'critical':
+            file_logger.setLevel(level=logging.CRITICAL)
+
+        file_logger.setFormatter(formatter)   # Adopt same formate as the console logger is using
+        file_logger.doRollover()              # Force using new logging file
+        logger.addHandler(file_logger)        # Add file to logging handler
+        logger.info('File logger is loaded')  # Write first entry to log
+
+        # Add a logging entry to file if the config file return an error
+        if result is not True:
+            logger.critical("Function read_config_ini_file returned: {}".format(result))
+
     if result is True:
         # Create some objects
-        grafic = GraficOutputDriver(cec_enable           = configuration["cec_enable"],
+        grafic = GraficOutputDriver(logger               = logger,
+                                    cec_enable           = configuration["cec_enable"],
                                     standby_enable       = configuration["standby_hdmi_enable"],
                                     bypass_tv_power_save = configuration["rebootHDMIdeviceAfter"])
-        app = FireFinderGUI(configuration)
-        eventHandler = MyHandler(app, configuration)
+        app = FireFinderGUI(configuration, logger = logger)
+        eventHandler = MyHandler(app, configuration, logger = logger)
         observer = Observer()
 
         # configure the observer thread and start it afterward
