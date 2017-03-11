@@ -19,7 +19,7 @@ REM ----------------------------------------------------------------------
 
 
 REM modify to fit to the system
-set FileName=Object
+set FileName=Object_new
 set FileExtension=ini
 set TempPath=C:\Temp\
 set AmountOfDevice=5
@@ -27,7 +27,7 @@ set FullDomainName=.fwi.local
 REM set FullDomainName=
 
 REM do not modify code below here
-set version=1.01.00
+set version=2.00.00
 set FullPathAndFile=%TempPath%%FileName%.%FileExtension%
 echo.
 echo.
@@ -60,7 +60,7 @@ echo.
 echo.
 echo.
 echo //////////////////////////////////////////////////////
-echo /   FireFinder Copyright (C) 2015  Michael Anderegg  /
+echo /   FireFinder Copyright (C) 2016  Michael Anderegg  /
 echo /   This program comes with ABSOLUTELY NO WARRANTY.  /
 echo /   This is free software, and you are welcome to    /
 echo /   redistribute it under certain conditions.        /
@@ -198,7 +198,7 @@ goto end
 goto switchDeviceSuccessfully
 
 :switchDeviceClock
-@echo show=time>>  "%FullPathAndFile%" 
+@echo show=clock>>  "%FullPathAndFile%" 
 @echo [Clock]>>  "%FullPathAndFile%" 
 @echo show_digital_time=False>>  "%FullPathAndFile%" 
 goto switchDeviceSuccessfully
