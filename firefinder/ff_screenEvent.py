@@ -213,7 +213,7 @@ class ScreenEvent(tk.Frame):
                     if value is not self.progressBarTime:
                         self.set_progressbar_time(value)
 
-            if self.pathToIniFile is '':
+            if self.pathToIniFile == '':
                 print("WARNING: Path to ini-file yet not set")
 
             if change_pciture is True:
@@ -273,7 +273,7 @@ class ScreenEvent(tk.Frame):
         self.pictureBar.config(width=pic_width, height=pic_height)
 
         # if picture 2 is empty, show picture 1 as fullscreen and clear picture 2
-        if self.nameOfPicture_2 is not '':
+        if self.nameOfPicture_2 != '':
             pic_width = int(pic_width / 2)
         else:
             self.pic_2.pack_forget()
@@ -297,9 +297,9 @@ class ScreenEvent(tk.Frame):
 
         # Put picture on the screen
         self.pic_1["image"] = self.pic1Img
-        if self.pic1Img is not '':
+        if self.pic1Img != '':
             # recalculate left padding depend of the second picture
-            if self.nameOfPicture_2 is not '':
+            if self.nameOfPicture_2 != '':
                 left_padding = int((self.screenWidth / 4) - (self.pic1Img.width() / 2))
             else:
                 left_padding = int((self.screenWidth / 2) - (self.pic1Img.width() / 2))
@@ -309,7 +309,7 @@ class ScreenEvent(tk.Frame):
             print("ERROR: FAILED TO PLACE IMAGE 1")
 
             # Change and resize picture 2
-        if self.nameOfPicture_2 is not '':
+        if self.nameOfPicture_2 != '':
             path = os.path.join(self.pathToIniFile, self.nameOfPicture_2)
             if os.path.isfile(path):
                 self.pic2Img = create_image(self,
@@ -406,7 +406,7 @@ def test_screenevent():
     screen.configure(cropPicture=True)
     time.sleep(1)
 
-    screen.configure(alarmMessage='Kp. 25, AA Sprinkler, Ittigen, Mühlestrasse 2, Verwaltungszentrum UVEK Ittigen')
+    screen.configure(alarmMessage='Kp. 25, AA Sprinkler, Ittigen, MÃ¼hlestrasse 2, Verwaltungszentrum UVEK Ittigen')
     time.sleep(1)
 
     screen.configure(category='red')
@@ -419,7 +419,7 @@ def test_screenevent():
     time.sleep(1)
 
     screen.configure(alarmMessage='Und nun folgt zum Testen eine wirklich lange Testnachricht. Damit soll '
-                                  'geprüft werden, ob auch bei sehr langen Texten diese Schriftgrösse nie '
+                                  'geprÃ¼ft werden, ob auch bei sehr langen Texten diese SchriftgrÃ¶sse nie '
                                   'kleiner als 70 Pixel sein wird...')
     time.sleep(1)
 

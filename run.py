@@ -24,6 +24,7 @@ import subprocess
 import sys
 import time
 import logging.handlers
+import pygame
 import tkinter as tk
 from configparser import ConfigParser
 
@@ -57,6 +58,27 @@ console_handler.setFormatter(formatter)
 
 # add handler to logger
 logger.addHandler(console_handler)
+
+FPS = 30
+
+
+def blit_text(surface, text, pos, font, color=pygame.Color('black')):
+    words = [word.split(' ') for word in text.splitlines()]  # 2D array where each row is a list of words.
+    space = font.size(' ')[0]  # The width of a space.
+    max_width, max_height = surface.get_size()
+    word_height = 0
+    x, y = pos
+    for line in words:
+        for word in line:
+            word_surface = font.render(word, 0, color)
+            word_width, word_height = word_surface.get_size()
+            if x + word_width >= max_width:
+                x = pos[0]  # Reset the x.
+                y += word_height  # Start on new row.
+            surface.blit(word_surface, (x, y))
+            x += word_width + space
+        x = pos[0]  # Reset the x.
+        y += word_height  # Start on new row.
 
 
 ########################################################################
@@ -155,7 +177,7 @@ class FireFinderGUI(tk.Tk):
         self.logger.info("Load {} frame in front".format(cont))
 
         # send a hide signal to the actual shown screen
-        if self.actScreen is not '':
+        if self.actScreen != '':
             self.frames[self.actScreen].descent_screen()
 
         # store the name of the new screen    
@@ -224,7 +246,7 @@ class MyHandler(FileSystemEventHandler):
 
         self.lastModified = 0
 
-        if self.switch_screen_delay_after_start is not 0:
+        if self.switch_screen_delay_after_start != 0:
             self._job_after_startup = self.gui_instance.after(self.switch_screen_delay_after_start * 1000,  # Delay in milliseconds
                                                               self.switch_screen_frame,  # Called function after time expired
                                                               self.switch_to_screen_after_start)  # Screen to display
@@ -353,7 +375,7 @@ class MyHandler(FileSystemEventHandler):
                     self.sound_handler.stop()
 
                 # Create a job to switch screen after a certain time
-                if self.switch_screen_delay_after_event is not 0:
+                if self.switch_screen_delay_after_event != 0:
                     self._job_after_event = self.gui_instance.after(self.switch_screen_delay_after_event * 1000,
                                                                     self.switch_screen_frame,
                                                                     self.switch_to_screen_after_event)
@@ -452,7 +474,7 @@ class GraficOutputDriver:
 
         # If user enable automatic TV reboot to prevent it from power save
         # launch a separate thread to handle this asynchron from any ini-commands
-        if self.bypass_tv_power_save is not 0:
+        if self.bypass_tv_power_save != 0:
             self.logger.debug("Load timer for reboot TV")
             self.rebootTvTimer = RepeatingTimer(self.bypass_tv_power_save * 60,
                                                 self.__reboot_television_over_cec)
@@ -467,8 +489,8 @@ class GraficOutputDriver:
         will returned if at least on is disabled.
         """
         if self.cec_enable:
-            if self.__actGraficOutput.lower() is 'on':
-                if self.__actTelevisionState.lower() is 'on':
+            if self.__actGraficOutput.lower() == 'on':
+                if self.__actTelevisionState.lower() == 'on':
                     return_value = 'on'
         else:
             return_value = self.__actGraficOutput
@@ -484,14 +506,14 @@ class GraficOutputDriver:
         :param state: Can be on or off
         """
         if self.rebootTvTimer:
-            if state.lower() is 'on':
+            if state.lower() == 'on':
                 # Start timer only if its not alive, otherwise a
                 # new screen whould restart the timer, but the TV
                 # doesn't trigger the screen, only power-changes
                 if self.rebootTvTimer.is_alive() is not True:
                     self.rebootTvTimer.start()
 
-            if state.lower() is 'off':
+            if state.lower() == 'off':
                 if self.rebootTvTimer.is_alive() is True:
                     self.rebootTvTimer.cancel()
                     self.rebootTvTimer.join(20)  # wait to kill thread
@@ -742,25 +764,67 @@ def show_error_screen(error_code, ini_file_path):
                          'schreibung muss beachtet werden.'
                          .format(received_path_and_file))
 
-    # Create a empty canvas to hold the error text string with a red background
-    master = tk.Tk()
-    error_canvas = tk.Canvas(master,
-                             width=int(master.winfo_screenwidth() / 2),
-                             height=int(master.winfo_screenheight() / 2),
-                             background='red')
+    # Create an empty canvas to hold the error text string with a red background
+    pygame.init()
 
-    # Create a text string placed in the canvas createt above
-    error_canvas.create_text(int(master.winfo_screenwidth() / 4),
-                             int(master.winfo_screenwidth() / 8),
-                             text=u'!! Schwerer Systemfehler !!\n\n{0:s}'.format(error_message),
-                             font=('arial', 30),
-                             width=int(master.winfo_screenwidth() / 2))
-    error_canvas.pack(side='top')
-    return master
+    info_obj = pygame.display.Info()
+    screen = pygame.display.set_mode((info_obj.current_w / 2, info_obj.current_h / 2))
+
+    # Fill the background with red
+
+    screen.fill((255, 0, 0))
+
+    font = pygame.font.SysFont('arial', 30)
+    text = u'!! Schwerer Systemfehler !!\n\n{0:s}'.format(error_message)
+    blit_text(screen, text, (20, 20), font)
+    #  img = font.render(u'!! Schwerer Systemfehler !!\n\n{0:s}'.format(error_message), True, (255, 255, 255))
+    # screen.blit(img, (20, 20))
+
+    # master = tk.Tk()
+    # error_canvas = tk.Canvas(master,
+    #                          width=int(master.winfo_screenwidth() / 2),
+    #                          height=int(master.winfo_screenheight() / 2),
+    #                          background='red')
+    #
+    # # Create a text string placed in the canvas created above
+    # error_canvas.create_text(int(master.winfo_screenwidth() / 4),
+    #                          int(master.winfo_screenwidth() / 8),
+    #                          text=u'!! Schwerer Systemfehler !!\n\n{0:s}'.format(error_message),
+    #                          font=('arial', 30),
+    #                          width=int(master.winfo_screenwidth() / 2))
+    # error_canvas.pack(side='top')
+    # return master
+    return screen
 
 
 ########################################################################
 if __name__ == "__main__":
+
+    pygame.init()
+
+    # Set up the drawing window
+    screen = pygame.display.set_mode([500, 500])
+
+    # Run until the user asks to quit
+    running = False
+    while running:
+
+        # Did the user click the window close button?
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        # Fill the background with white
+        screen.fill((255, 255, 255))
+
+        # Draw a solid blue circle in the center
+        pygame.draw.circle(screen, (0, 0, 255), (250, 250), 75)
+
+        # Flip the display
+        pygame.display.flip()
+
+    # Done! Time to quit.
+    pygame.quit()
 
     # Hint to GNU copy left license
     logger.info("")
@@ -821,4 +885,19 @@ if __name__ == "__main__":
     else:
         app = show_error_screen(result, configuration)
 
-    app.mainloop()
+    clock = pygame.time.Clock()
+
+    running = True
+    while running:
+
+        dt = clock.tick(FPS) / 1000
+
+        # Did the user click the window close button?
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                running = False
+
+        pygame.display.update()
+
+    pygame.quit()
+    # app.mainloop()

@@ -67,9 +67,9 @@ class ProgressBar(tk.Frame):
                             [90, 'orange'],
                             [100, 'green']]
 
-        self.textScheme = [[0, "Warte auf Atemschutz-Ger‰tetr‰ger"],
-                           [90, "Bereitmachen zum Ausr¸cken"],
-                           [100, "Losfahren, auch bei zuwenig Atemschutz-Ger‰tetr‰ger"]]
+        self.textScheme = [[0, "Warte auf Atemschutz-Ger√§tetr√§ger"],
+                           [90, "Bereitmachen zum Ausr√ºcken"],
+                           [100, "Losfahren, auch bei zuwenig Atemschutz-Ger√§tetr√§ger"]]
 
         self.create_widget()  # create the widget
 
@@ -301,7 +301,7 @@ class ResponseOrder(tk.Frame):
     def set_equipment(self, equipment):
         # generate the truck pictures concerning inputs
         for x in equipment:
-            if equipment[x] is not '':
+            if equipment[x] != '':
                 path = os.path.join(self.wdr, 'pic', equipment[x])
                 self.equipmentImg[x] = create_image(self.master, path, height=self.height)
                 self.equipment[x]["image"] = self.equipmentImg[x]

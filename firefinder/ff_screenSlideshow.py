@@ -123,7 +123,7 @@ class ScreenSlideshow(tk.Frame):
     # ----------------------------------------------------------------------
     def show_slides(self):
         # Check if path already set
-        if self.pathToImages is '':
+        if self.pathToImages == '':
             print("ERROR: Path to slideshow folder not set yet")
             return
 
