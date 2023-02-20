@@ -18,11 +18,13 @@ screen_info = pygame.display.Info()
 
 # Colors
 BLACK = (0, 0, 0)
+GREY  = (128, 128, 128)
 RED   = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE  = (0, 0, 255)
 WHITE = (255, 255, 255)
 
+FPS = 30
 
 def scale_image(image_obj, max_width=None, max_height=None, crop=False, keep_ratio=True):
     # Get the original image dimensions
@@ -69,7 +71,7 @@ class GuiThread(threading.Thread):
         self._running = False
         self._queue = queue.Queue()
 
-        self._fps = 30
+        self._fps = FPS
 
     def set_screen(self, surface_obj):
         self._queue.put(surface_obj)
@@ -88,8 +90,6 @@ class GuiThread(threading.Thread):
 
         self._running = True
         while self._running:
-
-            dt = clock.tick(self._fps) / 1000
 
             for event in pygame.event.get():
                 # Did the user click the window close button?
@@ -114,7 +114,8 @@ class GuiThread(threading.Thread):
             window.blit(surface_obj.get_surface(), (0, 0))
             pygame.display.flip()
 
-            time.sleep(0.01)
+            # Control the FPS
+            clock.tick(self._fps)
 
     def stop(self):
         self._running = False
@@ -357,23 +358,47 @@ class OffSurface(object):
         return self._surface
 
 
-class Slideshow(object):
-    def __init__(self, logger, path_to_images):
+class SlideshowSurface(object):
+    def __init__(self, logger=None, **kwargs):
+        if logger is None:
+            logger = Logger(verbose=True, file_path=".\\SlideshowSurface.log")
 
         self.logger = logger
-        self.path_to_images = path_to_images
 
-        self._image_list = []
+        # store path where the pictures for the slideshow are stored
+        self.path_to_images      = kwargs.get("path_to_images", "")
+        self.sort_alphabetically = kwargs.get("short_alphabetically", False)
+        self.display_duration    = kwargs.get("seconds_between_images", 15)
 
-        screen_width = screen_info.current_w
-        screen_height = screen_info.current_h
-        resolution = (screen_width, screen_height)
-        self.surface = pygame.Surface(resolution)
+        self.last_image_time     = None
+        self.image_list          = []
+        self.new_image           = None
+        self.current_image       = None
+        self.current_image_index = 0
+        self.fade_alpha          = 0  # can be -1 ... 1 where -1 is the old image and 1 the new
+        if self.path_to_images:
+            self.load_images()
 
-        self.screen = pygame.display.set_mode(resolution)
+        # Store settings for header-bar
+        self.show_header   = kwargs.get("show_header", True)
+        self.path_logo     = kwargs.get("path_logo", "")
+        self.company_name  = kwargs.get("company_name", "")
+        self.header_height = 40
+        self._header_surface_obj = HeaderSurface(height       = self.header_height,
+                                                 logger       = logger,
+                                                 show_time    = False,
+                                                 bg_color     = GREY,
+                                                 path_logo    = self.path_logo,
+                                                 company_name = self.company_name)
 
-    def load_images(self, randomize=False):
+        self._font = pygame.font.SysFont(name='Arial', size=50, bold=True)
 
+        self.bg_color = BLACK
+        self.fg_color = RED
+        resolution = (screen_info.current_w, screen_info.current_h)
+        self._surface = pygame.Surface(resolution)
+
+    def load_images(self):
         images = []
         successful = True
 
@@ -386,25 +411,139 @@ class Slideshow(object):
         if not os.path.exists(self.path_to_images):
             os.makedirs(self.path_to_images)
 
-        if successful:
-            included_extensions = ['.jpg', '.jpeg', '.bmp', '.png', '.gif', '.eps', '.tif', '.tiff']
-            for file_name in os.listdir(self.path_to_images):
-                path_obj = Path(file_name)
-                if path_obj.suffix in included_extensions:
-                    # image = pygame.image.load(path_obj.absolute()).convert()
-                    images.append(path_obj.name)
+        for filename in os.listdir(self.path_to_images):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.bmp', '.png', '.gif', '.eps', '.tif', '.tiff')):
+                # path = os.path.join(self.path_to_images, filename)
+                # image = pygame.image.load(path)
+                images.append(filename)
 
-            if randomize:
-                images = random.sample(images, len(images))
-            else:
-                images = sorted(images)
-
-        self._image_list = images
-
+        self.current_image_index = 0
+        self.image_list = images
+        self.sort_images()
         return successful
 
-    def get_screen_obj(self):
-        pass
+    def sort_images(self):
+        if self.sort_alphabetically:
+            print("Start sort")
+            self.image_list = sorted(self.image_list)
+            print("End sort")
+        else:
+            self.image_list = random.sample(self.image_list, len(self.image_list))
+
+    def get_next_image_obj(self):
+        if self.image_list:
+
+            if self.current_image_index >= len(self.image_list):
+                self.current_image_index = 0
+
+            max_height = screen_info.current_h
+            if self.show_header:
+                max_height -= self.header_height
+
+            path = os.path.join(self.path_to_images, self.image_list[self.current_image_index])
+            image = pygame.image.load(path)
+            image = scale_image(image_obj  = image,
+                                max_height = max_height,
+                                max_width  = screen_info.current_w)
+
+            self.current_image_index += 1
+        else:
+            image = self._font.render("Keine Bilder zum Anzeigen :(", True, self.fg_color, self.bg_color)
+
+        return image
+
+    def get_surface(self):
+
+        self._surface.fill(self.bg_color)
+
+        # If this is the first call, the current image is empty
+        if self.current_image is None:
+            self.current_image = self.get_next_image_obj()
+            self.last_image_time = time.time()
+            self.fade_alpha = 1  # Completely faded
+
+        # Check if picture shall be updated
+        if self.fade_alpha >= 1 and time.time() - self.last_image_time >= self.display_duration:
+            self.new_image = self.get_next_image_obj()
+            self.fade_alpha = -1  # start new fade
+            self.last_image_time = None
+
+        # If fading is in progress, the alpha channel is less than 1
+        if self.fade_alpha < 1:
+            header_height = self.header_height if self.show_header else 0
+            fade_surface = pygame.Surface((screen_info.current_w, screen_info.current_h-header_height))
+            fade_surface.fill(BLACK)
+
+            # The fade range is -1 ... 1 where -1 is the complete old image while 1 is the complete new image
+            if self.fade_alpha < 0:
+                # Fade out old picture
+                fade_surface.set_alpha(255 - int(abs(self.fade_alpha) * 255))
+                x = (screen_info.current_w - self.current_image.get_width()) // 2
+                y = (screen_info.current_h - self.current_image.get_height()) // 2
+                if self.show_header:
+                    y += self.header_height
+                self._surface.blit(self.current_image, (x, y))
+                self._surface.blit(fade_surface, (x, y))
+            else:
+                # Fade in new picture
+                fade_surface.set_alpha(255 - int(self.fade_alpha * 255))
+                x = (screen_info.current_w - self.new_image.get_width()) // 2
+                y = (screen_info.current_h - self.new_image.get_height()) // 2
+                if self.show_header:
+                    y += self.header_height
+                self._surface.blit(self.new_image, (x, y))
+                self._surface.blit(fade_surface, (x, y))
+
+            # Increment fade step and check if fading is finished
+            self.fade_alpha += 1/FPS
+            if self.fade_alpha >= 1:
+                self.last_image_time = time.time()
+                self.current_image = self.new_image
+                self.new_image = None
+        else:
+            # No fade, just show picture
+            x = (screen_info.current_w - self.current_image.get_width()) // 2
+            y = (screen_info.current_h - self.current_image.get_height()) // 2
+            if self.show_header:
+                y += self.header_height
+            self._surface.blit(self.current_image, (x, y))
+
+        # Update header
+        if self.show_header:
+            self._surface.blit(self._header_surface_obj.get_surface(), (0, 0))
+
+        return self._surface
+
+    def configure(self, **kw):
+
+        if len(kw) == 0:  # return a dict of the current configuration
+            cfg = {'seconds_between_images': self.display_duration, 'sort_alphabetically': self.sort_alphabetically,
+                   'path_to_images': self.path_to_images, 'path_logo': self.path_logo,
+                   'company_name': self.company_name, 'show_header': self.show_header}
+            return cfg
+
+        else:  # do a configure
+            for key, value in list(kw.items()):
+                if key == 'seconds_between_images':
+                    self.display_duration = value
+                    self.logger.info("Set 'seconds_between_images' to {}".format(value))
+                elif key == 'sort_alphabetically':
+                    self.sort_alphabetically = value
+                    self.logger.info("Set 'sort_alphabetically' to {}".format(value))
+                    self.sort_images()
+                elif key == 'path_to_images':
+                    self.path_to_images = value
+                    self.logger.info("Set 'path_to_images' to {}".format(value))
+                    self.load_images()
+                elif key == 'path_logo':
+                    self.path_logo = value
+                    self._header_surface_obj.configure(path_logo=self.path_logo)
+                elif key == 'company_name':
+                    self.company_name = value
+                    self._header_surface_obj.configure(company_name=self.company_name)
+                elif key == 'show_header':
+                    self.show_header = value
+                    self.logger.info("Set 'show_header' to {}".format(value))
 
 
 def test_screen_top(screen_obj):
@@ -485,9 +624,51 @@ def test_screen_top(screen_obj):
     print("Test ende")
 
 
+def test_slideshow(screen_obj):
+    def update_screen():
+        screen_obj.blit(slideshow_obj.get_surface(), (0, 0))
+        pygame.display.flip()
+
+    clock = pygame.time.Clock()
+    slideshow_obj = SlideshowSurface()
+
+    print("Start Test")
+
+    time.sleep(1)
+
+    slideshow_obj.configure(path_to_images="D:\\Firefinder\\Slideshow")
+    update_screen()
+    time.sleep(1)
+
+    slideshow_obj.configure(company_name="Feuerwehr Ittigen")
+    update_screen()
+    time.sleep(1)
+
+    slideshow_obj.configure(path_logo="D:\\Firefinder\\logo.png")
+    update_screen()
+    time.sleep(1)
+
+    slideshow_obj.configure(show_header=False)
+    update_screen()
+    time.sleep(1)
+
+    slideshow_obj.configure(seconds_between_images=4)
+    update_screen()
+    time.sleep(1)
+
+    slideshow_obj.configure(sort_alphabetically=True)
+    update_screen()
+    time.sleep(1)
+
+    print("Test ende")
+
+
 if __name__ == "__main__":
     screen = pygame.display.set_mode((screen_info.current_w, screen_info.current_h))
-    off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
+    # screen = pygame.display.set_mode((1000, 800))
+    # off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
+    # slideshow_obj = SlideshowSurface(path_to_images="D:\\Firefinder\\Slideshow")
+    clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -500,9 +681,12 @@ if __name__ == "__main__":
 
         screen.fill((255, 255, 255))
         # test_screen_top(screen_obj=screen)
-        # pygame.quit()
-        # break
+        test_slideshow(screen_obj=screen)
+        pygame.quit()
+        break
 
-        screen.blit(off_obj.get_surface(), (0, 0))
-        pygame.display.flip()
+        # screen.blit(off_obj.get_surface(), (0, 0))
+        # screen.blit(slideshow_obj.get_surface(), (0, 0))
+        # pygame.display.flip()
+        # clock.tick(FPS)
 
