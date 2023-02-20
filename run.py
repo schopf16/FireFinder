@@ -2,20 +2,18 @@
 # -*- coding: latin-1-*-
 
 """
-    Copyright (C) 2016  Michael Anderegg <michael@anderegg.be>
+    This work is licensed under the Creative Commons Attribution-ShareAlike 4.0 International License.
+    To view a copy of this license, visit https://creativecommons.org/licenses/by-sa/4.0/.
 
-    This program is free software: you can redistribute it and/or modify
-    it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
+    You are free to share and adapt this work for any purpose, even commercially, as long as you give appropriate
+    credit to the original author and distribute any derivatives under the same license. By sharing and adapting
+    this work, you agree to make any resulting derivative works available under the same license. This means that
+    others may use, share, and adapt your work, as long as they also give you credit and release their derivative
+    works under the same license.
 
-    This program is distributed in the hope that it will be useful,
-    but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with this program.  If not, see <http://www.gnu.org/licenses/>.
+    By licensing this work under a copyleft license, the author hopes to promote collaboration, sharing, and
+    innovation in the creative community, and to ensure that the benefits of this work are shared with as many
+    people as possible.
 """
 
 import codecs
@@ -23,10 +21,11 @@ import os
 import subprocess
 import sys
 import time
-import logging.handlers
+# import logging.handlers
 import pygame
+# from pygame.locals import KEYDOWN, K_ESCAPE
 import tkinter as tk
-from configparser import ConfigParser
+import configparser
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -40,26 +39,13 @@ from firefinder.ff_screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary import TvPower
 from firefinder.ff_miscellaneous import RepeatingTimer
 
+from pathlib2 import Path
+from firefinder.util_screen import GuiHandler
+from firefinder.util_logger import Logger
+
+
 ########################################################################
-# create logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-# logger.setLevel(logging.INFO)
 
-# create formatter
-formatter = logging.Formatter('%(asctime)-15s - %(levelname)-8s : %(message)s')
-
-# create console handler and set level to debug
-console_handler = logging.StreamHandler(sys.stdout)
-# console_handler.setLevel(logging.DEBUG)
-
-# add formatter to ch
-console_handler.setFormatter(formatter)
-
-# add handler to logger
-logger.addHandler(console_handler)
-
-FPS = 30
 
 
 def blit_text(surface, text, pos, font, color=pygame.Color('black')):
@@ -81,7 +67,6 @@ def blit_text(surface, text, pos, font, color=pygame.Color('black')):
         y += word_height  # Start on new row.
 
 
-########################################################################
 class FireFinderGUI(tk.Tk):
     def __init__(self, configuration_dict, **kwargs):
         super(FireFinderGUI, self).__init__()
@@ -217,7 +202,6 @@ class FireFinderGUI(tk.Tk):
         sys.exit()   # Fallback if the one above doesn't work properly
 
 
-########################################################################       
 class MyHandler(FileSystemEventHandler):
     def __init__(self, gui_handler, configuration_dict, **kwargs):
 
@@ -434,7 +418,6 @@ class MyHandler(FileSystemEventHandler):
             self.logger.warning("No visual frame with name \"{}\" avialable".format(switch_to_screen_frame))
 
 
-######################################################################## 
 class GraficOutputDriver:
     def __init__(self, **kwargs):
         self.logger               = kwargs.get("logger", logging.getLogger('GraficOutputDriver'))
@@ -579,159 +562,114 @@ class GraficOutputDriver:
         self.__switch_grafic_output('On')
 
 
-########################################################################
-def read_config_ini_file():
-    """
-    This function will open the file 'config.ini' which is located in
-    the same folder as this run.py file. This configuration file holds
-    all necessary information's about the firefinder app. The information's
-    from the configuration file is stored in a dict for better handling
-    afterwards
+class ConfigFile(object):
 
-    :return: result True if no error occur, otherwise string with error
-    :return: dict_ini Holds the stored information's in a Dict
-    """
-    try:
-        wdr = os.path.dirname(__file__)
-    except:
-        wdr = os.getcwd()
+    def __init__(self, logger, **kwargs):
 
-    # Set default values
-    error                           = None
-    full_screen_enable              = False
-    switch_screen_delay_after_start = 0
-    switch_to_screen_after_start    = ScreenOff
-    switch_screen_delay_after_event = 0
-    switch_to_screen_after_event    = ScreenOff
-    cec_enable                      = False
-    standby_enable                  = False
-    reboot_hdmi_device_after        = 0
-    observing_file_name             = ''
-    observing_path_name             = ''
-    path_sound_folder               = 'None'
-    force_sound_file                = 'None'
-    force_sound_repetition          = 1
-    company_path_logo               = ''
-    company_name                    = ''
-    enable_logging                  = False
-    logging_file                    = ''
-    logging_file_max_byte           = 1000
-    logging_backup_count            = 2
-    logging_level                   = 'Warning'
+        config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
+        self._config_file = kwargs.get('ini_file', config_path)
+        self.logger = logger
+        self.successful = False
 
-    # Create instance for reading the ini file
-    sysconfig = ConfigParser()
+        # check if the passed file exist. Do not try to parse the file if it cannot be located
+        if isinstance(self._config_file, str) and os.path.isfile(self._config_file):
+            self._config = configparser.ConfigParser()
+            self._config.read(self._config_file)
 
-    # Check if config.ini file exist
-    config_path = os.path.join(wdr, 'config.ini')
-    if not os.path.isfile(config_path):
-        # Configuration file could not be found
-        error_message = ("The file \"config.ini\" is missing. Be sure this"
-                         "file is in the same directory like this python-script")
-        error = 'IniFileNotFound'
-        logger.critical(error_message)
+            self.full_screen_enable              = self._get_value('Visual', 'fullscreen', default=False, expect_boolean=True)
+            self.switch_screen_delay_after_start = self._get_value('Visual', 'switchScreenAfterStart', default=0)
+            self.switch_to_screen_after_start    = self._get_value('Visual', 'switchToScreenAfterStart', default='Off')
+            self.switch_screen_delay_after_event = self._get_value('Visual', 'switchScreenAfterEvent', default=0)
+            self.switch_to_screen_after_event    = self._get_value('Visual', 'switchToScreenAfterEvent', default='Off')
+            self.company_path_logo               = self._get_value('Visual', 'company_path_logo', default="")
+            self.company_name                    = self._get_value('Visual', 'company_name', default="")
 
-    # config.ini file exist, going to read the data
-    if error is None:
-        with codecs.open(config_path, 'r', encoding='UTF-8-sig') as f:
-            sysconfig.read_file(f)
+            # [Power]
+            self.cec_enable               = self._get_value('Power', 'cec_enable', default=False, expect_boolean=True)
+            self.standby_enable           = self._get_value('Power', 'stdby_enable', default=False, expect_boolean=True)
+            self.reboot_hdmi_device_after = self._get_value('Power', 'cec_reboot_after_minutes', default=0)
 
-        # read information which are required
-        try:
-            observing_path_name = sysconfig.get('General', 'observing_path')
-            observing_file_name = sysconfig.get('General', 'observing_file')
-        except:
-            error_message = 'An unexpected error occurred while reading config.ini'
-            error = 'CouldNotReadIniFile'
-            logger.critical(error_message)
+            # [Sound]
+            self.path_sound_folder      = self._get_value('Sound', 'path_sounds', default="")
+            self.force_sound_file       = self._get_value('Sound', 'force_sound_file', default="")
+            self.force_sound_repetition = self._get_value('Sound', 'force_repetition', default=1)
 
-    if error is None:
-        # Check if the observation-directory exist. Otherwise the observer
-        # will raise a FileNotFoundError
-        if not os.path.isdir(observing_path_name):
-            # quit script due to an error
-            error_message = ("The directory \"%s\" for observation is missing." % observing_path_name)
-            error = 'PathDoesNotExist'
-            logger.critical(error_message)
+            self.successful = True
 
-    # Read values with lower priority
-    # [Visual]
-    try:    full_screen_enable = sysconfig.getboolean('Visual', 'fullscreen')
-    except: logger.debug("System configuration missing [Visual] --> fullscreen")
-    try:    switch_screen_delay_after_start = sysconfig.getint('Visual', 'switchScreenAfterStart')
-    except: logger.debug("System configuration missing [Visual] --> switchScreenAfterStart")
-    try:    switch_to_screen_after_start = sysconfig.get('Visual', 'switchToScreenAfterStart')
-    except: logger.debug("System configuration missing [Visual] --> switchToScreenAfterStart")
-    try:    switch_screen_delay_after_event = sysconfig.getint('Visual', 'switchScreenAfterEvent')
-    except: logger.debug("System configuration missing [Visual] --> switchScreenAfterEvent")
-    try:    switch_to_screen_after_event = sysconfig.get('Visual', 'switchToScreenAfterEvent')
-    except: logger.debug("System configuration missing [Visual] --> switchToScreenAfterEvent")
-    try:    company_path_logo = sysconfig.get('Visual', 'company_path_logo')
-    except: logger.debug("System configuration missing [Visual] --> company_path_logo")
-    try:    company_name = sysconfig.get('Visual', 'company_name')
-    except: logger.debug("System configuration missing [Visual] --> company_name")
+        else:
+            self.logger.critical("Failed loading ini-file at expected path: '{}'".format(self._config_file))
 
-    # [Power]
-    try:    cec_enable = sysconfig.getboolean('Power', 'cec_enable')
-    except: logger.debug("System configuration missing [Power] --> cec_enable")
-    try:    standby_enable = sysconfig.getboolean('Power', 'stdby_enable')
-    except: logger.debug("System configuration missing [Power] --> stdby_enable")
-    try:    reboot_hdmi_device_after = sysconfig.getint('Power', 'cec_reboot_after_minutes')
-    except: logger.debug("System configuration missing [Power] --> cec_reboot_after_minutes")
+    def _has_section(self, section):
+        """ Check if the given section is listed in the ini-file
 
-    # [Sound]
-    try:    path_sound_folder = sysconfig.get('Sound', 'path_sounds')
-    except: logger.debug("System configuration missing [Sound] --> path_sounds")
-    try:    force_sound_file = sysconfig.get('Sound', 'force_sound_file')
-    except: logger.debug("System configuration missing [Sound] --> force_sound_file")
-    try:    force_sound_repetition = sysconfig.getint('Sound', 'force_repetition')
-    except: logger.debug("System configuration missing [Sound] --> force_repetition")
+        :param section: Name of the section that should be checked
+        :return: True if available in the ini-file, False in any other case
+        """
+        ret = self._config.has_section(section=section)
+        if not ret:
+            self.logger.info("Section {} not found".format(section))
+        return ret
 
-    # [Logger]
-    try:    enable_logging = sysconfig.getboolean('Logging', 'enable_logging')
-    except: logger.debug("System configuration missing [Logging] --> enable_logging")
-    try:    logging_file = sysconfig.get('Logging', 'logging_file')
-    except: logger.debug("System configuration missing [Logging] --> logging_file")
-    try:    logging_file_max_byte = sysconfig.getint('Logging', 'logging_file_max_byte')
-    except: logger.debug("System configuration missing [Logging] --> logging_file_max_byte")
-    try:    logging_backup_count = sysconfig.getint('Logging', 'logging_backup_count')
-    except: logger.debug("System configuration missing [Logging] --> logging_backup_count")
-    try:    logging_level = sysconfig.get('Logging', 'logging_level')
-    except: logger.debug("System configuration missing [Logging] --> logging_level")
+    def _has_option(self, section, option):
+        """ Check if the option is listed in the given section of the ini-file
 
-    # Check if sound-path exist. Otherwhise work with standard path
-    if not os.path.isdir(path_sound_folder):
-        path_sound_folder = os.path.join(wdr, 'firefinder', 'sound')
+        :param section: Name of the section in the ini-file
+        :param option:  Name of the option in the section
+        :return: True if available in the ini-file, False in any other case
+        """
+        ret = self._config.has_option(section=section, option=option)
 
-    # Create a directory for return value
-    dict_ini = {"FullScreen"                  : full_screen_enable,
-                "switchScreenDelayAfterStart" : switch_screen_delay_after_start,
-                "switchToScreenAfterStart"    : switch_to_screen_after_start,
-                "switchScreenDelayAfterEvent" : switch_screen_delay_after_event,
-                "switchToScreenAfterEvent"    : switch_to_screen_after_event,
-                "cec_enable"                  : cec_enable,
-                "standby_hdmi_enable"         : standby_enable,
-                "rebootHDMIdeviceAfter"       : reboot_hdmi_device_after,
-                "ObserveFileForEvent"         : observing_file_name,
-                "ObservePathForEvent"         : observing_path_name,
-                "PathSoundFolder"             : path_sound_folder,
-                "ForceSoundFile"              : force_sound_file,
-                "ForceSoundRepetition"        : force_sound_repetition,
-                "PathLogo"                    : company_path_logo,
-                "CompanyName"                 : company_name,
-                "LoggingEnable"               : enable_logging,
-                "LoggingFilePathName"         : logging_file,
-                "LoggingFileMaxByte"          : logging_file_max_byte,
-                "LoggingBackupCount"          : logging_backup_count,
-                "LoggingLevel"                : logging_level}
+        if not ret:
+            self.logger.info("Option {} in Section {} not found".format(option, section))
+        return ret
 
-    if error is None:
-        error = True
-        logger.info('Load configuration file done')
-    return error, dict_ini
+    @staticmethod
+    def _str_to_bool(txt):
+        """
+        Check if the value 'txt' is part of the TRUE_TABLE. If so, return True, else False
+        """
+        true_table = ['true', 'wahr', 'ja', '1', 't', 'y', 'yes', 'yeah', 'yup', 'sure', 'certainly', 'uh-huh', 'dude',
+                      'haan']
+        if str(txt).lower() in true_table:
+            return True
+        else:
+            return False
+
+    def _get_sections(self):
+        """Return a list of section names, excluding [DEFAULT]"""
+        return self._config.sections()
+
+    def _get_options(self, section):
+        """Return a list of option names for the given section name."""
+        return self._config.options(section=section)
+
+    def _get_value(self, section, option, default=None, expect_boolean=False):
+        """ Get the value from the option
+
+        :param section:        Name of the section in the ini-file
+        :param option:         Name of the option in the section
+        :param expect_boolean: If True, check value with TRUE_TABLE and set either to True or False
+        :return:               value of the option, None empty
+        """
+        value = default
+
+        # Check if section is available
+        if self._config.has_section(section=section):
+
+            # Check if option is available
+            if self._config.has_option(section=section, option=option):
+                if expect_boolean:
+                    value = self._config.getboolean(section=section, option=option)
+                else:
+                    value = self._config.get(section=section, option=option)
+            else:
+                self.logger.debug("Option {} in section {} is not available".format(option, section))
+        else:
+            self.logger.debug("Section {} is not available".format(section))
+
+        return value
 
 
-########################################################################
 def show_error_screen(error_code, ini_file_path):
     """
     This function will create a canvas and show up the given error code
@@ -797,107 +735,31 @@ def show_error_screen(error_code, ini_file_path):
     return screen
 
 
-########################################################################
+def main():
+    # logger = logging.getLogger(__name__)
+    # logger.setLevel(logging.DEBUG)
+    # formatter = logging.Formatter('%(asctime)-15s - %(levelname)-8s : %(message)s')
+    #
+    # console_handler = logging.StreamHandler(sys.stdout)
+    # # console_handler.setLevel(logging.DEBUG)
+    #
+    # console_handler.setFormatter(formatter)
+    # logger.addHandler(console_handler)
+    log_obj = Logger(verbose=True, file_path=".\\firefinder.log")
+
+    config_obj = ConfigFile(logger=log_obj)
+    assert config_obj.successful
+
+    gui = GuiHandler(logger            = log_obj,
+                     full_screen       = config_obj.full_screen_enable,
+                     company_path_logo = config_obj.company_path_logo,
+                     company_name      = config_obj.company_name)
+    gui.start()
+    while gui.is_running():
+        time.sleep(1)
+
+    gui.stop()
+
+
 if __name__ == "__main__":
-
-    pygame.init()
-
-    # Set up the drawing window
-    screen = pygame.display.set_mode([500, 500])
-
-    # Run until the user asks to quit
-    running = False
-    while running:
-
-        # Did the user click the window close button?
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        # Fill the background with white
-        screen.fill((255, 255, 255))
-
-        # Draw a solid blue circle in the center
-        pygame.draw.circle(screen, (0, 0, 255), (250, 250), 75)
-
-        # Flip the display
-        pygame.display.flip()
-
-    # Done! Time to quit.
-    pygame.quit()
-
-    # Hint to GNU copy left license
-    logger.info("")
-    logger.info("+-------------------------------------------------+")
-    logger.info("| FireFinder Copyright (C) 2016  Michael Anderegg |")
-    logger.info("| This program comes with ABSOLUTELY NO WARRANTY. |")
-    logger.info("| This is free software, and you are welcome to   |")
-    logger.info("| redistribute it under certain conditions.       |")
-    logger.info("+-------------------------------------------------+")
-    logger.info("")
-
-    # Read config.ini File & check for failure
-    result, configuration = read_config_ini_file()
-
-    # set up logger to file
-    if configuration["LoggingEnable"] is True:
-        # create a rotating file handler
-        file_logger = logging.handlers.RotatingFileHandler(filename=configuration["LoggingFilePathName"],
-                                                           maxBytes=configuration["LoggingFileMaxByte"],
-                                                           backupCount=configuration["LoggingBackupCount"])
-
-        # set the logging level
-        if configuration["LoggingLevel"].lower() == 'debug':
-            file_logger.setLevel(level=logging.DEBUG)
-        elif configuration["LoggingLevel"].lower() == 'info':
-            file_logger.setLevel(level=logging.INFO)
-        elif configuration["LoggingLevel"].lower() == 'warning':
-            file_logger.setLevel(level=logging.WARNING)
-        elif configuration["LoggingLevel"].lower() == 'error':
-            file_logger.setLevel(level=logging.ERROR)
-        elif configuration["LoggingLevel"].lower() == 'critical':
-            file_logger.setLevel(level=logging.CRITICAL)
-
-        file_logger.setFormatter(formatter)   # Adopt same formate as the console logger is using
-        file_logger.doRollover()              # Force using new logging file
-        logger.addHandler(file_logger)        # Add file to logging handler
-        logger.info('File logger is loaded')  # Write first entry to log
-
-        # Add a logging entry to file if the config file return an error
-        if result is not True:
-            logger.critical("Function read_config_ini_file returned: {}".format(result))
-
-    if result is True:
-        # Create some objects
-        grafic = GraficOutputDriver(logger               = logger,
-                                    cec_enable           = configuration["cec_enable"],
-                                    standby_enable       = configuration["standby_hdmi_enable"],
-                                    bypass_tv_power_save = configuration["rebootHDMIdeviceAfter"])
-        app = FireFinderGUI(configuration, logger = logger)
-        eventHandler = MyHandler(app, configuration, logger = logger)
-        observer = Observer()
-
-        # configure the observer thread and start it afterward
-        file_for_oberve = configuration["ObservePathForEvent"]
-        observer.schedule(eventHandler, file_for_oberve, recursive=False)
-        observer.start()
-
-    else:
-        app = show_error_screen(result, configuration)
-
-    clock = pygame.time.Clock()
-
-    running = True
-    while running:
-
-        dt = clock.tick(FPS) / 1000
-
-        # Did the user click the window close button?
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-
-        pygame.display.update()
-
-    pygame.quit()
-    # app.mainloop()
+    main()
