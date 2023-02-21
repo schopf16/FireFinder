@@ -2,6 +2,7 @@
 
 import os
 import sys
+import math
 import time
 import queue
 import random
@@ -566,6 +567,115 @@ class SlideshowSurface(object):
                     self.logger.info("Set 'show_header' to {}".format(value))
 
 
+class AnalogClockSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(AnalogClockSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\AnalogClockSurface.log")
+
+        # Size of the analog clock
+        self.size = size
+        self.center = (size[0] // 2, size[1] // 2)
+        self.radius = int(min(size) * 0.45)  # If the size is not equal, take smaller width / height as reference
+
+        # Coloring clock
+        self.color_bg          = BLACK
+        self.color_second_hand = RED
+        self.color_minute_hand = WHITE
+        self.color_hour_hand   = WHITE
+        self.color_face        = RED
+
+        # Define length of the hands, depend on the size if the overall clock
+        self.second_hand_length = self.radius * 1
+        self.minute_hand_length = self.radius * 0.85
+        self.hour_hand_length   = self.radius * 0.7
+        self.second_hand_width  = self.radius * 0.02
+        self.minute_hand_width  = self.radius * 0.03
+        self.hour_hand_width    = self.radius * 0.04
+        self.circle_size        = self.radius * 0.04
+
+        # Define which hands shall be shown
+        self.show_second_hand = kwargs.get("show_second_hand", True)
+        self.show_minute_hand = kwargs.get("show_minute_hand", True)
+        self.show_hour_hand   = kwargs.get("show_hour_hand", True)
+
+    def draw_clock_face(self):
+        for i in range(12):
+            angle = 2 * math.pi * i / 12 - math.pi / 2
+            x = self.center[0] + self.radius * math.cos(angle)
+            y = self.center[1] + self.radius * math.sin(angle)
+            pygame.draw.circle(self, self.color_face, (int(x), int(y)), self.circle_size, 0)
+
+        # Draw center point where all hands come together
+        pygame.draw.circle(self, self.color_face, self.center, self.circle_size, 0)
+
+    def draw_hour_hand(self, current_time):
+        width = int(self.hour_hand_width)
+        hour, minute = current_time.hour % 12, current_time.minute
+
+        angle = 2 * math.pi * (hour / 12 + minute / (60 * 12)) - math.pi / 2
+        x = self.center[0] + self.hour_hand_length * math.cos(angle)
+        y = self.center[1] + self.hour_hand_length * math.sin(angle)
+        pygame.draw.line(self, self.color_hour_hand, self.center, (x, y), width)
+
+    def draw_minute_hand(self, current_time):
+        width = int(self.minute_hand_width)
+        angle = 2 * math.pi * (current_time.minute / 60 + current_time.second / (60 * 60)) - math.pi / 2
+
+        x = self.center[0] + self.minute_hand_length * math.cos(angle)
+        y = self.center[1] + self.minute_hand_length * math.sin(angle)
+        pygame.draw.line(self, self.color_minute_hand, self.center, (x, y), width)
+
+    def draw_second_hand(self, ticks):
+        width = int(self.second_hand_width)
+        seconds = ticks / 1000 % 60
+        angle = math.radians((seconds / 60) * 360 - 90)
+
+        x = self.center[0] + self.second_hand_length * math.cos(angle)
+        y = self.center[1] + self.second_hand_length * math.sin(angle)
+        pygame.draw.line(self, self.color_second_hand, self.center, (x, y), width)
+
+        pygame.draw.circle(self, self.color_second_hand, (x, y), self.circle_size/2, 0)
+
+    def update(self):
+        # Clear the surface
+        self.fill(self.color_bg)
+
+        # Get current time and ticks
+        current_time = datetime.now()
+        ticks = pygame.time.get_ticks()
+
+        if self.show_hour_hand:
+            self.draw_hour_hand(current_time=current_time)
+
+        if self.show_minute_hand:
+            self.draw_minute_hand(current_time=current_time)
+
+        if self.show_second_hand:
+            self.draw_second_hand(ticks=ticks)
+
+        self.draw_clock_face()
+
+    def configure(self, **kw):
+
+        if len(kw) == 0:  # return a dict of the current configuration
+            cfg = {'show_second_hand': self.show_second_hand, 'show_minute_hand': self.show_minute_hand,
+                   'show_hour_hand': self.show_hour_hand}
+            return cfg
+
+        else:  # do a configure
+            for key, value in list(kw.items()):
+                if key == 'show_second_hand':
+                    self.show_second_hand = value
+                    self.logger.info("Set 'show_second_hand' to {}".format(value))
+                elif key == 'show_minute_hand':
+                    self.show_minute_hand = value
+                    self.logger.info("Set 'show_minute_hand' to {}".format(value))
+                elif key == 'show_hour_hand':
+                    self.show_hour_hand = value
+                    self.logger.info("Set 'show_hour_hand' to {}".format(value))
+
+
+
 def test_screen_top(screen_obj):
     def update_screen():
         screen_obj.blit(header_obj.get_surface(), (0, 0))
@@ -687,7 +797,8 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((screen_info.current_w, screen_info.current_h))
     # screen = pygame.display.set_mode((1000, 800))
     # off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
-    slideshow_obj = SlideshowSurface(path_to_images="D:\\Firefinder\\Slideshow")
+    # slideshow_obj = SlideshowSurface(path_to_images="D:\\Firefinder\\Slideshow")
+    clock_surface = AnalogClockSurface((screen_info.current_w, 1200))
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -706,7 +817,9 @@ if __name__ == "__main__":
         # break
 
         # screen.blit(off_obj.get_surface(), (0, 0))
-        screen.blit(slideshow_obj.get_surface(), (0, 0))
+        # screen.blit(slideshow_obj.get_surface(), (0, 0))
+        clock_surface.update()
+        screen.blit(clock_surface, (0, 0))
         pygame.display.flip()
         clock.tick(FPS)
 
