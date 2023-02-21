@@ -568,7 +568,7 @@ class AnalogClockSurface(pygame.Surface):
         self.radius = int(min(size) * 0.45)  # If the size is not equal, take smaller width / height as reference
 
         # Coloring clock
-        self.color_bg          = BLACK
+        self.color_bg          = kwargs.get("color_bg", BLACK)
         self.color_second_hand = RED
         self.color_minute_hand = WHITE
         self.color_hour_hand   = WHITE
@@ -663,6 +663,135 @@ class AnalogClockSurface(pygame.Surface):
                 elif key == 'show_hour_hand':
                     self.show_hour_hand = value
                     self.logger.info("Set 'show_hour_hand' to {}".format(value))
+
+
+class DigitalClockSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(DigitalClockSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\DigitalClockSurface.log")
+
+        # Size of the analog clock
+        self.size = size
+
+        # Coloring clock
+        self.color_bg = kwargs.get("color_bg", BLACK)
+        self.color_fg = kwargs.get("color_fg", WHITE)
+
+        # Define which hands shall be shown
+        self.show_time   = kwargs.get("show_time", False)
+        self.show_date   = kwargs.get("show_date", True)
+        self.show_second = kwargs.get("show_second", False)  # show_time must be True
+
+        font_size = int(self.size[1] * 0.6)
+        self._font = pygame.font.SysFont(name='Arial', size=font_size, bold=True)
+        self.weekday_string = ['Montag',      # Weekday 0
+                               'Dienstag',    # Weekday 1
+                               'Mittwoch',    # Weekday 2
+                               'Donnerstag',  # Weekday 3
+                               'Freitag',     # Weekday 4
+                               'Samstag',     # Weekday 5
+                               'Sonntag']     # Weekday 6
+
+    def update(self):
+        self.fill(self.color_bg)
+
+        current_time = datetime.now()
+        time_str = "{:02d}:{:02d}".format(current_time.hour, current_time.minute)
+        if self.show_second:
+            time_str = "{}:{:02d}".format(time_str, current_time.second)
+
+        date_str = "{:02d}.{:02d}.{:04d}".format(current_time.day, current_time.month, current_time.year)
+        if not self.show_time:
+            date_str = "{}, {}".format(self.weekday_string[current_time.weekday()], date_str)
+
+        time_txt = self._font.render(time_str, True, self.color_fg, self.color_bg)
+        date_txt = self._font.render(date_str, True, self.color_fg, self.color_bg)
+        if self.show_time and self.show_date:
+            text_rect = time_txt.get_rect()
+            text_rect.left    = 10
+            text_rect.centery = self.get_height() // 2
+            self.blit(time_txt, text_rect)
+
+            text_rect = date_txt.get_rect()
+            text_rect.right   = self.get_width() - 10
+            text_rect.centery = self.get_height() // 2
+            self.blit(date_txt, text_rect)
+
+        elif self.show_time:
+            text_rect = time_txt.get_rect()
+            text_rect.centerx = self.get_width() // 2
+            text_rect.centery = self.get_height() // 2
+            self.blit(time_txt, text_rect)
+
+        elif self.show_date:
+            text_rect = date_txt.get_rect()
+            text_rect.centerx = self.get_width() // 2
+            text_rect.centery = self.get_height() // 2
+            self.blit(date_txt, text_rect)
+
+    def configure(self, **kw):
+
+        if len(kw) == 0:  # return a dict of the current configuration
+            cfg = {'show_time': self.show_time, 'show_date': self.show_date,
+                   'show_second': self.show_second}
+            return cfg
+
+        else:  # do a configure
+            for key, value in list(kw.items()):
+                if key == 'show_time':
+                    self.show_time = value
+                    self.logger.info("Set 'show_time' to {}".format(value))
+                elif key == 'show_date':
+                    self.show_date = value
+                    self.logger.info("Set 'show_date' to {}".format(value))
+                elif key == 'show_second':
+                    self.show_second = value
+                    self.logger.info("Set 'show_second' to {}".format(value))
+
+
+class ClockSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(ClockSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockSurface.log")
+
+        self.size = size
+
+        self.color_bg = BLACK
+        self.color_fg = WHITE
+
+        self._analog_clk = AnalogClockSurface(size             = (self.size[0], self.size[1]*0.8),
+                                              color_bg         = self.color_bg,
+                                              show_second_hand = True,
+                                              show_minute_hand = True,
+                                              show_hour_hand   = True)
+
+        self._digital_clk = DigitalClockSurface(size      = (self.size[0], self.size[1]*0.2),
+                                                color_bg  = self.color_bg,
+                                                color_fg  = self.color_fg,
+                                                show_time = False,
+                                                show_date = True)
+
+    def update(self):
+        self.fill(self.color_bg)
+        self._analog_clk.update()
+        self.blit(self._analog_clk, (0, 0))
+        self._digital_clk.update()
+        self.blit(self._digital_clk, (0, self._analog_clk.get_height()))
+
+    def configure(self, **kw):
+        for key, value in list(kw.items()):
+            if key == 'show_second_hand':
+                self._analog_clk.configure(show_second_hand=value)
+            elif key == 'show_minute_hand':
+                self._analog_clk.configure(show_minute_hand=value)
+            elif key == 'show_hour_hand':
+                self._analog_clk.configure(show_hour_hand=value)
+            elif key == 'show_digital_time':
+                self._digital_clk.configure(show_time=value)
+            elif key == 'show_digital_date':
+                self._digital_clk.configure(show_date=value)
+            elif key == 'show_digital_seconds':
+                self._digital_clk.configure(show_second=value)
 
 
 def test_screen_top(screen_obj):
@@ -789,8 +918,10 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
     # screen = pygame.display.set_mode((1000, 800))
     # off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
-    slideshow_obj = SlideshowSurface((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
-    # clock_surface = AnalogClockSurface((screen_info.current_w, 1200))
+    # slideshow_obj = SlideshowSurface((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
+    # analog_clock_surface = AnalogClockSurface((this_screen.current_w, 1200))
+    # digital_clock_surface = DigitalClockSurface((this_screen.current_w, 300))
+    clock_surface = ClockSurface((this_screen.current_w, this_screen.current_h))
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -809,10 +940,14 @@ if __name__ == "__main__":
         # break
 
         # screen.blit(off_obj.get_surface(), (0, 0))
-        slideshow_obj.update()
-        screen.blit(slideshow_obj, (0, 0))
-        # clock_surface.update()
-        # screen.blit(clock_surface, (0, 0))
+        # slideshow_obj.update()
+        # screen.blit(slideshow_obj, (0, 0))
+        # analog_clock_surface.update()
+        # screen.blit(analog_clock_surface, (0, 0))
+        # digital_clock_surface.update()
+        # screen.blit(digital_clock_surface, (0, 0))
+        clock_surface.update()
+        screen.blit(clock_surface, (0, 0))
         pygame.display.flip()
         clock.tick(FPS)
 
