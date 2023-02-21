@@ -14,8 +14,6 @@ from datetime import datetime
 from firefinder.util_logger import Logger
 
 pygame.init()
-screen_info = pygame.display.Info()
-
 
 # Colors
 BLACK = (0, 0, 0)
@@ -26,6 +24,7 @@ BLUE  = (0, 0, 255)
 WHITE = (255, 255, 255)
 
 FPS = 30
+
 
 def scale_image(image_obj, max_width=None, max_height=None, crop=False, keep_ratio=True):
     # Get the original image dimensions
@@ -61,16 +60,14 @@ def scale_image(image_obj, max_width=None, max_height=None, crop=False, keep_rat
 
 
 class GuiThread(threading.Thread):
-    def __init__(self, full_screen, logger=None):
+    def __init__(self, size, full_screen, logger=None):
         threading.Thread.__init__(self)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
 
-        if logger is None:
-            logger = Logger(verbose=True, file_path=".\\GuiHandler.log")
-
-        self.logger = logger
+        self.size        = size
         self.full_screen = full_screen
-        self._running = False
-        self._queue = queue.Queue()
+        self._running    = False
+        self._queue      = queue.Queue()
 
         self._fps = FPS
 
@@ -79,13 +76,12 @@ class GuiThread(threading.Thread):
 
     def run(self):
 
-        resolution = (screen_info.current_w, screen_info.current_h)
         if self.full_screen:
-            window = pygame.display.set_mode(resolution, pygame.FULLSCREEN)
+            window = pygame.display.set_mode(self.size, pygame.FULLSCREEN)
         else:
-            window = pygame.display.set_mode(resolution)
+            window = pygame.display.set_mode(self.size)
 
-        surface_obj = OffSurface(logger=self.logger)
+        surface_obj = OffSurface(size=self.size, logger=self.logger)
         pygame.display.set_caption("FireFinder")
         clock = pygame.time.Clock()
 
@@ -105,14 +101,15 @@ class GuiThread(threading.Thread):
             # Check queue for data
             try:
                 surface_obj = self._queue.get_nowait()
-                get_surface = getattr(surface_obj, "get_surface", None)
-                assert callable(get_surface)
+                update = getattr(surface_obj, "update", None)
+                assert callable(update)
             except queue.Empty:
                 pass
 
             # Fill the background with white
             window.fill((255, 255, 255))
-            window.blit(surface_obj.get_surface(), (0, 0))
+            surface_obj.update()
+            window.blit(surface_obj, (0, 0))
             pygame.display.flip()
 
             # Control the FPS
@@ -136,19 +133,26 @@ class GuiHandler(object):
         self.logger = logger
         self._thread = None
 
-        self._off_surface_obj = OffSurface(logger=logger,
-                                           show_time=True,
-                                           show_second=True,
-                                           show_date=True,
-                                           show_weekday=True,
-                                           path_logo=company_path_logo,
-                                           company_name=company_name)
+        screen_info = pygame.display.Info()
+        if self.full_screen:
+            self.size = (screen_info.current_w, screen_info.current_h)
+        else:
+            self.size = (screen_info.current_w * 0.9, screen_info.current_h * 0.9)
+
+        self._off_surface_obj = OffSurface(size         = self.size,
+                                           logger       = logger,
+                                           show_time    = True,
+                                           show_second  = True,
+                                           show_date    = True,
+                                           show_weekday = True,
+                                           path_logo    = company_path_logo,
+                                           company_name = company_name)
 
     def set_screen(self, surface_obj):
         self._thread.set_screen(surface_obj)
 
     def start(self):
-        self._thread = GuiThread(full_screen=self.full_screen, logger=self.logger)
+        self._thread = GuiThread(size=self.size, full_screen=self.full_screen, logger=self.logger)
         self.set_screen(surface_obj=self._off_surface_obj)
         self._thread.start()
 
@@ -160,16 +164,13 @@ class GuiHandler(object):
         return self._thread.is_alive()
 
 
-class HeaderSurface(object):
-    def __init__(self, height, logger=None, **kwargs):
+class HeaderSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(HeaderSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\HeaderSurface.log")
 
-        if logger is None:
-            logger = Logger(verbose=True, file_path=".\\HeaderSurface.log")
-        self.logger = logger
-        screen_width = screen_info.current_w
-        screen_height = height
-        resolution = (screen_width, screen_height)
-        self._surface = pygame.Surface(resolution)
+        screen_width = size[0]
+        screen_height = size[1]
         self._font = pygame.font.SysFont(name='Arial', size=screen_height-4, bold=True)
 
         self.bg_color = kwargs.get("bg_color", BLACK)
@@ -223,7 +224,7 @@ class HeaderSurface(object):
             image = pygame.image.load(self.path_logo)
 
             # The image shall be 4 pixel smaller than the available space
-            image = scale_image(image_obj=image, max_height=self._surface.get_height() - 4)
+            image = scale_image(image_obj=image, max_height=self.get_height() - 4)
 
         return image
 
@@ -266,9 +267,9 @@ class HeaderSurface(object):
                     self.company_name = value
                     self.logger.info("Set 'company_name' to {}".format(value))
 
-    def get_surface(self):
+    def update(self):
 
-        self._surface.fill(self.bg_color)
+        self.fill(self.bg_color)
 
         # Render text for date and time
         time_date_string = self._get_date_time_str()
@@ -276,16 +277,16 @@ class HeaderSurface(object):
 
         # blit text on the right position of the header
         text_rect = text_date_time.get_rect()
-        text_rect.right = self._surface.get_width() - 10
-        text_rect.centery = self._surface.get_height() // 2
-        self._surface.blit(text_date_time, text_rect)
+        text_rect.right = self.get_width() - 10
+        text_rect.centery = self.get_height() // 2
+        self.blit(text_date_time, text_rect)
 
         if self.show_logo and self.image is not None:
             # Blit the image on the left position of the header
             image_rect = self.image.get_rect()
             image_rect.left = 10
-            image_rect.centery = self._surface.get_height() // 2
-            self._surface.blit(self.image, image_rect)
+            image_rect.centery = self.get_height() // 2
+            self.blit(self.image, image_rect)
 
         if self.company_name:
             image_width = 0
@@ -297,36 +298,29 @@ class HeaderSurface(object):
             text_company = self._font.render(self.company_name, True, self.fg_color, self.bg_color)
             text_rect = text_company.get_rect()
             text_rect.left = image_width + 10
-            text_rect.centery = self._surface.get_height() // 2
-            self._surface.blit(text_company, text_rect)
-
-        return self._surface
+            text_rect.centery = self.get_height() // 2
+            self.blit(text_company, text_rect)
 
 
-class OffSurface(object):
-    def __init__(self, logger=None, **kwargs):
+class OffSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(OffSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\OffSurface.log")
 
-        if logger is None:
-            logger = Logger(verbose=True, file_path=".\\OffSurface.log")
-        self.logger = logger
+        self.size = size
+
         self.path_logo = kwargs.get("path_logo", "")
-
         self.bg_color = kwargs.get("bg_color", BLACK)
         self.fg_color = kwargs.get("fg_color", WHITE)
-
-        screen_width = screen_info.current_w
-        screen_height = screen_info.current_h
-        resolution = (screen_width, screen_height)
-        self._surface = pygame.Surface(resolution)
 
         # Do not show logo in the header, it's already present in main surface. Use same value as
         kwargs.update({"show_logo": False,
                        "bg_color": self.bg_color,
                        "fg_color": self.fg_color,
                        })
-        header_height = 30
-        self._header_surface_obj = HeaderSurface(height=header_height, logger=logger, **kwargs)
-        self._main_surface = pygame.Surface((screen_width, screen_height-header_height))
+        self.header_height = 30
+        self._header_surface_obj = HeaderSurface(size=(self.size[0], self.header_height), logger=logger, **kwargs)
+        self._main_surface = pygame.Surface((self.size[0], self.size[1]-self.header_height))
         self._set_logo()
 
     def _set_logo(self):
@@ -350,21 +344,20 @@ class OffSurface(object):
             pygame.draw.line(self._main_surface, RED, (0, 0), (surface_width, surface_height), 5)
             pygame.draw.line(self._main_surface, RED, (surface_width, 0), (0, surface_height), 5)
 
-    def get_surface(self):
-        self._surface.fill(self.bg_color)
+    def update(self):
+        self.fill(self.bg_color)
 
-        header_surface = self._header_surface_obj.get_surface()
-        self._surface.blit(header_surface, (0, 0))
-        self._surface.blit(self._main_surface, (0, header_surface.get_height() + 1))
-        return self._surface
+        self._header_surface_obj.update()
+        self.blit(self._header_surface_obj, (0, 0))
+        self.blit(self._main_surface, (0, self.header_height + 1))
 
 
-class SlideshowSurface(object):
-    def __init__(self, logger=None, **kwargs):
-        if logger is None:
-            logger = Logger(verbose=True, file_path=".\\SlideshowSurface.log")
+class SlideshowSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(SlideshowSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SlideshowSurface.log")
 
-        self.logger = logger
+        self.size = size
 
         # store path where the pictures for the slideshow are stored
         self.path_to_images      = kwargs.get("path_to_images", "")
@@ -386,7 +379,7 @@ class SlideshowSurface(object):
         self.path_logo     = kwargs.get("path_logo", "")
         self.company_name  = kwargs.get("company_name", "")
         self.header_height = 40
-        self._header_surface_obj = HeaderSurface(height       = self.header_height,
+        self._header_surface_obj = HeaderSurface(size         = (self.size[0], self.header_height),
                                                  logger       = logger,
                                                  show_time    = False,
                                                  bg_color     = GREY,
@@ -397,8 +390,6 @@ class SlideshowSurface(object):
 
         self.bg_color = BLACK
         self.fg_color = RED
-        resolution = (screen_info.current_w, screen_info.current_h)
-        self._surface = pygame.Surface(resolution)
 
     def load_images(self):
         images = []
@@ -438,7 +429,7 @@ class SlideshowSurface(object):
             if self.current_image_index >= len(self.image_list):
                 self.current_image_index = 0
 
-            max_height = screen_info.current_h
+            max_height = self.size[1]
             if self.show_header:
                 max_height -= self.header_height
 
@@ -446,7 +437,7 @@ class SlideshowSurface(object):
             image = pygame.image.load(path)
             image = scale_image(image_obj  = image,
                                 max_height = max_height,
-                                max_width  = screen_info.current_w)
+                                max_width  = self.size[0])
 
             self.current_image_index += 1
         else:
@@ -454,9 +445,9 @@ class SlideshowSurface(object):
 
         return image
 
-    def get_surface(self):
+    def update(self):
 
-        self._surface.fill(self.bg_color)
+        self.fill(self.bg_color)
 
         # If this is the first call, the current image is empty
         if self.current_image is None:
@@ -473,43 +464,43 @@ class SlideshowSurface(object):
         # If fading is in progress, the alpha channel is less than 1
         if self.fade_alpha < 1:
             header_height = self.header_height if self.show_header else 0
-            fade_surface = pygame.Surface((screen_info.current_w, screen_info.current_h-header_height))
+            fade_surface = pygame.Surface((self.size[0], self.size[1]-header_height))
             fade_surface.fill(BLACK)
 
             # The fade range is -1 ... 1 where -1 is the complete old image while 1 is the complete new image
             if self.fade_alpha < 0:
                 # Fade out old picture
                 fade_surface.set_alpha(255 - int(abs(self.fade_alpha) * 255))
-                x = (screen_info.current_w - self.current_image.get_width()) // 2
-                y = (screen_info.current_h - self.current_image.get_height()) // 2
+                x = (self.size[0] - self.current_image.get_width()) // 2
+                y = (self.size[1] - self.current_image.get_height()) // 2
                 if self.show_header:
                     y += self.header_height
-                self._surface.blit(self.current_image, (x, y))
-                self._surface.blit(fade_surface, (x, y))
+                self.blit(self.current_image, (x, y))
+                self.blit(fade_surface, (x, y))
             else:
                 if self.fade_over_bg:
                     # Fade in new picture
                     fade_surface.set_alpha(255 - int(self.fade_alpha * 255))
-                    x = (screen_info.current_w - self.new_image.get_width()) // 2
-                    y = (screen_info.current_h - self.new_image.get_height()) // 2
+                    x = (self.size[0] - self.new_image.get_width()) // 2
+                    y = (self.size[1] - self.new_image.get_height()) // 2
                     if self.show_header:
                         y += self.header_height
-                    self._surface.blit(self.new_image, (x, y))
-                    self._surface.blit(fade_surface, (x, y))
+                    self.blit(self.new_image, (x, y))
+                    self.blit(fade_surface, (x, y))
                 else:
                     # Do not fade over background color, so directly fade out old picture and fade in new
                     self.current_image.set_alpha(255 - int(self.fade_alpha * 255))
                     self.new_image.set_alpha(int(self.fade_alpha * 255))
 
-                    x_old = (screen_info.current_w - self.current_image.get_width()) // 2
-                    y_old = (screen_info.current_h - self.current_image.get_height()) // 2
-                    x_new = (screen_info.current_w - self.new_image.get_width()) // 2
-                    y_new = (screen_info.current_h - self.new_image.get_height()) // 2
+                    x_old = (self.size[0] - self.current_image.get_width()) // 2
+                    y_old = (self.size[1] - self.current_image.get_height()) // 2
+                    x_new = (self.size[0] - self.new_image.get_width()) // 2
+                    y_new = (self.size[1] - self.new_image.get_height()) // 2
                     if self.show_header:
                         y_old += self.header_height
                         y_new += self.header_height
-                    self._surface.blit(self.current_image, (x_old, y_old))
-                    self._surface.blit(self.new_image, (x_new, y_new))
+                    self.blit(self.current_image, (x_old, y_old))
+                    self.blit(self.new_image, (x_new, y_new))
 
             # Increment fade step and check if fading is finished
             self.fade_alpha += 1/FPS
@@ -519,17 +510,16 @@ class SlideshowSurface(object):
                 self.new_image = None
         else:
             # No fade, just show picture
-            x = (screen_info.current_w - self.current_image.get_width()) // 2
-            y = (screen_info.current_h - self.current_image.get_height()) // 2
+            x = (self.size[0] - self.current_image.get_width()) // 2
+            y = (self.size[1] - self.current_image.get_height()) // 2
             if self.show_header:
                 y += self.header_height
-            self._surface.blit(self.current_image, (x, y))
+            self.blit(self.current_image, (x, y))
 
         # Update header
         if self.show_header:
-            self._surface.blit(self._header_surface_obj.get_surface(), (0, 0))
-
-        return self._surface
+            self._header_surface_obj.update()
+            self.blit(self._header_surface_obj, (0, 0))
 
     def configure(self, **kw):
 
@@ -675,13 +665,13 @@ class AnalogClockSurface(pygame.Surface):
                     self.logger.info("Set 'show_hour_hand' to {}".format(value))
 
 
-
 def test_screen_top(screen_obj):
     def update_screen():
-        screen_obj.blit(header_obj.get_surface(), (0, 0))
+        header_obj.update()
+        screen_obj.blit(header_obj, (0, 0))
         pygame.display.flip()
 
-    header_obj = HeaderSurface(height=30)
+    header_obj = HeaderSurface(screen_obj.get_size(), height=30)
 
     print("Start Test")
 
@@ -756,11 +746,12 @@ def test_screen_top(screen_obj):
 
 def test_slideshow(screen_obj):
     def update_screen():
-        screen_obj.blit(slideshow_obj.get_surface(), (0, 0))
+        slideshow_obj.update()
+        screen_obj.blit(slideshow_obj, (0, 0))
         pygame.display.flip()
 
     clock = pygame.time.Clock()
-    slideshow_obj = SlideshowSurface()
+    slideshow_obj = SlideshowSurface(screen_obj.get_size())
 
     print("Start Test")
 
@@ -794,11 +785,12 @@ def test_slideshow(screen_obj):
 
 
 if __name__ == "__main__":
-    screen = pygame.display.set_mode((screen_info.current_w, screen_info.current_h))
+    this_screen = pygame.display.Info()
+    screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
     # screen = pygame.display.set_mode((1000, 800))
     # off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
-    # slideshow_obj = SlideshowSurface(path_to_images="D:\\Firefinder\\Slideshow")
-    clock_surface = AnalogClockSurface((screen_info.current_w, 1200))
+    slideshow_obj = SlideshowSurface((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
+    # clock_surface = AnalogClockSurface((screen_info.current_w, 1200))
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -817,9 +809,10 @@ if __name__ == "__main__":
         # break
 
         # screen.blit(off_obj.get_surface(), (0, 0))
-        # screen.blit(slideshow_obj.get_surface(), (0, 0))
-        clock_surface.update()
-        screen.blit(clock_surface, (0, 0))
+        slideshow_obj.update()
+        screen.blit(slideshow_obj, (0, 0))
+        # clock_surface.update()
+        # screen.blit(clock_surface, (0, 0))
         pygame.display.flip()
         clock.tick(FPS)
 
