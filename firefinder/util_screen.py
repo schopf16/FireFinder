@@ -368,7 +368,7 @@ class SlideshowSurface(object):
         # store path where the pictures for the slideshow are stored
         self.path_to_images      = kwargs.get("path_to_images", "")
         self.sort_alphabetically = kwargs.get("short_alphabetically", False)
-        self.display_duration    = kwargs.get("seconds_between_images", 15)
+        self.display_duration    = kwargs.get("seconds_between_images", 4)
 
         self.last_image_time     = None
         self.image_list          = []
@@ -376,6 +376,7 @@ class SlideshowSurface(object):
         self.current_image       = None
         self.current_image_index = 0
         self.fade_alpha          = 0  # can be -1 ... 1 where -1 is the old image and 1 the new
+        self.fade_over_bg        = kwargs.get("fade_over_background", False)
         if self.path_to_images:
             self.load_images()
 
@@ -465,7 +466,7 @@ class SlideshowSurface(object):
         # Check if picture shall be updated
         if self.fade_alpha >= 1 and time.time() - self.last_image_time >= self.display_duration:
             self.new_image = self.get_next_image_obj()
-            self.fade_alpha = -1  # start new fade
+            self.fade_alpha = -1 if self.fade_over_bg else 0
             self.last_image_time = None
 
         # If fading is in progress, the alpha channel is less than 1
@@ -485,14 +486,29 @@ class SlideshowSurface(object):
                 self._surface.blit(self.current_image, (x, y))
                 self._surface.blit(fade_surface, (x, y))
             else:
-                # Fade in new picture
-                fade_surface.set_alpha(255 - int(self.fade_alpha * 255))
-                x = (screen_info.current_w - self.new_image.get_width()) // 2
-                y = (screen_info.current_h - self.new_image.get_height()) // 2
-                if self.show_header:
-                    y += self.header_height
-                self._surface.blit(self.new_image, (x, y))
-                self._surface.blit(fade_surface, (x, y))
+                if self.fade_over_bg:
+                    # Fade in new picture
+                    fade_surface.set_alpha(255 - int(self.fade_alpha * 255))
+                    x = (screen_info.current_w - self.new_image.get_width()) // 2
+                    y = (screen_info.current_h - self.new_image.get_height()) // 2
+                    if self.show_header:
+                        y += self.header_height
+                    self._surface.blit(self.new_image, (x, y))
+                    self._surface.blit(fade_surface, (x, y))
+                else:
+                    # Do not fade over background color, so directly fade out old picture and fade in new
+                    self.current_image.set_alpha(255 - int(self.fade_alpha * 255))
+                    self.new_image.set_alpha(int(self.fade_alpha * 255))
+
+                    x_old = (screen_info.current_w - self.current_image.get_width()) // 2
+                    y_old = (screen_info.current_h - self.current_image.get_height()) // 2
+                    x_new = (screen_info.current_w - self.new_image.get_width()) // 2
+                    y_new = (screen_info.current_h - self.new_image.get_height()) // 2
+                    if self.show_header:
+                        y_old += self.header_height
+                        y_new += self.header_height
+                    self._surface.blit(self.current_image, (x_old, y_old))
+                    self._surface.blit(self.new_image, (x_new, y_new))
 
             # Increment fade step and check if fading is finished
             self.fade_alpha += 1/FPS
@@ -519,7 +535,8 @@ class SlideshowSurface(object):
         if len(kw) == 0:  # return a dict of the current configuration
             cfg = {'seconds_between_images': self.display_duration, 'sort_alphabetically': self.sort_alphabetically,
                    'path_to_images': self.path_to_images, 'path_logo': self.path_logo,
-                   'company_name': self.company_name, 'show_header': self.show_header}
+                   'company_name': self.company_name, 'show_header': self.show_header,
+                   'fade_over_background0': self.fade_over_bg}
             return cfg
 
         else:  # do a configure
@@ -527,6 +544,9 @@ class SlideshowSurface(object):
                 if key == 'seconds_between_images':
                     self.display_duration = value
                     self.logger.info("Set 'seconds_between_images' to {}".format(value))
+                elif key == 'fade_over_background':
+                    self.fade_over_bg = value
+                    self.logger.info("Set 'fade_over_background' to {}".format(value))
                 elif key == 'sort_alphabetically':
                     self.sort_alphabetically = value
                     self.logger.info("Set 'sort_alphabetically' to {}".format(value))
@@ -667,7 +687,7 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((screen_info.current_w, screen_info.current_h))
     # screen = pygame.display.set_mode((1000, 800))
     # off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
-    # slideshow_obj = SlideshowSurface(path_to_images="D:\\Firefinder\\Slideshow")
+    slideshow_obj = SlideshowSurface(path_to_images="D:\\Firefinder\\Slideshow")
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -681,12 +701,12 @@ if __name__ == "__main__":
 
         screen.fill((255, 255, 255))
         # test_screen_top(screen_obj=screen)
-        test_slideshow(screen_obj=screen)
-        pygame.quit()
-        break
+        # test_slideshow(screen_obj=screen)
+        # pygame.quit()
+        # break
 
         # screen.blit(off_obj.get_surface(), (0, 0))
-        # screen.blit(slideshow_obj.get_surface(), (0, 0))
-        # pygame.display.flip()
-        # clock.tick(FPS)
+        screen.blit(slideshow_obj.get_surface(), (0, 0))
+        pygame.display.flip()
+        clock.tick(FPS)
 
