@@ -221,7 +221,7 @@ class GuiThread(threading.Thread):
         else:
             window = pygame.display.set_mode(self.size)
 
-        surface_obj = OffSurface(size=self.size, logger=self.logger)
+        surface_obj = SplashScreen(size=self.size, logger=self.logger)
         pygame.display.set_caption("FireFinder")
         clock = pygame.time.Clock()
 
@@ -279,14 +279,14 @@ class GuiHandler(object):
         else:
             self.size = (screen_info.current_w * 0.9, screen_info.current_h * 0.9)
 
-        self._off_surface_obj = OffSurface(size         = self.size,
-                                           logger       = logger,
-                                           show_time    = True,
-                                           show_second  = True,
-                                           show_date    = True,
-                                           show_weekday = True,
-                                           path_logo    = company_path_logo,
-                                           company_name = company_name)
+        self._off_surface_obj = SplashScreen(size         = self.size,
+                                             logger       = logger,
+                                             show_time    = True,
+                                             show_second  = True,
+                                             show_date    = True,
+                                             show_weekday = True,
+                                             path_logo    = company_path_logo,
+                                             company_name = company_name)
 
     def set_screen(self, surface_obj):
         self._thread.set_screen(surface_obj)
@@ -444,10 +444,10 @@ class HeaderSurface(pygame.Surface):
             self.blit(text_company, text_rect)
 
 
-class OffSurface(pygame.Surface):
+class SplashScreen(pygame.Surface):
     def __init__(self, size, logger=None, **kwargs):
-        super(OffSurface, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\OffSurface.log")
+        super(SplashScreen, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SplashScreen.log")
 
         self.size = size
 
@@ -494,10 +494,10 @@ class OffSurface(pygame.Surface):
         self.blit(self._main_surface, (0, self.header_height + 1))
 
 
-class SlideshowSurface(pygame.Surface):
+class SlideshowScreen(pygame.Surface):
     def __init__(self, size, logger=None, **kwargs):
-        super(SlideshowSurface, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SlideshowSurface.log")
+        super(SlideshowScreen, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SlideshowScreen.log")
 
         self.size = size
 
@@ -891,10 +891,10 @@ class DigitalClockSurface(pygame.Surface):
                     self.logger.info("Set 'show_second' to {}".format(value))
 
 
-class ClockSurface(pygame.Surface):
+class ClockScreen(pygame.Surface):
     def __init__(self, size, logger=None, **kwargs):
-        super(ClockSurface, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockSurface.log")
+        super(ClockScreen, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockScreen.log")
 
         self.size = size
 
@@ -1276,7 +1276,7 @@ def test_slideshow(screen_obj):
         pygame.display.flip()
 
     clock = pygame.time.Clock()
-    slideshow_obj = SlideshowSurface(screen_obj.get_size())
+    slideshow_obj = SlideshowScreen(screen_obj.get_size())
 
     print("Start Test")
 
@@ -1319,12 +1319,12 @@ if __name__ == "__main__":
     # screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
     # screen = pygame.display.set_mode((this_screen.current_w, 500))
     # screen = pygame.display.set_mode((1000, 800))
-    # off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
-    # slideshow_obj = SlideshowSurface((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
+    # off_obj = SplashScreen(path_logo="D:\\Firefinder\\logo.png")
+    # slideshow_obj = SlideshowScreen((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
     # analog_clock_surface = AnalogClockSurface((this_screen.current_w, 1200))
     # digital_clock_surface = DigitalClockSurface((this_screen.current_w, 300))
-    clock_surface = ClockSurface((this_screen.current_w, this_screen.current_h))
-    # clock_surface = ClockSurface((this_screen.current_w, this_screen.current_h))
+    clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
+    # clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
     # scrolling = ScrollingTextY(text="Das ist ein sehr sehr sehr langer Text welcher wohl nicht platz hat und daher in Laufschrift angezeigt werden muss", font_size=100, font_color=BLACK, screen_size=(500, 500))
     # scrolling = ScrollingTextY(text="Das ist ein kurzer text", font_size=100, font_color=BLACK, screen_size=(500, 500))
     event_screen = MessageSurface((this_screen.current_w, 400), message="AA, AA Sprinkler, Ittigen;Ey,19, Geschäftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)")
