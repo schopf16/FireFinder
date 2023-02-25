@@ -9,6 +9,7 @@ import random
 import pygame
 import threading
 
+from enum import Enum
 from datetime import datetime
 from firefinder.util_logger import Logger
 
@@ -28,6 +29,7 @@ THIS_FILE_PATH = os.path.dirname(__file__)
 DEFAULT_FONT = os.path.join(THIS_FILE_PATH, "font", "Frutiger.ttf")
 DEFAULT_FONT_BOLD = os.path.join(THIS_FILE_PATH, "font", "Frutiger_bold.ttf")
 DEFAULT_PIC_DIR = os.path.join(THIS_FILE_PATH, "pic")
+DEFAULT_NO_PIC = os.path.join(THIS_FILE_PATH, "pic", "bg", "no_image.png")
 
 CASE_LEVEL_DICT = {
     "AA": "Automatischer Alarm Feuer",
@@ -108,6 +110,15 @@ def scale_image(image_obj, max_width=None, max_height=None, crop=False, keep_rat
     else:
         # If scaling, return the scaled image directly
         return scaled_image
+
+
+def get_font_obj(font_name, font_size):
+    # Check if font name is installed or is it a font-file
+    if ".ttf" in font_name:
+        font = pygame.font.Font(font_name, int(font_size))
+    else:
+        font = pygame.font.SysFont(font_name, int(font_size))
+    return font
 
 
 class EventInfo(object):
@@ -200,129 +211,22 @@ class EventInfo(object):
         return parsed
 
 
-class GuiThread(threading.Thread):
-    def __init__(self, size, full_screen, logger=None):
-        threading.Thread.__init__(self)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
-
-        self.size        = size
-        self.full_screen = full_screen
-        self._running    = False
-        self._queue      = queue.Queue()
-
-        self._fps = FPS
-
-    def set_screen(self, surface_obj):
-        self._queue.put(surface_obj)
-
-    def run(self):
-
-        if self.full_screen:
-            window = pygame.display.set_mode(self.size, pygame.FULLSCREEN)
-        else:
-            window = pygame.display.set_mode(self.size)
-
-        surface_obj = SplashScreen(size=self.size, logger=self.logger)
-        pygame.display.set_caption("FireFinder")
-        clock = pygame.time.Clock()
-
-        self._running = True
-        while self._running:
-
-            for event in pygame.event.get():
-                # Did the user click the window close button?
-                if event.type == pygame.QUIT:
-                    self._running = False
-
-                # Did the user press ESC-button?
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        self._running = False
-
-            # Check queue for data
-            try:
-                surface_obj = self._queue.get_nowait()
-                update = getattr(surface_obj, "update", None)
-                assert callable(update)
-            except queue.Empty:
-                pass
-
-            # Fill the background with white
-            window.fill((255, 255, 255))
-            surface_obj.update()
-            window.blit(surface_obj, (0, 0))
-            pygame.display.flip()
-
-            # Control the FPS
-            clock.tick(self._fps)
-
-    def stop(self):
-        self._running = False
-        pygame.quit()
-
-
-class GuiHandler(object):
-    def __init__(self, logger=None, **kwargs):
-        if logger is None:
-            logger = Logger(verbose=True, file_path=".\\GuiHandler.log")
-
-        full_screen = kwargs.get("full_screen", True)
-        company_path_logo = kwargs.get("company_path_logo")
-        company_name = kwargs.get("company_name")
-
-        self.full_screen = full_screen
-        self.logger = logger
-        self._thread = None
-
-        screen_info = pygame.display.Info()
-        if self.full_screen:
-            self.size = (screen_info.current_w, screen_info.current_h)
-        else:
-            self.size = (screen_info.current_w * 0.9, screen_info.current_h * 0.9)
-
-        self._off_surface_obj = SplashScreen(size         = self.size,
-                                             logger       = logger,
-                                             show_time    = True,
-                                             show_second  = True,
-                                             show_date    = True,
-                                             show_weekday = True,
-                                             path_logo    = company_path_logo,
-                                             company_name = company_name)
-
-    def set_screen(self, surface_obj):
-        self._thread.set_screen(surface_obj)
-
-    def start(self):
-        self._thread = GuiThread(size=self.size, full_screen=self.full_screen, logger=self.logger)
-        self.set_screen(surface_obj=self._off_surface_obj)
-        pygame.mouse.set_visible(False)
-        self._thread.start()
-
-    def stop(self):
-        self._thread.stop()
-        self._thread.join()
-        pygame.mouse.set_visible(True)
-
-    def is_running(self):
-        return self._thread.is_alive()
-
-
+# ---- SURFACES ---------------------------
 class HeaderSurface(pygame.Surface):
-    def __init__(self, size, logger=None, **kwargs):
+    def __init__(self, size, logger=None, color_bg=BLACK, color_fg=WHITE, show_time=True, show_second=True,
+                 show_date=True, show_weekday=True, show_logo=True, path_logo="", company_name=""):
         super(HeaderSurface, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\HeaderSurface.log")
 
-        screen_width = size[0]
-        screen_height = size[1]
-        self._font = pygame.font.SysFont(name='Arial', size=screen_height-4, bold=True)
+        self._font = get_font_obj(font_name=DEFAULT_FONT_BOLD, font_size=self.get_height()-4)
 
-        self.bg_color = kwargs.get("bg_color", BLACK)
-        self.fg_color = kwargs.get("fg_color", WHITE)
+        self.bg_color = color_bg
+        self.fg_color = color_fg
 
-        self.show_time    = kwargs.get("show_time",    True)
-        self.show_second  = kwargs.get("show_second",  True)
-        self.show_date    = kwargs.get("show_date",    True)
-        self.show_weekday = kwargs.get("show_weekday", True)
+        self.show_time    = show_time
+        self.show_second  = show_second
+        self.show_date    = show_date
+        self.show_weekday = show_weekday
         self.weekday_list = ['Montag',      # Weekday 0
                              'Dienstag',    # Weekday 1
                              'Mittwoch',    # Weekday 2
@@ -332,9 +236,9 @@ class HeaderSurface(pygame.Surface):
                              'Sonntag']     # Weekday 6
 
         # configs for miscellaneous
-        self.show_logo    = kwargs.get("show_logo", True)
-        self.path_logo    = kwargs.get("path_logo", "")
-        self.company_name = kwargs.get("company_name", "")
+        self.show_logo    = show_logo
+        self.path_logo    = path_logo
+        self.company_name = company_name
 
         self.image = self._get_logo_surface()
 
@@ -445,25 +349,651 @@ class HeaderSurface(pygame.Surface):
             self.blit(text_company, text_rect)
 
 
-class SplashScreen(pygame.Surface):
+class AnalogClockSurface(pygame.Surface):
     def __init__(self, size, logger=None, **kwargs):
+        super(AnalogClockSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\AnalogClockSurface.log")
+
+        # Size of the analog clock
+        self.size = size
+        self.center = (size[0] // 2, size[1] // 2)
+        self.radius = int(min(size) * 0.45)  # If the size is not equal, take smaller width / height as reference
+
+        # Coloring clock
+        self.color_bg          = kwargs.get("color_bg", BLACK)
+        self.color_boarder     = WHITE
+        self.color_second_hand = RED
+        self.color_minute_hand = WHITE
+        self.color_hour_hand   = WHITE
+        self.color_face        = RED
+
+        # Define length of the hands, depend on the size if the overall clock
+        self.second_hand_length = self.radius * 1
+        self.minute_hand_length = self.radius * 0.85
+        self.hour_hand_length   = self.radius * 0.7
+        self.second_hand_width  = self.radius * 0.02
+        self.minute_hand_width  = self.radius * 0.03
+        self.hour_hand_width    = self.radius * 0.04
+        self.circle_size        = self.radius * 0.04
+        self.clock_boarder      = 5
+
+        # Define which hands shall be shown
+        self.show_second_hand = kwargs.get("show_second_hand", True)
+        self.show_minute_hand = kwargs.get("show_minute_hand", True)
+        self.show_hour_hand   = kwargs.get("show_hour_hand", True)
+
+    def draw_clock_face(self):
+        for i in range(12):
+            angle = 2 * math.pi * i / 12 - math.pi / 2
+            x = self.center[0] + self.radius * math.cos(angle)
+            y = self.center[1] + self.radius * math.sin(angle)
+            pygame.draw.circle(self, self.color_face, (int(x), int(y)), self.circle_size, 0)
+
+        # Draw center point where all hands come together
+        pygame.draw.circle(self, self.color_face, self.center, self.circle_size, 0)
+
+        # Show a circle clock boarder if size greater than 0
+        if self.clock_boarder > 0:
+            pygame.draw.circle(self, self.color_boarder, self.center, self.radius + self.circle_size*2, self.clock_boarder)
+
+    def draw_hour_hand(self, current_time):
+        width = int(self.hour_hand_width)
+        hour, minute = current_time.hour % 12, current_time.minute
+
+        angle = 2 * math.pi * (hour / 12 + minute / (60 * 12)) - math.pi / 2
+        x = self.center[0] + self.hour_hand_length * math.cos(angle)
+        y = self.center[1] + self.hour_hand_length * math.sin(angle)
+        pygame.draw.line(self, self.color_hour_hand, self.center, (x, y), width)
+
+    def draw_minute_hand(self, current_time):
+        width = int(self.minute_hand_width)
+        angle = 2 * math.pi * (current_time.minute / 60 + current_time.second / (60 * 60)) - math.pi / 2
+
+        x = self.center[0] + self.minute_hand_length * math.cos(angle)
+        y = self.center[1] + self.minute_hand_length * math.sin(angle)
+        pygame.draw.line(self, self.color_minute_hand, self.center, (x, y), width)
+
+    def draw_second_hand(self, ticks):
+        width = int(self.second_hand_width)
+        seconds = ticks / 1000 % 60
+        angle = math.radians((seconds / 60) * 360 - 90)
+
+        x = self.center[0] + self.second_hand_length * math.cos(angle)
+        y = self.center[1] + self.second_hand_length * math.sin(angle)
+        pygame.draw.line(self, self.color_second_hand, self.center, (x, y), width)
+
+        pygame.draw.circle(self, self.color_second_hand, (x, y), self.circle_size/2, 0)
+
+    def update(self):
+        # Clear the surface
+        self.fill(self.color_bg)
+
+        # Get current time and ticks
+        current_time = datetime.now()
+        ticks = pygame.time.get_ticks()
+
+        if self.show_hour_hand:
+            self.draw_hour_hand(current_time=current_time)
+
+        if self.show_minute_hand:
+            self.draw_minute_hand(current_time=current_time)
+
+        if self.show_second_hand:
+            self.draw_second_hand(ticks=ticks)
+
+        self.draw_clock_face()
+
+    def configure(self, **kw):
+
+        if len(kw) == 0:  # return a dict of the current configuration
+            cfg = {'show_second_hand': self.show_second_hand, 'show_minute_hand': self.show_minute_hand,
+                   'show_hour_hand': self.show_hour_hand}
+            return cfg
+
+        else:  # do a configure
+            for key, value in list(kw.items()):
+                if key == 'show_second_hand':
+                    self.show_second_hand = value
+                    self.logger.info("Set 'show_second_hand' to {}".format(value))
+                elif key == 'show_minute_hand':
+                    self.show_minute_hand = value
+                    self.logger.info("Set 'show_minute_hand' to {}".format(value))
+                elif key == 'show_hour_hand':
+                    self.show_hour_hand = value
+                    self.logger.info("Set 'show_hour_hand' to {}".format(value))
+
+
+class DigitalClockSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(DigitalClockSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\DigitalClockSurface.log")
+
+        # Size of the analog clock
+        self.size = size
+
+        # Coloring clock
+        self.color_bg = kwargs.get("color_bg", BLACK)
+        self.color_fg = kwargs.get("color_fg", WHITE)
+
+        # Define which hands shall be shown
+        self.show_time   = kwargs.get("show_time", False)
+        self.show_date   = kwargs.get("show_date", True)
+        self.show_second = kwargs.get("show_second", False)  # show_time must be True
+
+        font_size = int(self.get_height() * 0.6)
+        self._font = get_font_obj(font_name=DEFAULT_FONT_BOLD, font_size=font_size)
+        self.weekday_string = ['Montag',      # Weekday 0
+                               'Dienstag',    # Weekday 1
+                               'Mittwoch',    # Weekday 2
+                               'Donnerstag',  # Weekday 3
+                               'Freitag',     # Weekday 4
+                               'Samstag',     # Weekday 5
+                               'Sonntag']     # Weekday 6
+
+    def update(self):
+        self.fill(self.color_bg)
+
+        current_time = datetime.now()
+        time_str = "{:02d}:{:02d}".format(current_time.hour, current_time.minute)
+        if self.show_second:
+            time_str = "{}:{:02d}".format(time_str, current_time.second)
+
+        date_str = "{:02d}.{:02d}.{:04d}".format(current_time.day, current_time.month, current_time.year)
+        if not self.show_time:
+            date_str = "{}, {}".format(self.weekday_string[current_time.weekday()], date_str)
+
+        time_txt = self._font.render(time_str, True, self.color_fg, self.color_bg)
+        date_txt = self._font.render(date_str, True, self.color_fg, self.color_bg)
+        if self.show_time and self.show_date:
+            text_rect = time_txt.get_rect()
+            text_rect.left    = 10
+            text_rect.centery = self.get_height() // 2
+            self.blit(time_txt, text_rect)
+
+            text_rect = date_txt.get_rect()
+            text_rect.right   = self.get_width() - 10
+            text_rect.centery = self.get_height() // 2
+            self.blit(date_txt, text_rect)
+
+        elif self.show_time:
+            text_rect = time_txt.get_rect()
+            text_rect.centerx = self.get_width() // 2
+            text_rect.centery = self.get_height() // 2
+            self.blit(time_txt, text_rect)
+
+        elif self.show_date:
+            text_rect = date_txt.get_rect()
+            text_rect.centerx = self.get_width() // 2
+            text_rect.centery = self.get_height() // 2
+            self.blit(date_txt, text_rect)
+
+    def configure(self, **kw):
+
+        if len(kw) == 0:  # return a dict of the current configuration
+            cfg = {'show_time': self.show_time, 'show_date': self.show_date,
+                   'show_second': self.show_second}
+            return cfg
+
+        else:  # do a configure
+            for key, value in list(kw.items()):
+                if key == 'show_time':
+                    self.show_time = value
+                    self.logger.info("Set 'show_time' to {}".format(value))
+                elif key == 'show_date':
+                    self.show_date = value
+                    self.logger.info("Set 'show_date' to {}".format(value))
+                elif key == 'show_second':
+                    self.show_second = value
+                    self.logger.info("Set 'show_second' to {}".format(value))
+
+
+class ScrollingTextX(object):
+    def __init__(self, text, font_size, font_color, font=None):
+        super(ScrollingTextX, self).__init__()
+
+        self.font_color = font_color
+        self._text = text  # Use update_text to change text during runtime
+
+        self.scroll_speed_base = 9
+        self.scroll_speed = self.scroll_speed_base
+
+        self.image = None
+        self.rect = None
+        self.font = None
+        self.font_size = font_size
+
+        # Use update_font to change font during runtime
+        self._fontname = DEFAULT_FONT_BOLD if font is None else font
+        self.update_font(self._fontname, self.font_size)
+
+    def render(self):
+        self.image = self.font.render(self._text, True, self.font_color)
+        self.rect = self.image.get_rect()
+        self.rect.left = 0
+
+    def update_text(self, text):
+        if self._text != text:
+            self._text = text
+            self.render()
+
+    def update_font(self, fontname, size):
+        self._fontname = fontname
+        self.font_size = size
+
+        self.font = get_font_obj(font_name=fontname, font_size=size)
+        self.render()
+
+    def update_color(self, color):
+        self.font_color = color
+        self.render()
+
+    def get_rect(self):
+        return self.image.get_rect()
+
+    def draw(self, surface: pygame.Surface, x, y):
+
+        rect = self.rect.move(x, y)
+        surface.blit(self.image, rect)
+
+        # Check if the text fit to the screen. If not shift slightly to left for next drawing
+        if self.rect.width > surface.get_width():
+            self.rect.move_ip(-self.scroll_speed, 0)
+
+            # Increase speed if right text side is in the middle and reduse speed if left side reaches again the middle
+            if self.rect.right <= surface.get_width() * 0.5:
+                self.scroll_speed = self.scroll_speed_base * 8
+            elif self.rect.left <= surface.get_width() * 0.5:
+                self.scroll_speed = self.scroll_speed_base
+            if self.rect.right <= 0:
+                self.rect.left = surface.get_width()
+
+
+class ScrollingTextY(object):
+    def __init__(self, text, font_size, font_color, screen_size, font=None):
+        super(ScrollingTextY, self).__init__()
+
+        self.font_color = font_color
+        self._text = text  # Use update_text to change text
+
+        self.screen_size = screen_size
+        self.max_width = screen_size[0]
+        self.max_height = screen_size[1]
+        self.overall_height = None  # will be calculated by the render method
+
+        self.scroll_speed_base = 2
+        self.scroll_speed = self.scroll_speed_base
+
+        self.image_list = []
+        self.rect_list = []
+        self.font = None
+        self.font_size = font_size
+
+        # Use update_font to change the font name
+        self._fontname = DEFAULT_FONT_BOLD if font is None else font
+        self.update_font(self._fontname, self.font_size)
+
+    def render(self):
+        font_height = self.font.get_linesize()
+
+        # Split text into words and combine them to lines where each line shall not width than the surface
+        line = ""
+        lines = []
+        words = self._text.split()
+        for word in words:
+            if self.font.size(line + word)[0] > self.max_width:
+                lines.append(line)
+                line = ""
+            line += word + " "
+        lines.append(line)
+
+        # Create a text surface for every line
+        self.image_list = []
+        self.rect_list = []
+        for i, line in enumerate(lines):
+            text_surface = self.font.render(line, True, self.font_color)
+            text_rect = text_surface.get_rect()
+            text_rect.topleft = (0, i * font_height)
+            self.image_list.append(text_surface)
+            self.rect_list.append(text_rect)
+
+        self.overall_height = font_height * len(lines)
+
+    def _restart_rect(self):
+        font_height = self.font.get_linesize()
+
+        # Re-arrange images to start from the bottom
+        for i, rect in enumerate(self.rect_list):
+            rect.topleft = (0, i * font_height + self.max_height)
+            self.rect_list[i] = rect
+
+    def draw(self, surface: pygame.Surface, x, y):
+
+        # Only scroll if text is not fitting into surface, otherwise show text middle centered
+        if self.overall_height > self.max_height:
+            for i, (image, rect) in enumerate(zip(self.image_list, self.rect_list)):
+                current_rect = rect.move(x, y)
+                surface.blit(image, current_rect)
+
+                # Change Y-axis for next drawing. This simulates a moving text upwards
+                rect.move_ip(0, -self.scroll_speed)
+                self.rect_list[i] = rect
+
+            # Check if last line reached the middle of the screen
+            first_rect = self.rect_list[0]
+            last_rect = self.rect_list[-1]
+            if last_rect.bottom <= (self.max_height // 2) + y:
+                self.scroll_speed = self.scroll_speed_base * 8
+            elif first_rect.top <= (self.max_height // 2) + y:
+                self.scroll_speed = self.scroll_speed_base
+
+            if last_rect.bottom <= y:
+                self._restart_rect()
+
+        else:
+            upper_space = (self.max_height - self.overall_height) // 2
+            for i, (image, rect) in enumerate(zip(self.image_list, self.rect_list)):
+                rect.move_ip(x, y + upper_space)
+                surface.blit(image, rect)
+
+    def update_font(self, fontname, size):
+        self._fontname = fontname
+        self.font_size = size
+
+        self.font = get_font_obj(font_name=fontname, font_size=size)
+        self.render()
+
+    def update_text(self, text):
+        self._text = text
+        self.render()
+
+
+class ProgressBarSurface(pygame.Surface):
+    def __init__(self, size, duration_sec, color_bg=GREY, font=None):
+        super(ProgressBarSurface, self).__init__(size)
+
+        # Store size and color
+        self.size = size
+        self.width = size[0]
+        self.height = size[1]
+        self.color_bg = color_bg
+        self.color_text = WHITE
+        self.borderwidth = 2
+
+        # Create instance for scrolling text (if progressbar is smaller than text to display)
+        self._text_surface = ScrollingTextX("", self.height * 0.9, self.color_text, font)
+
+        # Store timing variables for doing progress
+        self._duration_sec = duration_sec
+        self.max_value = 100
+        self._start_time = 0
+
+        self.color_scheme = [(0, 'red'),
+                             (90, 'orange'),
+                             (100, 'green')
+                             ]
+        self.text_scheme = [(0, "Warte auf Atemschutz-Geräteträger"),
+                            (90, "Bereitmachen zum Ausrücken"),
+                            (100, "Losfahren, auch bei zuwenig Atemschutz-Geräteträger")
+                            ]
+
+    def update(self):
+        if self._start_time == 0:
+            self.start_timer(self._duration_sec)
+
+        time_elapsed_ms = pygame.time.get_ticks() - self._start_time
+        time_duration_ms = self._duration_sec * 1000
+        value = min(time_elapsed_ms / time_duration_ms * 100, self.max_value)
+
+        progress = int((value / self.max_value) * self.width)
+
+        # Select foreground color and text depend on the current progres
+        index_color = 0
+        index_text = 0
+        for i in range(len(self.color_scheme)):
+            if int(value) >= self.color_scheme[i][0]:
+                index_color = i
+        for i in range(len(self.text_scheme)):
+            if int(value) >= self.text_scheme[i][0]:
+                index_text = i
+
+        # Draw background
+        bg_rect = pygame.Rect(0, 0, self.width, self.height)
+        pygame.draw.rect(self, self.color_bg, bg_rect)
+
+        # Draw foreground
+        fg_rect = pygame.Rect(0, 0, progress, self.height)
+        pygame.draw.rect(self, self.color_scheme[index_color][1], fg_rect)
+
+        # Draw text
+        self._text_surface.update_text(self.text_scheme[index_text][1])
+        text_rect = self._text_surface.get_rect()
+        # If text is smaller than progress bar, place in the center
+        x_axis = max((self.width - text_rect.width) // 2, 0)
+        y_axis = max((self.height - text_rect.height) // 2, 0)
+        self._text_surface.draw(surface=self, x=x_axis, y=y_axis)
+
+        if self.borderwidth:
+            pygame.draw.rect(self, BLACK, (0, 0, self.width, self.height), self.borderwidth)
+
+    def start_timer(self, duration):
+        self._duration_sec = duration
+        self._start_time = pygame.time.get_ticks()
+
+    def stop_timer(self):
+        self._start_time = 0
+
+    def update_duration(self, duration_sec):
+        self.stop_timer()
+        self._duration_sec = duration_sec
+
+
+class ResponseOrderSurface(pygame.Surface):
+    def __init__(self, size, equipment_list=None, color_bg=GREY, logger=None):
+        super(ResponseOrderSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ResponseOrderSurface.log")
+
+        # Store size and color
+        self.size = size
+        self.width = size[0]
+        self.height = size[1]
+
+        self.borderwidth = 2
+        self.color_bg = color_bg
+        self._equipment_list = []
+        self._equipment_image_list = []
+        self._equipment_rect_list = []
+        self._equipment_images_width = 0
+
+        self.rect = None
+        self.scroll_speed_base = 2
+        self.scroll_speed = self.scroll_speed_base
+
+        if equipment_list is not None:
+            self.update_order(equipment_list=equipment_list)
+
+    def update_order(self, equipment_list):
+        if self._equipment_list != equipment_list:
+            # Delete old entry, will exchange all
+            self._equipment_list = []
+            self._equipment_image_list = []
+            self._equipment_images_width = 0
+
+            for equipment_name in equipment_list:
+                # Load image and scale to available space
+                image_path = os.path.join(DEFAULT_PIC_DIR, equipment_name)
+                if not os.path.isfile(image_path):
+                    self.logger.error(f"Could not find picture {image_path}, take 'no_image' instead")
+                    image_path = DEFAULT_NO_PIC
+
+                image_obj = pygame.image.load(image_path)
+                image_obj = scale_image(image_obj=image_obj, max_width=self.width, max_height=self.height-10)
+                image_rect = image_obj.get_rect()
+                # image_rect.left = self._equipment_images_width
+                image_rect.topleft = (self._equipment_images_width, (self.height - image_rect.height)//2)
+                self._equipment_images_width += image_obj.get_width()
+
+                self._equipment_list.append(equipment_name)
+                self._equipment_image_list.append(image_obj)
+                self._equipment_rect_list.append(image_rect)
+
+            # If at least one image is in list, take the first as reference for location
+            if self._equipment_image_list:
+                self.rect = self._equipment_image_list[0].get_rect()
+
+    def _restart_rect(self):
+        # Re-arrange images to start from the right side
+        x_axis_offset = 0
+        for i, rect in enumerate(self._equipment_rect_list):
+            rect.topleft = (self.width + x_axis_offset, 0)
+            x_axis_offset += rect.width
+            self._equipment_rect_list[i] = rect
+
+    def update(self):
+        self.fill(self.color_bg)
+
+        left_padding = self.borderwidth + 1 # Offset of 5 pixels as the boarder already takes 4 pixel
+
+        # Only scroll if all images are wither than space available
+        if self._equipment_images_width > self.width:
+            for i, (image, rect) in enumerate(zip(self._equipment_image_list, self._equipment_rect_list)):
+                current_rect = rect.move(left_padding, 0)
+                self.blit(image, current_rect)
+
+                # Change x-axis for next drawing. This simulates a moving text upwards
+                rect.move_ip(-self.scroll_speed, 0)
+                self._equipment_rect_list[i] = rect
+
+            # Check if last image reached the middle of the screen
+            first_rect = self._equipment_rect_list[0]
+            last_rect = self._equipment_rect_list[-1]
+            if last_rect.right <= (self.width // 2) + left_padding:
+                self.scroll_speed = self.scroll_speed_base * 8
+            elif first_rect.left <= (self.width // 2) + left_padding:
+                self.scroll_speed = self.scroll_speed_base
+
+            if last_rect.right <= left_padding:
+                self._restart_rect()
+
+        else:
+            next_image_left = self.rect.left + left_padding
+            for image_obj in self._equipment_image_list:
+                rect = image_obj.get_rect()
+                rect.move_ip(next_image_left, 0)
+                next_image_left += rect.width
+                self.blit(image_obj, rect)
+
+        if self.borderwidth:
+            pygame.draw.rect(self, BLACK, (0, 0, self.width, self.height), self.borderwidth)
+
+
+class MessageSurface(pygame.Surface):
+    def __init__(self, size, message="", logger=None):
+        super(MessageSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\MessageSurface.log")
+
+        message = message
+        self.event_obj = None
+
+        self.case_text = None
+        self.address_text = None
+        self.details_text = None
+        self.message_text = None
+
+        self.case_height = self.get_height() * 0.1
+        self.address_height = self.get_height() * 0.35
+        self.details_height = self.get_height() * 0.35
+        self.space_height = self.get_height() * 0.05
+        self.message_height = self.get_height() * 0.4  # This should show 2 lines and scroll if more
+
+        self.background_surface = None
+        self.render_background(WHITE, RED)
+        self.update_text(message)
+
+    def update(self):
+        self.fill((0, 0, 0))
+        self.blit(self.background_surface, (0, 0))
+        if self.case_text:
+            self.case_text.draw(self,    10, self.space_height)
+            self.address_text.draw(self,  0, self.space_height * 2 + self.case_height)
+            self.details_text.draw(self,  0, self.space_height * 3 + self.case_height + self.address_height)
+        else:
+            self.message_text.draw(self, 0, 0)
+
+    def render_background(self, top_color_bg, bottom_color_bg):
+        self.background_surface = pygame.Surface(self.get_size())
+        self.background_surface.fill(pygame.Color(top_color_bg))
+
+        width = self.get_width()
+        height = int(self.get_height())
+        top_color = pygame.Color(top_color_bg)
+        bottom_color = pygame.Color(bottom_color_bg)
+
+        # Calculate color for each vertical pixel and draw it to the background
+        for y in range(height):
+
+            # Calculate the color for this row
+            t = y / (height - 1)
+            row_color = top_color.lerp(bottom_color, t)
+
+            # Fill the row with the color
+            rect = pygame.Rect(0, y, width, 1)
+            # rect = pygame.Rect(0, y + height, width, 1)
+            pygame.draw.rect(self.background_surface, row_color, rect)
+
+    def update_text(self, message):
+
+        self.event_obj = EventInfo(event_msg=message)
+
+        if self.event_obj.parsed:
+            case_str = CASE_LEVEL_DICT.get(self.event_obj.case_and_level, f"Gruppe: {self.event_obj.case_and_level}")
+            self.case_text = ScrollingTextX(case_str, self.case_height, BLACK)
+
+            if self.event_obj.street_number:
+                address_str = "{} {} - {}".format(self.event_obj.street_name, self.event_obj.street_number, self.event_obj.city.upper())
+            else:
+                address_str = "{} - {}".format(self.event_obj.street_name, self.event_obj.city.upper())
+            self.address_text = ScrollingTextX(address_str, self.address_height, BLACK)
+
+            if self.event_obj.details:
+                details_str = self.event_obj.details
+            else:
+                details_str = self.event_obj.object_info
+            self.details_text = ScrollingTextX(details_str, self.details_height, BLACK)
+            color_bg = CASE_COLOR_DICT.get(self.event_obj.case_and_level, pygame.Color('grey'))
+            self.render_background(WHITE, color_bg)
+            self.message_text = None
+
+        else:
+            message_text = self.event_obj.message
+            self.message_text = ScrollingTextY(message_text, self.message_height, BLACK, self.get_size())
+
+            self.render_background(WHITE, pygame.Color('gold'))
+
+            self.case_text = None
+            self.address_text = None
+            self.details_text = None
+
+
+# ---- SCREENS ----------------------------
+class SplashScreen(pygame.Surface):
+    def __init__(self, size, path_logo="", color_bg=BLACK, color_fg=WHITE, logger=None):
         super(SplashScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SplashScreen.log")
 
-        self.size = size
+        self.path_logo = path_logo
+        self.color_bg = color_bg
+        self.color_fg = color_fg
 
-        self.path_logo = kwargs.get("path_logo", "")
-        self.bg_color = kwargs.get("bg_color", BLACK)
-        self.fg_color = kwargs.get("fg_color", WHITE)
-
-        # Do not show logo in the header, it's already present in main surface. Use same value as
-        kwargs.update({"show_logo": False,
-                       "bg_color": self.bg_color,
-                       "fg_color": self.fg_color,
-                       })
+        # Do not show logo in the header, it's already present in main surface
         self.header_height = 30
-        self._header_surface_obj = HeaderSurface(size=(self.size[0], self.header_height), logger=logger, **kwargs)
-        self._main_surface = pygame.Surface((self.size[0], self.size[1]-self.header_height))
+        self._header_surface_obj = HeaderSurface(size=(self.get_width(), self.header_height),
+                                                 logger      = logger,
+                                                 show_logo   = False,
+                                                 show_time   = True,
+                                                 show_second = True,
+                                                 show_date   = True,
+                                                 show_weekday= True)
+        self._main_surface = pygame.Surface((self.get_width(), self.get_height()-self.header_height))
         self._set_logo()
 
     def _set_logo(self):
@@ -472,7 +1002,7 @@ class SplashScreen(pygame.Surface):
         max_image_width = surface_width - 50
         max_image_height = surface_height - 50
 
-        self._main_surface.fill(self.bg_color)
+        self._main_surface.fill(self.color_bg)
 
         if os.path.isfile(self.path_logo):
             # Load image
@@ -488,11 +1018,220 @@ class SplashScreen(pygame.Surface):
             pygame.draw.line(self._main_surface, RED, (surface_width, 0), (0, surface_height), 5)
 
     def update(self):
-        self.fill(self.bg_color)
+        self.fill(self.color_bg)
 
         self._header_surface_obj.update()
         self.blit(self._header_surface_obj, (0, 0))
         self.blit(self._main_surface, (0, self.header_height + 1))
+
+    def configure(self, **kw):
+
+        update_image = False
+        for key, value in list(kw.items()):
+            if key == 'path_logo':
+                self.path_logo = value
+                update_image = True
+            elif key == 'color_bg':
+                self.color_bg = value
+                update_image = True
+            elif key == 'color_fg':
+                self.color_fg = value
+                update_image = True
+            else:
+                self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
+
+        if update_image is True:
+            self._set_logo()
+
+
+class EventScreen(pygame.Surface):
+    def __init__(self, size, show_message_bar=True, alarm_message="", show_progress_bar=False, progress_bar_duration=7 * 60,
+                 show_response_order=False, equipment_list=None, image_path_left="", image_path_right="", logger=None):
+        super(EventScreen, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\EventScreen.log")
+
+        self.size = size
+
+        # Store the height of the several places
+        self.message_bar_height = 220  # Pixel
+        self.progress_bar_height = 100  # Pixel
+        self.response_order_height = 150  # Pixel
+        self.images_height = 0  # Is calculated and set in update_images --> it depends on the given show_... bar's
+
+        # Configure the alarm message bar
+        message_size = (self.get_width(), self.message_bar_height)
+        self.show_message_bar = show_message_bar
+        self.message_obj = MessageSurface(size=message_size, message=alarm_message)
+
+        # Configure the progress bar
+        progress_size = (self.get_width(), self.progress_bar_height)
+        self.show_progress_bar = show_progress_bar
+        self.progress_bar_obj = ProgressBarSurface(size=progress_size, duration_sec=progress_bar_duration)
+
+        # Configure the response order bar
+        response_size = (self.get_width(), self.response_order_height)
+        self.show_response_order = show_response_order
+        self.response_order_obj = ResponseOrderSurface(size=response_size, equipment_list=equipment_list)
+
+        # Configure images
+        self.image_path_left = image_path_left
+        self.image_obj_left = None
+        self.image_rect_left = None
+        self.image_path_right = image_path_right
+        self.image_obj_right = None
+        self.image_rect_right = None
+        self.update_images()
+
+    def configure(self, **kw):
+
+        update_image = False
+        for key, value in list(kw.items()):
+            if key == 'alarm_message':
+                self.message_obj.update_text(value)
+            elif key == 'image_left':
+                update_image = True
+                self.image_path_left = value
+            elif key == 'image_right':
+                update_image = True
+                self.image_path_right = value
+            elif key == 'equipment_list':
+                self.response_order_obj.update_order(equipment_list=value)
+            elif key == 'progress_bar_duration':
+                self.progress_bar_obj.update_duration(duration_sec=value)
+            elif key == 'show_alarm_message':
+                update_image = True
+                self.show_message_bar = value
+            elif key == 'show_progress_bar':
+                update_image = True
+                self.show_progress_bar = value
+            elif key == 'show_response_order':
+                update_image = True
+                self.show_response_order = value
+            else:
+                self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
+
+        if update_image is True:
+            self.update_images()
+
+    def update_images(self):
+        # Calculate size of Images
+        progress_height = int(self.show_progress_bar)   * self.progress_bar_height
+        response_height = int(self.show_response_order) * self.response_order_height
+        message_height = int(self.show_message_bar) * int(self.message_bar_height)
+
+        # calculate height and width and resize the canvas afterwards
+        self.images_height = int(self.get_height() - message_height - progress_height - response_height)
+        images_width = int(self.get_width())
+
+        # if right picture is empty, show left picture as full screen and clear right picture object
+        if not self.image_path_right:
+            # Only single picture available, delete second if it was defined prior
+            self.image_obj_right = None
+        else:
+            # Two picture shall be shown --> divide available space for each image
+            images_width = images_width // 2
+
+        if self.image_path_left:
+            image_path = self.image_path_left
+            if not os.path.isfile(image_path):
+                self.logger.error(f"Could not find picture {image_path}, take 'no_image' instead")
+                image_path = DEFAULT_NO_PIC
+
+            image_obj = pygame.image.load(image_path)
+            image_obj = scale_image(image_obj=image_obj, max_width=images_width, max_height=self.images_height)
+            image_rect = image_obj.get_rect()
+            image_rect.center = (images_width // 2, message_height + self.images_height // 2)
+            self.image_obj_left = image_obj
+            self.image_rect_left = image_rect
+
+        if self.image_path_right:
+            image_path = self.image_path_right
+            if not os.path.isfile(image_path):
+                self.logger.error(f"Could not find picture {image_path}, take 'no_image' instead")
+                image_path = DEFAULT_NO_PIC
+
+            image_obj = pygame.image.load(image_path)
+            image_obj = scale_image(image_obj=image_obj, max_width=images_width, max_height=self.images_height)
+            image_rect = image_obj.get_rect()
+            image_rect.center = (images_width + images_width // 2, message_height + self.images_height // 2)
+            self.image_obj_right = image_obj
+            self.image_rect_right = image_rect
+
+    def update(self):
+        self.fill(BLACK)
+
+        # Update and blit the message bar if available
+        if self.show_message_bar:
+            self.message_obj.update()
+            self.blit(self.message_obj, (0, 0))
+
+        # blit images if available
+        if self.image_obj_left:
+            self.blit(self.image_obj_left, self.image_rect_left)
+        if self.image_obj_right:
+            self.blit(self.image_obj_right, self.image_rect_right)
+
+        # Update and blit progress bar if available
+        if self.show_progress_bar:
+            progress_offset = self.images_height
+            progress_offset += int(self.show_message_bar) * int(self.message_bar_height)
+            self.progress_bar_obj.update()
+            self.blit(self.progress_bar_obj, (0, progress_offset))
+
+        # Update and blit response order bar if available
+        if self.show_response_order:
+            response_offset = self.images_height
+            response_offset += int(self.show_message_bar) * int(self.message_bar_height)
+            response_offset += int(self.show_progress_bar) * int(self.progress_bar_height)
+            self.response_order_obj.update()
+            self.blit(self.response_order_obj, (0, response_offset))
+
+
+class ClockScreen(pygame.Surface):
+    def __init__(self, size, logger=None):
+        super(ClockScreen, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockScreen.log")
+
+        self.size = size
+
+        self.color_bg = BLACK
+        self.color_fg = WHITE
+
+        self._analog_clk = AnalogClockSurface(size             = (self.size[0], self.size[1]*0.8),
+                                              color_bg         = self.color_bg,
+                                              show_second_hand = True,
+                                              show_minute_hand = True,
+                                              show_hour_hand   = True)
+
+        self._digital_clk = DigitalClockSurface(size      = (self.size[0], self.size[1]*0.2),
+                                                color_bg  = self.color_bg,
+                                                color_fg  = self.color_fg,
+                                                show_time = False,
+                                                show_date = True)
+
+    def update(self):
+        self.fill(self.color_bg)
+        self._analog_clk.update()
+        self.blit(self._analog_clk, (0, 0))
+        self._digital_clk.update()
+        self.blit(self._digital_clk, (0, self._analog_clk.get_height()))
+
+    def configure(self, **kw):
+        for key, value in list(kw.items()):
+            if key == 'show_second_hand':
+                self._analog_clk.configure(show_second_hand=value)
+            elif key == 'show_minute_hand':
+                self._analog_clk.configure(show_minute_hand=value)
+            elif key == 'show_hour_hand':
+                self._analog_clk.configure(show_hour_hand=value)
+            elif key == 'show_digital_time':
+                self._digital_clk.configure(show_time=value)
+            elif key == 'show_digital_date':
+                self._digital_clk.configure(show_date=value)
+            elif key == 'show_digital_seconds':
+                self._digital_clk.configure(show_second=value)
+            else:
+                self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
 
 
 class SlideshowScreen(pygame.Surface):
@@ -525,11 +1264,11 @@ class SlideshowScreen(pygame.Surface):
         self._header_surface_obj = HeaderSurface(size         = (self.size[0], self.header_height),
                                                  logger       = logger,
                                                  show_time    = False,
-                                                 bg_color     = GREY,
+                                                 color_bg     = GREY,
                                                  path_logo    = self.path_logo,
                                                  company_name = self.company_name)
 
-        self._font = pygame.font.SysFont(name='Arial', size=50, bold=True)
+        self._font = get_font_obj(font_name=DEFAULT_FONT_BOLD, font_size=50)
 
         self.bg_color = BLACK
         self.fg_color = RED
@@ -666,705 +1405,167 @@ class SlideshowScreen(pygame.Surface):
 
     def configure(self, **kw):
 
-        if len(kw) == 0:  # return a dict of the current configuration
-            cfg = {'seconds_between_images': self.display_duration, 'sort_alphabetically': self.sort_alphabetically,
-                   'path_to_images': self.path_to_images, 'path_logo': self.path_logo,
-                   'company_name': self.company_name, 'show_header': self.show_header,
-                   'fade_over_background0': self.fade_over_bg}
-            return cfg
-
-        else:  # do a configure
-            for key, value in list(kw.items()):
-                if key == 'seconds_between_images':
-                    self.display_duration = value
-                    self.logger.info("Set 'seconds_between_images' to {}".format(value))
-                elif key == 'fade_over_background':
-                    self.fade_over_bg = value
-                    self.logger.info("Set 'fade_over_background' to {}".format(value))
-                elif key == 'sort_alphabetically':
-                    self.sort_alphabetically = value
-                    self.logger.info("Set 'sort_alphabetically' to {}".format(value))
-                    self.sort_images()
-                elif key == 'path_to_images':
-                    self.path_to_images = value
-                    self.logger.info("Set 'path_to_images' to {}".format(value))
-                    self.load_images()
-                elif key == 'path_logo':
-                    self.path_logo = value
-                    self._header_surface_obj.configure(path_logo=self.path_logo)
-                elif key == 'company_name':
-                    self.company_name = value
-                    self._header_surface_obj.configure(company_name=self.company_name)
-                elif key == 'show_header':
-                    self.show_header = value
-                    self.logger.info("Set 'show_header' to {}".format(value))
-
-
-class AnalogClockSurface(pygame.Surface):
-    def __init__(self, size, logger=None, **kwargs):
-        super(AnalogClockSurface, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\AnalogClockSurface.log")
-
-        # Size of the analog clock
-        self.size = size
-        self.center = (size[0] // 2, size[1] // 2)
-        self.radius = int(min(size) * 0.45)  # If the size is not equal, take smaller width / height as reference
-
-        # Coloring clock
-        self.color_bg          = kwargs.get("color_bg", BLACK)
-        self.color_second_hand = RED
-        self.color_minute_hand = WHITE
-        self.color_hour_hand   = WHITE
-        self.color_face        = RED
-
-        # Define length of the hands, depend on the size if the overall clock
-        self.second_hand_length = self.radius * 1
-        self.minute_hand_length = self.radius * 0.85
-        self.hour_hand_length   = self.radius * 0.7
-        self.second_hand_width  = self.radius * 0.02
-        self.minute_hand_width  = self.radius * 0.03
-        self.hour_hand_width    = self.radius * 0.04
-        self.circle_size        = self.radius * 0.04
-
-        # Define which hands shall be shown
-        self.show_second_hand = kwargs.get("show_second_hand", True)
-        self.show_minute_hand = kwargs.get("show_minute_hand", True)
-        self.show_hour_hand   = kwargs.get("show_hour_hand", True)
-
-    def draw_clock_face(self):
-        for i in range(12):
-            angle = 2 * math.pi * i / 12 - math.pi / 2
-            x = self.center[0] + self.radius * math.cos(angle)
-            y = self.center[1] + self.radius * math.sin(angle)
-            pygame.draw.circle(self, self.color_face, (int(x), int(y)), self.circle_size, 0)
-
-        # Draw center point where all hands come together
-        pygame.draw.circle(self, self.color_face, self.center, self.circle_size, 0)
-
-    def draw_hour_hand(self, current_time):
-        width = int(self.hour_hand_width)
-        hour, minute = current_time.hour % 12, current_time.minute
-
-        angle = 2 * math.pi * (hour / 12 + minute / (60 * 12)) - math.pi / 2
-        x = self.center[0] + self.hour_hand_length * math.cos(angle)
-        y = self.center[1] + self.hour_hand_length * math.sin(angle)
-        pygame.draw.line(self, self.color_hour_hand, self.center, (x, y), width)
-
-    def draw_minute_hand(self, current_time):
-        width = int(self.minute_hand_width)
-        angle = 2 * math.pi * (current_time.minute / 60 + current_time.second / (60 * 60)) - math.pi / 2
-
-        x = self.center[0] + self.minute_hand_length * math.cos(angle)
-        y = self.center[1] + self.minute_hand_length * math.sin(angle)
-        pygame.draw.line(self, self.color_minute_hand, self.center, (x, y), width)
-
-    def draw_second_hand(self, ticks):
-        width = int(self.second_hand_width)
-        seconds = ticks / 1000 % 60
-        angle = math.radians((seconds / 60) * 360 - 90)
-
-        x = self.center[0] + self.second_hand_length * math.cos(angle)
-        y = self.center[1] + self.second_hand_length * math.sin(angle)
-        pygame.draw.line(self, self.color_second_hand, self.center, (x, y), width)
-
-        pygame.draw.circle(self, self.color_second_hand, (x, y), self.circle_size/2, 0)
-
-    def update(self):
-        # Clear the surface
-        self.fill(self.color_bg)
-
-        # Get current time and ticks
-        current_time = datetime.now()
-        ticks = pygame.time.get_ticks()
-
-        if self.show_hour_hand:
-            self.draw_hour_hand(current_time=current_time)
-
-        if self.show_minute_hand:
-            self.draw_minute_hand(current_time=current_time)
-
-        if self.show_second_hand:
-            self.draw_second_hand(ticks=ticks)
-
-        self.draw_clock_face()
-
-    def configure(self, **kw):
-
-        if len(kw) == 0:  # return a dict of the current configuration
-            cfg = {'show_second_hand': self.show_second_hand, 'show_minute_hand': self.show_minute_hand,
-                   'show_hour_hand': self.show_hour_hand}
-            return cfg
-
-        else:  # do a configure
-            for key, value in list(kw.items()):
-                if key == 'show_second_hand':
-                    self.show_second_hand = value
-                    self.logger.info("Set 'show_second_hand' to {}".format(value))
-                elif key == 'show_minute_hand':
-                    self.show_minute_hand = value
-                    self.logger.info("Set 'show_minute_hand' to {}".format(value))
-                elif key == 'show_hour_hand':
-                    self.show_hour_hand = value
-                    self.logger.info("Set 'show_hour_hand' to {}".format(value))
-
-
-class DigitalClockSurface(pygame.Surface):
-    def __init__(self, size, logger=None, **kwargs):
-        super(DigitalClockSurface, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\DigitalClockSurface.log")
-
-        # Size of the analog clock
-        self.size = size
-
-        # Coloring clock
-        self.color_bg = kwargs.get("color_bg", BLACK)
-        self.color_fg = kwargs.get("color_fg", WHITE)
-
-        # Define which hands shall be shown
-        self.show_time   = kwargs.get("show_time", False)
-        self.show_date   = kwargs.get("show_date", True)
-        self.show_second = kwargs.get("show_second", False)  # show_time must be True
-
-        font_size = int(self.size[1] * 0.6)
-        self._font = pygame.font.SysFont(name='Arial', size=font_size, bold=True)
-        self.weekday_string = ['Montag',      # Weekday 0
-                               'Dienstag',    # Weekday 1
-                               'Mittwoch',    # Weekday 2
-                               'Donnerstag',  # Weekday 3
-                               'Freitag',     # Weekday 4
-                               'Samstag',     # Weekday 5
-                               'Sonntag']     # Weekday 6
-
-    def update(self):
-        self.fill(self.color_bg)
-
-        current_time = datetime.now()
-        time_str = "{:02d}:{:02d}".format(current_time.hour, current_time.minute)
-        if self.show_second:
-            time_str = "{}:{:02d}".format(time_str, current_time.second)
-
-        date_str = "{:02d}.{:02d}.{:04d}".format(current_time.day, current_time.month, current_time.year)
-        if not self.show_time:
-            date_str = "{}, {}".format(self.weekday_string[current_time.weekday()], date_str)
-
-        time_txt = self._font.render(time_str, True, self.color_fg, self.color_bg)
-        date_txt = self._font.render(date_str, True, self.color_fg, self.color_bg)
-        if self.show_time and self.show_date:
-            text_rect = time_txt.get_rect()
-            text_rect.left    = 10
-            text_rect.centery = self.get_height() // 2
-            self.blit(time_txt, text_rect)
-
-            text_rect = date_txt.get_rect()
-            text_rect.right   = self.get_width() - 10
-            text_rect.centery = self.get_height() // 2
-            self.blit(date_txt, text_rect)
-
-        elif self.show_time:
-            text_rect = time_txt.get_rect()
-            text_rect.centerx = self.get_width() // 2
-            text_rect.centery = self.get_height() // 2
-            self.blit(time_txt, text_rect)
-
-        elif self.show_date:
-            text_rect = date_txt.get_rect()
-            text_rect.centerx = self.get_width() // 2
-            text_rect.centery = self.get_height() // 2
-            self.blit(date_txt, text_rect)
-
-    def configure(self, **kw):
-
-        if len(kw) == 0:  # return a dict of the current configuration
-            cfg = {'show_time': self.show_time, 'show_date': self.show_date,
-                   'show_second': self.show_second}
-            return cfg
-
-        else:  # do a configure
-            for key, value in list(kw.items()):
-                if key == 'show_time':
-                    self.show_time = value
-                    self.logger.info("Set 'show_time' to {}".format(value))
-                elif key == 'show_date':
-                    self.show_date = value
-                    self.logger.info("Set 'show_date' to {}".format(value))
-                elif key == 'show_second':
-                    self.show_second = value
-                    self.logger.info("Set 'show_second' to {}".format(value))
-
-
-class ClockScreen(pygame.Surface):
-    def __init__(self, size, logger=None):
-        super(ClockScreen, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockScreen.log")
-
-        self.size = size
-
-        self.color_bg = BLACK
-        self.color_fg = WHITE
-
-        self._analog_clk = AnalogClockSurface(size             = (self.size[0], self.size[1]*0.8),
-                                              color_bg         = self.color_bg,
-                                              show_second_hand = True,
-                                              show_minute_hand = True,
-                                              show_hour_hand   = True)
-
-        self._digital_clk = DigitalClockSurface(size      = (self.size[0], self.size[1]*0.2),
-                                                color_bg  = self.color_bg,
-                                                color_fg  = self.color_fg,
-                                                show_time = False,
-                                                show_date = True)
-
-    def update(self):
-        self.fill(self.color_bg)
-        self._analog_clk.update()
-        self.blit(self._analog_clk, (0, 0))
-        self._digital_clk.update()
-        self.blit(self._digital_clk, (0, self._analog_clk.get_height()))
-
-    def configure(self, **kw):
         for key, value in list(kw.items()):
-            if key == 'show_second_hand':
-                self._analog_clk.configure(show_second_hand=value)
-            elif key == 'show_minute_hand':
-                self._analog_clk.configure(show_minute_hand=value)
-            elif key == 'show_hour_hand':
-                self._analog_clk.configure(show_hour_hand=value)
-            elif key == 'show_digital_time':
-                self._digital_clk.configure(show_time=value)
-            elif key == 'show_digital_date':
-                self._digital_clk.configure(show_date=value)
-            elif key == 'show_digital_seconds':
-                self._digital_clk.configure(show_second=value)
-
-
-class ScrollingTextX(object):
-    def __init__(self, text, font_size, font_color, font=None):
-        super(ScrollingTextX, self).__init__()
-
-        self.font_color = font_color
-        self._text = text  # Use update_text to change text during runtime
-
-        self.scroll_speed_base = 9
-        self.scroll_speed = self.scroll_speed_base
-
-        self.image = None
-        self.rect = None
-        self.font = None
-        self.font_size = font_size
-
-        # Use update_font to change font during runtime
-        self._fontname = DEFAULT_FONT_BOLD if font is None else font
-        self.update_font(self._fontname, self.font_size)
-
-    def render(self):
-        self.image = self.font.render(self._text, True, self.font_color)
-        self.rect = self.image.get_rect()
-        self.rect.left = 0
-
-    def update_text(self, text):
-        if self._text != text:
-            self._text = text
-            self.render()
-
-    def update_font(self, fontname, size):
-        self._fontname = fontname
-        self.font_size = size
-
-        # Check if font name is installed or is it a font-file
-        if ".ttf" in fontname:
-            self.font = pygame.font.Font(fontname, int(size))
-        else:
-            self.font = pygame.font.SysFont(fontname, int(size))
-
-        self.render()
-
-    def update_color(self, color):
-        self.font_color = color
-        self.render()
-
-    def get_rect(self):
-        return self.image.get_rect()
-
-    def draw(self, surface: pygame.Surface, x, y):
-
-        rect = self.rect.move(x, y)
-        surface.blit(self.image, rect)
-
-        # Check if the text fit to the screen. If not shift slightly to left for next drawing
-        if self.rect.width > surface.get_width():
-            self.rect.move_ip(-self.scroll_speed, 0)
-
-            # Increase speed if right text side is in the middle and reduse speed if left side reaches again the middle
-            if self.rect.right <= surface.get_width() * 0.5:
-                self.scroll_speed = self.scroll_speed_base * 8
-            elif self.rect.left <= surface.get_width() * 0.5:
-                self.scroll_speed = self.scroll_speed_base
-            if self.rect.right <= 0:
-                self.rect.left = surface.get_width()
-
-
-class ScrollingTextY(object):
-    def __init__(self, text, font_size, font_color, screen_size, font=None):
-        super(ScrollingTextY, self).__init__()
-
-        self.font_color = font_color
-        self._text = text  # Use update_text to change text
-
-        self.screen_size = screen_size
-        self.max_width = screen_size[0]
-        self.max_height = screen_size[1]
-        self.overall_height = None  # will be calculated by the render method
-
-        self.scroll_speed_base = 2
-        self.scroll_speed = self.scroll_speed_base
-
-        self.image_list = []
-        self.rect_list = []
-        self.font = None
-        self.font_size = font_size
-
-        # Use update_font to change the font name
-        self._fontname = DEFAULT_FONT_BOLD if font is None else font
-        self.update_font(self._fontname, self.font_size)
-
-    def render(self):
-        font_height = self.font.get_linesize()
-
-        # Split text into words and combine them to lines where each line shall not width than the surface
-        line = ""
-        lines = []
-        words = self._text.split()
-        for word in words:
-            if self.font.size(line + word)[0] > self.max_width:
-                lines.append(line)
-                line = ""
-            line += word + " "
-        lines.append(line)
-
-        # Create a text surface for every line
-        self.image_list = []
-        self.rect_list = []
-        for i, line in enumerate(lines):
-            text_surface = self.font.render(line, True, self.font_color)
-            text_rect = text_surface.get_rect()
-            text_rect.topleft = (0, i * font_height)
-            self.image_list.append(text_surface)
-            self.rect_list.append(text_rect)
-
-        self.overall_height = font_height * len(lines)
-
-    def _restart_rect(self):
-        font_height = self.font.get_linesize()
-
-        # Re-arrange images to start from the bottom
-        for i, rect in enumerate(self.rect_list):
-            rect.topleft = (0, i * font_height + self.max_height)
-            self.rect_list[i] = rect
-
-    def draw(self, surface: pygame.Surface, x, y):
-
-        # Only scroll if text is not fitting into surface, otherwise show text middle centered
-        if self.overall_height > self.max_height:
-            for i, (image, rect) in enumerate(zip(self.image_list, self.rect_list)):
-                current_rect = rect.move(x, y)
-                surface.blit(image, current_rect)
-
-                # Change Y-axis for next drawing. This simulates a moving text upwards
-                rect.move_ip(0, -self.scroll_speed)
-                self.rect_list[i] = rect
-
-            # Check if last line reached the middle of the screen
-            first_rect = self.rect_list[0]
-            last_rect = self.rect_list[-1]
-            if last_rect.bottom <= (self.max_height // 2) + y:
-                self.scroll_speed = self.scroll_speed_base * 8
-            elif first_rect.top <= (self.max_height // 2) + y:
-                self.scroll_speed = self.scroll_speed_base
-
-            if last_rect.bottom <= y:
-                self._restart_rect()
-
-        else:
-            upper_space = (self.max_height - self.overall_height) // 2
-            for i, (image, rect) in enumerate(zip(self.image_list, self.rect_list)):
-                rect.move_ip(x, y + upper_space)
-                surface.blit(image, rect)
-
-    def update_font(self, fontname, size):
-        self._fontname = fontname
-        self.font_size = size
-
-        # Check if font name is installed or is it a font-file
-        if ".ttf" in fontname:
-            self.font = pygame.font.Font(fontname, int(size))
-        else:
-            self.font = pygame.font.SysFont(fontname, int(size))
-
-        self.render()
-
-    def update_text(self, text):
-        self._text = text
-        self.render()
-
-
-class ProgressBarSurface(pygame.Surface):
-    def __init__(self, size, duration_sec, color_bg=GREY, font=None):
-        super(ProgressBarSurface, self).__init__(size)
-
-        # Store size and color
-        self.size = size
-        self.width = size[0]
-        self.height = size[1]
-        self.color_bg = color_bg
-        self.color_text = WHITE
-        self.borderwidth = 2
-
-        # Create instance for scrolling text (if progressbar is smaller than text to display)
-        self._text_surface = ScrollingTextX("", self.height * 0.9, self.color_text, font)
-
-        # Store timing variables for doing progress
-        self._duration_sec = duration_sec
-        self.max_value = 100
-        self._start_time = 0
-
-        self.color_scheme = [(0, 'red'),
-                             (90, 'orange'),
-                             (100, 'green')
-                             ]
-        self.text_scheme = [(0, "Warte auf Atemschutz-Geräteträger"),
-                            (90, "Bereitmachen zum Ausrücken"),
-                            (100, "Losfahren, auch bei zuwenig Atemschutz-Geräteträger")
-                            ]
-
-    def update(self):
-        if self._start_time == 0:
-            self.start_timer(self._duration_sec)
-
-        time_elapsed_ms = pygame.time.get_ticks() - self._start_time
-        time_duration_ms = self._duration_sec * 1000
-        value = min(time_elapsed_ms / time_duration_ms * 100, self.max_value)
-
-        progress = int((value / self.max_value) * self.width)
-
-        # Select foreground color and text depend on the current progres
-        index_color = 0
-        index_text = 0
-        for i in range(len(self.color_scheme)):
-            if int(value) >= self.color_scheme[i][0]:
-                index_color = i
-        for i in range(len(self.text_scheme)):
-            if int(value) >= self.text_scheme[i][0]:
-                index_text = i
-
-        # Draw background
-        bg_rect = pygame.Rect(self.borderwidth, self.borderwidth, self.width-self.borderwidth, self.height-self.borderwidth)
-        pygame.draw.rect(self, self.color_bg, bg_rect)
-
-        # Draw foreground
-        fg_rect = pygame.Rect(self.borderwidth, self.borderwidth, progress, self.height-self.borderwidth)
-        pygame.draw.rect(self, self.color_scheme[index_color][1], fg_rect)
-
-        # Draw text
-        self._text_surface.update_text(self.text_scheme[index_text][1])
-        text_rect = self._text_surface.get_rect()
-        # If text is smaller than progress bar, place in the center
-        x_axis = max((self.width - text_rect.width) // 2, 0)
-        y_axis = max((self.height - text_rect.height) // 2, 0)
-        self._text_surface.draw(surface=self, x=x_axis, y=y_axis)
-
-        if self.borderwidth:
-            pygame.draw.rect(self, BLACK, (0, 0, self.width, self.height), self.borderwidth)
-
-    def start_timer(self, duration):
-        self._duration_sec = duration
-        self._start_time = pygame.time.get_ticks()
-
-
-class ResponseOrderSurface(pygame.Surface):
-    def __init__(self, size, equipment_list=None, color_bg=GREY, logger=None):
-        super(ResponseOrderSurface, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ResponseOrderSurface.log")
-
-        # Store size and color
-        self.size = size
-        self.width = size[0]
-        self.height = size[1]
-
-        self.borderwidth = 2
-        self.color_bg = color_bg
-        self._equipment_list = []
-        self._equipment_image_list = []
-        self._equipment_rect_list = []
-        self._equipment_images_width = 0
-
-        self.rect = None
-        self.scroll_speed_base = 2
-        self.scroll_speed = self.scroll_speed_base
-
-        if equipment_list is not None:
-            self.update_order(equipment_list=equipment_list)
-
-    def update_order(self, equipment_list):
-        if self._equipment_list != equipment_list:
-            # Delete old entry, will exchange all
-            self._equipment_list = []
-            self._equipment_image_list = []
-            self._equipment_images_width = 0
-
-            for equipment_name in equipment_list:
-                # Load image and scale to available space
-                image_path = os.path.join(DEFAULT_PIC_DIR, equipment_name)
-                if not os.path.isfile(image_path):
-                    self.logger.error(f"Could not find picture {image_path}, take 'no_image' instead")
-                    image_path = os.path.join(DEFAULT_PIC_DIR, "bg",  "no_image.png")
-
-                image_obj = pygame.image.load(image_path)
-                image_obj = scale_image(image_obj=image_obj, max_width=self.width, max_height=self.height-10)
-                image_rect = image_obj.get_rect()
-                # image_rect.left = self._equipment_images_width
-                image_rect.topleft = (self._equipment_images_width, (self.height - image_rect.height)//2)
-                self._equipment_images_width += image_obj.get_width()
-
-                self._equipment_list.append(equipment_name)
-                self._equipment_image_list.append(image_obj)
-                self._equipment_rect_list.append(image_rect)
-
-            # If at least one image is in list, take the first as reference for location
-            if self._equipment_image_list:
-                self.rect = self._equipment_image_list[0].get_rect()
-
-    def _restart_rect(self):
-        # Re-arrange images to start from the right side
-        x_axis_offset = 0
-        for i, rect in enumerate(self._equipment_rect_list):
-            rect.topleft = (self.width + x_axis_offset, 0)
-            x_axis_offset += rect.width
-            self._equipment_rect_list[i] = rect
-
-    def update(self):
-        self.fill(self.color_bg)
-
-        x = self.borderwidth + 1 # Offset of 5 pixels as the boarder already takes 4 pixel
-
-        # Only scroll if all images are wither than space available
-        if self._equipment_images_width > self.width:
-            for i, (image, rect) in enumerate(zip(self._equipment_image_list, self._equipment_rect_list)):
-                current_rect = rect.move(x, 0)
-                self.blit(image, current_rect)
-
-                # Change x-axis for next drawing. This simulates a moving text upwards
-                rect.move_ip(-self.scroll_speed, 0)
-                self._equipment_rect_list[i] = rect
-
-            # Check if last image reached the middle of the screen
-            first_rect = self._equipment_rect_list[0]
-            last_rect = self._equipment_rect_list[-1]
-            if last_rect.right <= (self.width // 2) + x:
-                self.scroll_speed = self.scroll_speed_base * 8
-            elif first_rect.left <= (self.width // 2) + x:
-                self.scroll_speed = self.scroll_speed_base
-
-            if last_rect.right <= x:
-                self._restart_rect()
-
-        else:
-            next_image_left = self.rect.left + x
-            for image_obj in self._equipment_image_list:
-                rect = image_obj.get_rect()
-                rect.move_ip(next_image_left, 0)
-                next_image_left += rect.width
-                self.blit(image_obj, rect)
-
-        if self.borderwidth:
-            pygame.draw.rect(self, BLACK, (0, 0, self.width, self.height), self.borderwidth)
-
-
-class MessageSurface(pygame.Surface):
-    def __init__(self, size, logger=None, **kwargs):
-        super(MessageSurface, self).__init__(size)
-        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\MessageSurface.log")
-
-        message = kwargs.get("message", "")
-        self.event_obj = None
-
-        self.case_text = None
-        self.address_text = None
-        self.details_text = None
-        self.message_text = None
-
-        self.case_height = self.get_height() * 0.1
-        self.address_height = self.get_height() * 0.35
-        self.details_height = self.get_height() * 0.35
-        self.space_height = self.get_height() * 0.05
-        self.message_height = self.get_height() * 0.4  # This should show 2 lines and scroll if more
-
-        self.background_surface = None
-        self.render_background(WHITE, RED)
-        self.render_text(message)
-
-    def update(self):
-        self.fill((0, 0, 0))
-        self.blit(self.background_surface, (0, 0))
-        if self.case_text:
-            self.case_text.draw(self,    10, self.space_height)
-            self.address_text.draw(self,  0, self.space_height * 2 + self.case_height)
-            self.details_text.draw(self,  0, self.space_height * 3 + self.case_height + self.address_height)
-        else:
-            self.message_text.draw(self, 0, 0)
-
-    def render_background(self, top_color_bg, bottom_color_bg):
-        self.background_surface = pygame.Surface(self.get_size())
-        self.background_surface.fill(pygame.Color(top_color_bg))
-
-        width = self.get_width()
-        height = int(self.get_height())
-        top_color = pygame.Color(top_color_bg)
-        bottom_color = pygame.Color(bottom_color_bg)
-
-        # Calculate color for each vertical pixel and draw it to the background
-        for y in range(height):
-
-            # Calculate the color for this row
-            t = y / (height - 1)
-            row_color = top_color.lerp(bottom_color, t)
-
-            # Fill the row with the color
-            rect = pygame.Rect(0, y, width, 1)
-            # rect = pygame.Rect(0, y + height, width, 1)
-            pygame.draw.rect(self.background_surface, row_color, rect)
-
-    def render_text(self, message):
-
-        self.event_obj = EventInfo(event_msg=message)
-
-        if self.event_obj.parsed:
-            case_str = CASE_LEVEL_DICT.get(self.event_obj.case_and_level, f"Gruppe: {self.event_obj.case_and_level}")
-            self.case_text = ScrollingTextX(case_str, self.case_height, BLACK)
-
-            if self.event_obj.street_number:
-                address_str = "{} {} - {}".format(self.event_obj.street_name, self.event_obj.street_number, self.event_obj.city.upper())
+            if key == 'seconds_between_images':
+                self.display_duration = value
+                self.logger.info("Set 'seconds_between_images' to {}".format(value))
+            elif key == 'fade_over_background':
+                self.fade_over_bg = value
+                self.logger.info("Set 'fade_over_background' to {}".format(value))
+            elif key == 'sort_alphabetically':
+                self.sort_alphabetically = value
+                self.logger.info("Set 'sort_alphabetically' to {}".format(value))
+                self.sort_images()
+            elif key == 'path_to_images':
+                self.path_to_images = value
+                self.logger.info("Set 'path_to_images' to {}".format(value))
+                self.load_images()
+            elif key == 'path_logo':
+                self.path_logo = value
+                self._header_surface_obj.configure(path_logo=self.path_logo)
+            elif key == 'company_name':
+                self.company_name = value
+                self._header_surface_obj.configure(company_name=self.company_name)
+            elif key == 'show_header':
+                self.show_header = value
+                self.logger.info("Set 'show_header' to {}".format(value))
             else:
-                address_str = "{} - {}".format(self.event_obj.street_name, self.event_obj.city.upper())
-            self.address_text = ScrollingTextX(address_str, self.address_height, BLACK)
+                self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
 
-            if self.event_obj.details:
-                details_str = self.event_obj.details
-            else:
-                details_str = self.event_obj.object_info
-            self.details_text = ScrollingTextX(details_str, self.details_height, BLACK)
-            color_bg = CASE_COLOR_DICT.get(self.event_obj.case_and_level, pygame.Color('grey'))
-            self.render_background(WHITE, color_bg)
-            self.message_text = None
 
+# ---- SCREEN THREAD / HANDLER ------------
+class Screen(Enum):
+    """
+    This enumeration holds all available screens for display.
+    ORDER: To define the classes within the enumeration, they must already be defined beforehand
+    """
+    event = EventScreen
+    clock = ClockScreen
+    splash = SplashScreen
+    slideshow = SlideshowScreen
+
+
+class GuiThread(threading.Thread):
+    def __init__(self, size, full_screen, logger=None):
+        threading.Thread.__init__(self)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
+
+        self.size        = size
+        self.full_screen = full_screen
+        self._running    = False
+        self._queue      = queue.Queue()
+
+        self._fps = FPS
+
+    def set_screen(self, data):
+        self._queue.put(data)
+
+    def run(self):
+
+        if self.full_screen:
+            window = pygame.display.set_mode(self.size, pygame.FULLSCREEN)
         else:
-            message_text = self.event_obj.message
-            self.message_text = ScrollingTextY(message_text, self.message_height, BLACK, self.get_size())
+            window = pygame.display.set_mode(self.size)
 
-            self.render_background(WHITE, pygame.Color('gold'))
+        pygame.display.set_caption("FireFinder")
+        clock = pygame.time.Clock()
 
-            self.case_text = None
-            self.address_text = None
-            self.details_text = None
+        # Set the SplashScreen as default start screen
+        self.set_screen(data=(Screen.splash, {"path_logo": "D:\\Firefinder\\logo.png"}))
+        screen_obj = None
+
+        self._running = True
+        while self._running:
+
+            # Check user interaction
+            for event in pygame.event.get():
+                # Did the user click the window close button?
+                if event.type == pygame.QUIT:
+                    self._running = False
+
+                # Did the user press ESC-button?
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_ESCAPE:
+                        self._running = False
+
+            # Check queue for data (new screen oder configuration for current screen)
+            try:
+                screen_name = None
+                screen_config = None
+                data = self._queue.get_nowait()
+                if isinstance(data, tuple):
+                    screen_name = data[0]
+                    screen_config = data[1]
+                elif isinstance(data, Screen):
+                    screen_name = data
+                elif isinstance(data, dict):
+                    screen_config = data
+                else:
+                    self.logger.error(f"Unknown data type '{type(data)}' received from queue")
+
+                if screen_name is not None:
+                    screen_obj = screen_name.value(size=window.get_size(), logger=self.logger)
+
+                if screen_config is not None:
+                    if hasattr(screen_obj, "configure"):
+                        screen_obj.configure(**screen_config)
+                    else:
+                        self.logger.error(f"Failed to configer {screen_obj.__class__.__name__}, this object dies not have a 'configure' attribute")
+            except queue.Empty:
+                pass
+
+            # Fill the background with white
+            window.fill((255, 255, 255))
+            screen_obj.update()
+            window.blit(screen_obj, (0, 0))
+            pygame.display.flip()
+
+            # Control the FPS
+            clock.tick(self._fps)
+
+    def stop(self):
+        self._running = False
+        pygame.quit()
+
+
+class GuiHandler(object):
+    def __init__(self, logger=None, full_screen=True, company_logo=""):
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
+
+        self.full_screen = full_screen
+        self.company_logo = company_logo
+        self._thread = None
+
+        screen_info = pygame.display.Info()
+        if self.full_screen:
+            self.size = (screen_info.current_w, screen_info.current_h)
+        else:
+            self.size = (screen_info.current_w * 0.9, screen_info.current_h * 0.9)
+
+    def set_screen_and_config(self, screen_name: Screen, screen_config: dict):
+        self._thread.set_screen((screen_name, screen_config))
+
+    def set_screen(self, screen_name: Screen):
+        self._thread.set_screen(screen_name)
+
+    def set_configuration(self, screen_config: dict):
+        self._thread.set_screen(screen_config)
+
+    def start(self):
+        self._thread = GuiThread(size=self.size, full_screen=self.full_screen, logger=self.logger)
+
+        # Deactivate mouse over GUI and set the SplashScreen as default start screen
+        pygame.mouse.set_visible(False)
+        self.set_screen_and_config(screen_name=Screen.splash, screen_config={"path_logo": self.company_logo})
+
+        self._thread.start()
+
+    def stop(self):
+        self._thread.stop()
+        self._thread.join()
+
+    def is_running(self):
+        return self._thread.is_alive()
 
 
 def test_screen_top(screen_obj):
@@ -1489,22 +1690,31 @@ def test_slideshow(screen_obj):
 if __name__ == "__main__":
     this_screen = pygame.display.Info()
     pygame.mouse.set_visible(False)
-    # screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
-    screen = pygame.display.set_mode((this_screen.current_w, 500))
+    screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
+    # screen = pygame.display.set_mode((this_screen.current_w, 500))
     # screen = pygame.display.set_mode((500, 500))
-    # off_obj = SplashScreen(path_logo="D:\\Firefinder\\logo.png")
-    # slideshow_obj = SlideshowScreen((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
+    splash_screen = SplashScreen((this_screen.current_w, this_screen.current_h), path_logo="D:\\Firefinder\\logo.png")
+    # slideshow_obj = SlideshowScreen((this_screen.current_w, this_screen.current_h), path_to_images="D:\\Firefinder\\Slideshow")
     # analog_clock_surface = AnalogClockSurface((this_screen.current_w, 1200))
     # digital_clock_surface = DigitalClockSurface((this_screen.current_w, 300))
-    # clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
-    # clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
+    clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
     # scrolling = ScrollingTextY(text="Das ist ein sehr sehr sehr langer Text welcher wohl nicht platz hat und daher in Laufschrift angezeigt werden muss", font_size=100, font_color=BLACK, screen_size=(500, 500))
     # scrolling = ScrollingTextY(text="Das ist ein kurzer text", font_size=100, font_color=BLACK, screen_size=(500, 500))
     # event_screen = MessageSurface((this_screen.current_w, 400), message="AA, AA Sprinkler, Ittigen;Ey,19, Geschäftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)")
     # event_screen = MessageSurface((this_screen.current_w, 400), message="H2, Öl, Benzin, Ittigen;Allmitstrasse, Flüssigkeiten aufnehmen nach Pw-Pw, 1 Fahrzeug auf der Seite, POL vor Ort, Ittigen Schönbühl Kreuzung")
-    progress_bar = ProgressBarSurface((500, 100), 30)
+    # progress_bar = ProgressBarSurface((500, 100), 30)
     # response_order = ResponseOrderSurface((800, 100), ["Fz_1.png", "Fz_2.png", "Fz_3.png"])
-    response_order = ResponseOrderSurface((500, 100), ["Fz_1.png", "Fz_2.png", "Fz_3.png", "Fz_4.png", "Fz_5.png", "Fz_6.png", "Fz_7.png", "Fz_8.png", "Fz_9.png", ])
+    # response_order = ResponseOrderSurface((500, 100), ["Fz_1.png", "Fz_2.png", "Fz_3.png", "Fz_4.png", "Fz_5.png", "Fz_6.png", "Fz_7.png", "Fz_8.png", "Fz_9.png", ])
+    event_screen = EventScreen(size=(this_screen.current_w, this_screen.current_h),
+                               show_message_bar=True,
+                               alarm_message="AA, AA Sprinkler, Ittigen;Ey,19, Geschäftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)",
+                               show_progress_bar=True,
+                               progress_bar_duration= 60,
+                               show_response_order=True,
+                               equipment_list=["Fz_1.png", "Fz_2.png", "Fz_3.png", "Fz_4.png", "Fz_5.png", "Fz_6.png", "Fz_7.png", "Fz_8.png", "Fz_9.png", ],
+                               image_path_left="D:\\FireFinder\\direction_1.jpg",
+                               image_path_right="D:\\FireFinder\\direction_detail_1.jpg",
+                               )
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -1522,24 +1732,27 @@ if __name__ == "__main__":
         # pygame.quit()
         # break
 
-        # screen.blit(off_obj.get_surface(), (0, 0))
+        # splash_screen.update()
+        # screen.blit(splash_screen, (0, 0))
         # slideshow_obj.update()
         # screen.blit(slideshow_obj, (0, 0))
         # analog_clock_surface.update()
         # screen.blit(analog_clock_surface, (0, 0))
         # digital_clock_surface.update()
         # screen.blit(digital_clock_surface, (0, 0))
-        # clock_surface.update()
-        # screen.blit(clock_surface, (0, 0))
+        clock_surface.update()
+        screen.blit(clock_surface, (0, 0))
         # clock_surface.update()
         # screen.blit(clock_surface, (0, 0))
         # scrolling.draw(surface=screen, x=0, y=0)
         # event_screen.update()
         # screen.blit(event_screen, (0, 0))
-        progress_bar.update()
-        screen.blit(progress_bar, (0, 0))
-        response_order.update()
-        screen.blit(response_order, (0, progress_bar.get_height()))
+        # progress_bar.update()
+        # screen.blit(progress_bar, (0, 0))
+        # response_order.update()
+        # screen.blit(response_order, (0, progress_bar.get_height()))
+        # event_screen.update()
+        # screen.blit(event_screen, (0, 0))
         pygame.display.flip()
         clock.tick(FPS)
 

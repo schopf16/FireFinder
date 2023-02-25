@@ -40,7 +40,7 @@ from firefinder.cecLibrary import TvPower
 from firefinder.ff_miscellaneous import RepeatingTimer
 
 from pathlib2 import Path
-from firefinder.util_screen import GuiHandler
+from firefinder.util_screen import GuiHandler, Screen
 from firefinder.util_logger import Logger
 
 
@@ -752,9 +752,14 @@ def main():
 
     gui = GuiHandler(logger            = log_obj,
                      full_screen       = config_obj.full_screen_enable,
-                     company_path_logo = config_obj.company_path_logo,
-                     company_name      = config_obj.company_name)
+                     company_logo      = config_obj.company_path_logo,)
     gui.start()
+    time.sleep(5)
+    gui.set_screen(screen_name=Screen.event)
+    time.sleep(5)
+    gui.set_screen(screen_name=Screen.clock)
+    time.sleep(5)
+    gui.set_screen_and_config(screen_name=Screen.slideshow, screen_config={"path_to_images": "D:\\Firefinder\\Slideshow"})
     while gui.is_running():
         time.sleep(1)
 
