@@ -1,7 +1,7 @@
 # -*- coding: utf-8-*-
 
 import os
-import sys
+import re
 import math
 import time
 import queue
@@ -9,7 +9,6 @@ import random
 import pygame
 import threading
 
-from pathlib2 import Path
 from datetime import datetime
 from firefinder.util_logger import Logger
 
@@ -24,6 +23,57 @@ BLUE  = (0, 0, 255)
 WHITE = (255, 255, 255)
 
 FPS = 30
+
+THIS_FILE_PATH = os.path.dirname(__file__)
+DEFAULT_FONT = os.path.join(THIS_FILE_PATH, "font", "Frutiger.ttf")
+DEFAULT_FONT_BOLD = os.path.join(THIS_FILE_PATH, "font", "Frutiger_bold.ttf")
+
+CASE_LEVEL_DICT = {
+    "AA": "Automatischer Alarm Feuer",
+    "A1": "Brand klein",
+    "A2": "Brand mittel",
+    "A3": "Brand gross",
+    "B1": "Elementar klein",
+    "B2": "Elementar mittel",
+    "B3": "Elementar gross",
+    "C1": "Technische Hilfeleistung klein",
+    "C2": "Technische Hilfeleistung mittel",
+    "C3": "Technische Hilfeleistung gross",
+    "D1": "Öl, Benzin, Gas klein",
+    "D2": "Öl, Benzin, Gas mittel",
+    "D3": "Öl, Benzin, Gas gross",
+    "E1": "ABC klein",
+    "E2": "ABC mittel",
+    "E3": "ABC gross",
+    "F1": "Personenrettung bei Unfall klein",
+    "F2": "Personenrettung bei Unfall mittel",
+    "F3": "Personenrettung bei Unfall gross",
+    "G1": "Tierrettung klein",
+    "G2": "Tierrettung mittel",
+}
+CASE_COLOR_DICT = {
+    "AA": pygame.Color((255, 154, 153)),
+    "A1": pygame.Color((255, 154, 153)),
+    "A2": pygame.Color((255, 154, 153)),
+    "A3": pygame.Color((255, 154, 153)),
+    "B1": pygame.Color((175, 214, 255)),  # Lightblue
+    "B2": pygame.Color((175, 214, 255)),
+    "B3": pygame.Color((175, 214, 255)),
+    "C1": pygame.Color((179, 255, 168)),
+    "C2": pygame.Color((179, 255, 168)),
+    "C3": pygame.Color((179, 255, 168)),
+    "D1": pygame.Color((255, 255, 143)),
+    "D2": pygame.Color((255, 255, 143)),
+    "D3": pygame.Color((255, 255, 143)),
+    "E1": pygame.Color((255, 184, 255)),
+    "E2": pygame.Color((255, 184, 255)),
+    "E3": pygame.Color((255, 184, 255)),
+    "F1": pygame.Color((173, 255, 255)),
+    "F2": pygame.Color((173, 255, 255)),
+    "F3": pygame.Color((173, 255, 255)),
+    "G1": pygame.Color('grey'),
+    "G2": pygame.Color('grey'),
+}
 
 
 def scale_image(image_obj, max_width=None, max_height=None, crop=False, keep_ratio=True):
@@ -57,6 +107,96 @@ def scale_image(image_obj, max_width=None, max_height=None, crop=False, keep_rat
     else:
         # If scaling, return the scaled image directly
         return scaled_image
+
+
+class EventInfo(object):
+    """
+
+    """
+    def __init__(self, event_msg):
+        self.message        = event_msg
+        self.case_and_level = ""
+        self.event_keyword  = ""
+        self.city           = ""
+        self.street_name    = ""
+        self.street_number  = ""
+        self.details        = ""  # May empty on an automatic alarm
+
+        # Only available if self.case_and_level is 'AA'
+        self.alarmnet_number = ""
+        self.object_info     = ""
+
+        self.parsed = self.parse()
+
+    def parse(self):
+        """
+        example message:
+
+        AA, AA Sprinkler, Ittigen;Ey,19, Geschäftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)
+
+        D1, Öl, Benzin, Ittigen;Allmitstrasse, Flüssigkeiten aufnehmen nach Pw-Pw, 1 Fahrzeug auf der Seite, POL vor
+          Ort, Ittigen Schönbühl Kreuzung
+
+        AA, AA Feuer, Ittigen;Mühlestrasse,2, Verwaltungszentrum UVEK Ittigen, 225 276 (Verwaltungszentrum Mühlestrasse
+          Ittige
+
+        Alarmmessage:
+            [Fall + Stufe] [Einsatzstichwort] [Ort, Adresse] [Zusatz zu Ort] [Betrifft]
+                optional für AA [Objekt-Info, Alarmnetnummer]
+        :return:
+        """
+
+        parsed = False
+        if ';' in self.message:
+
+            # If the message is parsable, it contain a ';'
+            event_list = self.message.split(';')
+            first = event_list[0]
+            second = " ".join(event_list[1:])  # In case there is a second ';' somewhere in the description
+
+            # The _first_ part shall contain the case, level, event-keyword and city
+            first_list = first.split(',')
+            self.case_and_level = first_list[0].strip()
+            self.event_keyword = ",".join(first_list[1:-1]).strip()
+            self.city = first_list[-1].strip()
+
+            # The _second_ part shall contain street_name, street_number (optional)
+            second_list = second.split(',')
+            self.street_name = second_list[0].strip()
+
+            street_nbr = second_list[1].strip()
+            if str(street_nbr).isnumeric():
+                self.street_number = street_nbr
+                del second_list[1]  # The second element was detected as street number, remove from list
+
+            if self.case_and_level == "AA":
+                # This is an automatic alarm. Expect [object-info, alarmnetnbr] in the message
+                alarmnet_index = 0
+                alarmnet_found = False
+
+                # Search for the alarmnet number in the list
+                for alarmnet_index in range(0, len(second_list)):
+                    stripped_string = str(second_list[alarmnet_index].strip())
+                    if re.match(r"(\d{3}\s\d{3})", stripped_string, re.UNICODE):
+                        self.alarmnet_number = stripped_string
+                        alarmnet_found = True
+                        break
+
+                # If a alarmnet number was found, the element in front shall contain the object-info
+                if alarmnet_found:
+                    self.object_info = second_list[alarmnet_index-1].strip()
+
+                # Check if additional information's are sent
+                if alarmnet_found and alarmnet_index > 2:
+                    self.details = " ".join(second_list[:alarmnet_index-2])
+
+            else:
+                # No automatic alarm. Take everything after the address as additional info (street-nbr is already cutted)
+                self.details = ",".join(second_list[1:])
+
+            parsed = True
+
+        return parsed
 
 
 class GuiThread(threading.Thread):
@@ -154,11 +294,13 @@ class GuiHandler(object):
     def start(self):
         self._thread = GuiThread(size=self.size, full_screen=self.full_screen, logger=self.logger)
         self.set_screen(surface_obj=self._off_surface_obj)
+        pygame.mouse.set_visible(False)
         self._thread.start()
 
     def stop(self):
         self._thread.stop()
         self._thread.join()
+        pygame.mouse.set_visible(True)
 
     def is_running(self):
         return self._thread.is_alive()
@@ -794,6 +936,260 @@ class ClockSurface(pygame.Surface):
                 self._digital_clk.configure(show_second=value)
 
 
+class ScrollingTextX(object):
+    def __init__(self, text, font_size, font_color, font=None):
+        super(ScrollingTextX, self).__init__()
+
+        self.font_color = font_color
+        self._text = text  # Use update_text to change text during runtime
+
+        self.scroll_speed_base = 9
+        self.scroll_speed = self.scroll_speed_base
+
+        self.image = None
+        self.rect = None
+        self.font = None
+        self.font_size = font_size
+
+        # Use update_font to change font during runtime
+        self._fontname = DEFAULT_FONT_BOLD if font is None else font
+        self.update_font(self._fontname, self.font_size)
+
+    def render(self):
+        self.image = self.font.render(self._text, True, self.font_color)
+        self.rect = self.image.get_rect()
+        self.rect.left = 0
+
+    def update_text(self, text):
+        self._text = text
+        self.render()
+
+    def update_font(self, fontname, size):
+        self._fontname = fontname
+        self.font_size = size
+
+        # Check if font name is installed or is it a font-file
+        if ".ttf" in fontname:
+            self.font = pygame.font.Font(fontname, int(size))
+        else:
+            self.font = pygame.font.SysFont(fontname, int(size))
+
+        self.render()
+
+    def update_color(self, color):
+        self.font_color = color
+        self.render()
+
+    def draw(self, surface: pygame.Surface, x, y):
+
+        rect = self.rect.move(x, y)
+        surface.blit(self.image, rect)
+
+        # Check if the text fit to the screen. If not shift slightly to left for next drawing
+        if self.rect.width > surface.get_width():
+            self.rect.move_ip(-self.scroll_speed, 0)
+
+            # Increase speed if right text side is in the middle and reduse speed if left side reaches again the middle
+            if self.rect.right <= surface.get_width() * 0.5:
+                self.scroll_speed = self.scroll_speed_base * 8
+            elif self.rect.left <= surface.get_width() * 0.5:
+                self.scroll_speed = self.scroll_speed_base
+            if self.rect.right <= 0:
+                self.rect.left = surface.get_width()
+
+
+class ScrollingTextY(object):
+    def __init__(self, text, font_size, font_color, screen_size, font=None):
+        super(ScrollingTextY, self).__init__()
+
+        self.font_color = font_color
+        self._text = text  # Use update_text to change text
+
+        self.screen_size = screen_size
+        self.max_width = screen_size[0]
+        self.max_height = screen_size[1]
+        self.overall_height = None  # will be calculated by the render method
+
+        self.scroll_speed_base = 2
+        self.scroll_speed = self.scroll_speed_base
+
+        self.image_list = []
+        self.rect_list = []
+        self.font = None
+        self.font_size = font_size
+
+        # Use update_font to change the font name
+        self._fontname = DEFAULT_FONT_BOLD if font is None else font
+        self.update_font(self._fontname, self.font_size)
+
+    def render(self):
+        font_height = self.font.get_linesize()
+
+        # Split text into words and combine them to lines where each line shall not width than the surface
+        line = ""
+        lines = []
+        words = self._text.split()
+        for word in words:
+            if self.font.size(line + word)[0] > self.max_width:
+                lines.append(line)
+                line = ""
+            line += word + " "
+        lines.append(line)
+
+        # Create a text surface for every line
+        self.image_list = []
+        self.rect_list = []
+        for i, line in enumerate(lines):
+            text_surface = self.font.render(line, True, self.font_color)
+            text_rect = text_surface.get_rect()
+            text_rect.topleft = (0, i * font_height)
+            self.image_list.append(text_surface)
+            self.rect_list.append(text_rect)
+
+        self.overall_height = font_height * len(lines)
+
+    def _restart_rect(self):
+        font_height = self.font.get_linesize()
+
+        # Re-arrange images to start from the bottom
+        for i, rect in enumerate(self.rect_list):
+            rect.topleft = (0, i * font_height + self.max_height)
+            self.rect_list[i] = rect
+
+    def draw(self, surface: pygame.Surface, x, y):
+
+        # Only scroll if text is not fitting into surface, otherwise show text middle centered
+        if self.overall_height > self.max_height:
+            for i, (image, rect) in enumerate(zip(self.image_list, self.rect_list)):
+                current_rect = rect.move(x, y)
+                surface.blit(image, current_rect)
+
+                # Change Y-axis for next drawing. This simulates a moving text upwards
+                rect.move_ip(0, -self.scroll_speed)
+                self.rect_list[i] = rect
+
+            # Check if last line reached the middle of the screen
+            first_rect = self.rect_list[0]
+            last_rect = self.rect_list[-1]
+            if last_rect.bottom <= (self.max_height // 2) + y:
+                self.scroll_speed = self.scroll_speed_base * 8
+            elif first_rect.top <= (self.max_height // 2) + y:
+                self.scroll_speed = self.scroll_speed_base
+
+            if last_rect.bottom <= y:
+                self._restart_rect()
+
+        else:
+            upper_space = (self.max_height - self.overall_height) // 2
+            for i, (image, rect) in enumerate(zip(self.image_list, self.rect_list)):
+                rect.move_ip(x, y + upper_space)
+                surface.blit(image, rect)
+
+    def update_font(self, fontname, size):
+        self._fontname = fontname
+        self.font_size = size
+
+        # Check if font name is installed or is it a font-file
+        if ".ttf" in fontname:
+            self.font = pygame.font.Font(fontname, int(size))
+        else:
+            self.font = pygame.font.SysFont(fontname, int(size))
+
+        self.render()
+
+    def update_text(self, text):
+        self._text = text
+        self.render()
+
+
+class MessageSurface(pygame.Surface):
+    def __init__(self, size, logger=None, **kwargs):
+        super(MessageSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\MessageSurface.log")
+
+        message = kwargs.get("message", "")
+        self.event_obj = None
+
+        self.case_text = None
+        self.address_text = None
+        self.details_text = None
+        self.message_text = None
+
+        self.case_height = self.get_height() * 0.1
+        self.address_height = self.get_height() * 0.35
+        self.details_height = self.get_height() * 0.35
+        self.space_height = self.get_height() * 0.05
+        self.message_height = self.get_height() * 0.4  # This should show 2 lines and scroll if more
+
+        self.background_surface = None
+        self.render_background(WHITE, RED)
+        self.render_text(message)
+
+    def update(self):
+        self.fill((0, 0, 0))
+        self.blit(self.background_surface, (0, 0))
+        if self.case_text:
+            self.case_text.draw(self,    10, self.space_height)
+            self.address_text.draw(self,  0, self.space_height * 2 + self.case_height)
+            self.details_text.draw(self,  0, self.space_height * 3 + self.case_height + self.address_height)
+        else:
+            self.message_text.draw(self, 0, 0)
+
+    def render_background(self, top_color_bg, bottom_color_bg):
+        self.background_surface = pygame.Surface(self.get_size())
+        self.background_surface.fill(pygame.Color(top_color_bg))
+
+        width = self.get_width()
+        height = int(self.get_height())
+        top_color = pygame.Color(top_color_bg)
+        bottom_color = pygame.Color(bottom_color_bg)
+
+        # Calculate color for each vertical pixel and draw it to the background
+        for y in range(height):
+
+            # Calculate the color for this row
+            t = y / (height - 1)
+            row_color = top_color.lerp(bottom_color, t)
+
+            # Fill the row with the color
+            rect = pygame.Rect(0, y, width, 1)
+            # rect = pygame.Rect(0, y + height, width, 1)
+            pygame.draw.rect(self.background_surface, row_color, rect)
+
+    def render_text(self, message):
+
+        self.event_obj = EventInfo(event_msg=message)
+
+        if self.event_obj.parsed:
+            case_str = CASE_LEVEL_DICT.get(self.event_obj.case_and_level, f"Gruppe: {self.event_obj.case_and_level}")
+            self.case_text = ScrollingTextX(case_str, self.case_height, BLACK)
+
+            if self.event_obj.street_number:
+                address_str = "{} {} - {}".format(self.event_obj.street_name, self.event_obj.street_number, self.event_obj.city.upper())
+            else:
+                address_str = "{} - {}".format(self.event_obj.street_name, self.event_obj.city.upper())
+            self.address_text = ScrollingTextX(address_str, self.address_height, BLACK)
+
+            if self.event_obj.details:
+                details_str = self.event_obj.details
+            else:
+                details_str = self.event_obj.object_info
+            self.details_text = ScrollingTextX(details_str, self.details_height, BLACK)
+            color_bg = CASE_COLOR_DICT.get(self.event_obj.case_and_level, pygame.Color('grey'))
+            self.render_background(WHITE, color_bg)
+            self.message_text = None
+
+        else:
+            message_text = self.event_obj.message
+            self.message_text = ScrollingTextY(message_text, self.message_height, BLACK, self.get_size())
+
+            self.render_background(WHITE, pygame.Color('gold'))
+
+            self.case_text = None
+            self.address_text = None
+            self.details_text = None
+
+
 def test_screen_top(screen_obj):
     def update_screen():
         header_obj.update()
@@ -916,12 +1312,23 @@ def test_slideshow(screen_obj):
 if __name__ == "__main__":
     this_screen = pygame.display.Info()
     screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
+    # dummy = EventInfo(event_msg="AA, AA Sprinkler, Ittigen;Ey,19, Geschaeftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)")
+    # dummy = EventInfo(event_msg="D1, Öl, Benzin, Ittigen;Allmitstrasse, Flüssigkeiten aufnehmen nach Pw-Pw, 1 Fahrzeug auf der Seite, POL vor Ort, Ittigen Schönbühl Kreuzung")
+    this_screen = pygame.display.Info()
+    pygame.mouse.set_visible(False)
+    # screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
+    # screen = pygame.display.set_mode((this_screen.current_w, 500))
     # screen = pygame.display.set_mode((1000, 800))
     # off_obj = OffSurface(path_logo="D:\\Firefinder\\logo.png")
     # slideshow_obj = SlideshowSurface((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
     # analog_clock_surface = AnalogClockSurface((this_screen.current_w, 1200))
     # digital_clock_surface = DigitalClockSurface((this_screen.current_w, 300))
     clock_surface = ClockSurface((this_screen.current_w, this_screen.current_h))
+    # clock_surface = ClockSurface((this_screen.current_w, this_screen.current_h))
+    # scrolling = ScrollingTextY(text="Das ist ein sehr sehr sehr langer Text welcher wohl nicht platz hat und daher in Laufschrift angezeigt werden muss", font_size=100, font_color=BLACK, screen_size=(500, 500))
+    # scrolling = ScrollingTextY(text="Das ist ein kurzer text", font_size=100, font_color=BLACK, screen_size=(500, 500))
+    event_screen = MessageSurface((this_screen.current_w, 400), message="AA, AA Sprinkler, Ittigen;Ey,19, Geschäftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)")
+    # event_screen = MessageSurface((this_screen.current_w, 400), message="H2, Öl, Benzin, Ittigen;Allmitstrasse, Flüssigkeiten aufnehmen nach Pw-Pw, 1 Fahrzeug auf der Seite, POL vor Ort, Ittigen Schönbühl Kreuzung")
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -948,6 +1355,11 @@ if __name__ == "__main__":
         # screen.blit(digital_clock_surface, (0, 0))
         clock_surface.update()
         screen.blit(clock_surface, (0, 0))
+        # clock_surface.update()
+        # screen.blit(clock_surface, (0, 0))
+        # scrolling.draw(surface=screen, x=0, y=0)
+        event_screen.update()
+        screen.blit(event_screen, (0, 0))
         pygame.display.flip()
         clock.tick(FPS)
 
