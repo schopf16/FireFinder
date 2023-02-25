@@ -27,6 +27,7 @@ FPS = 30
 THIS_FILE_PATH = os.path.dirname(__file__)
 DEFAULT_FONT = os.path.join(THIS_FILE_PATH, "font", "Frutiger.ttf")
 DEFAULT_FONT_BOLD = os.path.join(THIS_FILE_PATH, "font", "Frutiger_bold.ttf")
+DEFAULT_PIC_DIR = os.path.join(THIS_FILE_PATH, "pic")
 
 CASE_LEVEL_DICT = {
     "AA": "Automatischer Alarm Feuer",
@@ -892,7 +893,7 @@ class DigitalClockSurface(pygame.Surface):
 
 
 class ClockScreen(pygame.Surface):
-    def __init__(self, size, logger=None, **kwargs):
+    def __init__(self, size, logger=None):
         super(ClockScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockScreen.log")
 
@@ -961,8 +962,9 @@ class ScrollingTextX(object):
         self.rect.left = 0
 
     def update_text(self, text):
-        self._text = text
-        self.render()
+        if self._text != text:
+            self._text = text
+            self.render()
 
     def update_font(self, fontname, size):
         self._fontname = fontname
@@ -979,6 +981,9 @@ class ScrollingTextX(object):
     def update_color(self, color):
         self.font_color = color
         self.render()
+
+    def get_rect(self):
+        return self.image.get_rect()
 
     def draw(self, surface: pygame.Surface, x, y):
 
@@ -1100,6 +1105,178 @@ class ScrollingTextY(object):
     def update_text(self, text):
         self._text = text
         self.render()
+
+
+class ProgressBarSurface(pygame.Surface):
+    def __init__(self, size, duration_sec, color_bg=GREY, font=None):
+        super(ProgressBarSurface, self).__init__(size)
+
+        # Store size and color
+        self.size = size
+        self.width = size[0]
+        self.height = size[1]
+        self.color_bg = color_bg
+        self.color_text = WHITE
+        self.borderwidth = 2
+
+        # Create instance for scrolling text (if progressbar is smaller than text to display)
+        self._text_surface = ScrollingTextX("", self.height * 0.9, self.color_text, font)
+
+        # Store timing variables for doing progress
+        self._duration_sec = duration_sec
+        self.max_value = 100
+        self._start_time = 0
+
+        self.color_scheme = [(0, 'red'),
+                             (90, 'orange'),
+                             (100, 'green')
+                             ]
+        self.text_scheme = [(0, "Warte auf Atemschutz-Geräteträger"),
+                            (90, "Bereitmachen zum Ausrücken"),
+                            (100, "Losfahren, auch bei zuwenig Atemschutz-Geräteträger")
+                            ]
+
+    def update(self):
+        if self._start_time == 0:
+            self.start_timer(self._duration_sec)
+
+        time_elapsed_ms = pygame.time.get_ticks() - self._start_time
+        time_duration_ms = self._duration_sec * 1000
+        value = min(time_elapsed_ms / time_duration_ms * 100, self.max_value)
+
+        progress = int((value / self.max_value) * self.width)
+
+        # Select foreground color and text depend on the current progres
+        index_color = 0
+        index_text = 0
+        for i in range(len(self.color_scheme)):
+            if int(value) >= self.color_scheme[i][0]:
+                index_color = i
+        for i in range(len(self.text_scheme)):
+            if int(value) >= self.text_scheme[i][0]:
+                index_text = i
+
+        # Draw background
+        bg_rect = pygame.Rect(self.borderwidth, self.borderwidth, self.width-self.borderwidth, self.height-self.borderwidth)
+        pygame.draw.rect(self, self.color_bg, bg_rect)
+
+        # Draw foreground
+        fg_rect = pygame.Rect(self.borderwidth, self.borderwidth, progress, self.height-self.borderwidth)
+        pygame.draw.rect(self, self.color_scheme[index_color][1], fg_rect)
+
+        # Draw text
+        self._text_surface.update_text(self.text_scheme[index_text][1])
+        text_rect = self._text_surface.get_rect()
+        # If text is smaller than progress bar, place in the center
+        x_axis = max((self.width - text_rect.width) // 2, 0)
+        y_axis = max((self.height - text_rect.height) // 2, 0)
+        self._text_surface.draw(surface=self, x=x_axis, y=y_axis)
+
+        if self.borderwidth:
+            pygame.draw.rect(self, BLACK, (0, 0, self.width, self.height), self.borderwidth)
+
+    def start_timer(self, duration):
+        self._duration_sec = duration
+        self._start_time = pygame.time.get_ticks()
+
+
+class ResponseOrderSurface(pygame.Surface):
+    def __init__(self, size, equipment_list=None, color_bg=GREY, logger=None):
+        super(ResponseOrderSurface, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ResponseOrderSurface.log")
+
+        # Store size and color
+        self.size = size
+        self.width = size[0]
+        self.height = size[1]
+
+        self.borderwidth = 2
+        self.color_bg = color_bg
+        self._equipment_list = []
+        self._equipment_image_list = []
+        self._equipment_rect_list = []
+        self._equipment_images_width = 0
+
+        self.rect = None
+        self.scroll_speed_base = 2
+        self.scroll_speed = self.scroll_speed_base
+
+        if equipment_list is not None:
+            self.update_order(equipment_list=equipment_list)
+
+    def update_order(self, equipment_list):
+        if self._equipment_list != equipment_list:
+            # Delete old entry, will exchange all
+            self._equipment_list = []
+            self._equipment_image_list = []
+            self._equipment_images_width = 0
+
+            for equipment_name in equipment_list:
+                # Load image and scale to available space
+                image_path = os.path.join(DEFAULT_PIC_DIR, equipment_name)
+                if not os.path.isfile(image_path):
+                    self.logger.error(f"Could not find picture {image_path}, take 'no_image' instead")
+                    image_path = os.path.join(DEFAULT_PIC_DIR, "bg",  "no_image.png")
+
+                image_obj = pygame.image.load(image_path)
+                image_obj = scale_image(image_obj=image_obj, max_width=self.width, max_height=self.height-10)
+                image_rect = image_obj.get_rect()
+                # image_rect.left = self._equipment_images_width
+                image_rect.topleft = (self._equipment_images_width, (self.height - image_rect.height)//2)
+                self._equipment_images_width += image_obj.get_width()
+
+                self._equipment_list.append(equipment_name)
+                self._equipment_image_list.append(image_obj)
+                self._equipment_rect_list.append(image_rect)
+
+            # If at least one image is in list, take the first as reference for location
+            if self._equipment_image_list:
+                self.rect = self._equipment_image_list[0].get_rect()
+
+    def _restart_rect(self):
+        # Re-arrange images to start from the right side
+        x_axis_offset = 0
+        for i, rect in enumerate(self._equipment_rect_list):
+            rect.topleft = (self.width + x_axis_offset, 0)
+            x_axis_offset += rect.width
+            self._equipment_rect_list[i] = rect
+
+    def update(self):
+        self.fill(self.color_bg)
+
+        x = self.borderwidth + 1 # Offset of 5 pixels as the boarder already takes 4 pixel
+
+        # Only scroll if all images are wither than space available
+        if self._equipment_images_width > self.width:
+            for i, (image, rect) in enumerate(zip(self._equipment_image_list, self._equipment_rect_list)):
+                current_rect = rect.move(x, 0)
+                self.blit(image, current_rect)
+
+                # Change x-axis for next drawing. This simulates a moving text upwards
+                rect.move_ip(-self.scroll_speed, 0)
+                self._equipment_rect_list[i] = rect
+
+            # Check if last image reached the middle of the screen
+            first_rect = self._equipment_rect_list[0]
+            last_rect = self._equipment_rect_list[-1]
+            if last_rect.right <= (self.width // 2) + x:
+                self.scroll_speed = self.scroll_speed_base * 8
+            elif first_rect.left <= (self.width // 2) + x:
+                self.scroll_speed = self.scroll_speed_base
+
+            if last_rect.right <= x:
+                self._restart_rect()
+
+        else:
+            next_image_left = self.rect.left + x
+            for image_obj in self._equipment_image_list:
+                rect = image_obj.get_rect()
+                rect.move_ip(next_image_left, 0)
+                next_image_left += rect.width
+                self.blit(image_obj, rect)
+
+        if self.borderwidth:
+            pygame.draw.rect(self, BLACK, (0, 0, self.width, self.height), self.borderwidth)
 
 
 class MessageSurface(pygame.Surface):
@@ -1311,24 +1488,23 @@ def test_slideshow(screen_obj):
 
 if __name__ == "__main__":
     this_screen = pygame.display.Info()
-    screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
-    # dummy = EventInfo(event_msg="AA, AA Sprinkler, Ittigen;Ey,19, Geschaeftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)")
-    # dummy = EventInfo(event_msg="D1, Öl, Benzin, Ittigen;Allmitstrasse, Flüssigkeiten aufnehmen nach Pw-Pw, 1 Fahrzeug auf der Seite, POL vor Ort, Ittigen Schönbühl Kreuzung")
-    this_screen = pygame.display.Info()
     pygame.mouse.set_visible(False)
     # screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
-    # screen = pygame.display.set_mode((this_screen.current_w, 500))
-    # screen = pygame.display.set_mode((1000, 800))
+    screen = pygame.display.set_mode((this_screen.current_w, 500))
+    # screen = pygame.display.set_mode((500, 500))
     # off_obj = SplashScreen(path_logo="D:\\Firefinder\\logo.png")
     # slideshow_obj = SlideshowScreen((this_screen.current_w, 800), path_to_images="D:\\Firefinder\\Slideshow")
     # analog_clock_surface = AnalogClockSurface((this_screen.current_w, 1200))
     # digital_clock_surface = DigitalClockSurface((this_screen.current_w, 300))
-    clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
+    # clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
     # clock_surface = ClockScreen((this_screen.current_w, this_screen.current_h))
     # scrolling = ScrollingTextY(text="Das ist ein sehr sehr sehr langer Text welcher wohl nicht platz hat und daher in Laufschrift angezeigt werden muss", font_size=100, font_color=BLACK, screen_size=(500, 500))
     # scrolling = ScrollingTextY(text="Das ist ein kurzer text", font_size=100, font_color=BLACK, screen_size=(500, 500))
-    event_screen = MessageSurface((this_screen.current_w, 400), message="AA, AA Sprinkler, Ittigen;Ey,19, Geschäftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)")
+    # event_screen = MessageSurface((this_screen.current_w, 400), message="AA, AA Sprinkler, Ittigen;Ey,19, Geschäftshaus Bermuda Ittigen, 223 326 (Geschäftshaus Bermuda Ittigen)")
     # event_screen = MessageSurface((this_screen.current_w, 400), message="H2, Öl, Benzin, Ittigen;Allmitstrasse, Flüssigkeiten aufnehmen nach Pw-Pw, 1 Fahrzeug auf der Seite, POL vor Ort, Ittigen Schönbühl Kreuzung")
+    progress_bar = ProgressBarSurface((500, 100), 30)
+    # response_order = ResponseOrderSurface((800, 100), ["Fz_1.png", "Fz_2.png", "Fz_3.png"])
+    response_order = ResponseOrderSurface((500, 100), ["Fz_1.png", "Fz_2.png", "Fz_3.png", "Fz_4.png", "Fz_5.png", "Fz_6.png", "Fz_7.png", "Fz_8.png", "Fz_9.png", ])
     clock = pygame.time.Clock()
     while True:
         for event in pygame.event.get():
@@ -1353,13 +1529,17 @@ if __name__ == "__main__":
         # screen.blit(analog_clock_surface, (0, 0))
         # digital_clock_surface.update()
         # screen.blit(digital_clock_surface, (0, 0))
-        clock_surface.update()
-        screen.blit(clock_surface, (0, 0))
+        # clock_surface.update()
+        # screen.blit(clock_surface, (0, 0))
         # clock_surface.update()
         # screen.blit(clock_surface, (0, 0))
         # scrolling.draw(surface=screen, x=0, y=0)
-        event_screen.update()
-        screen.blit(event_screen, (0, 0))
+        # event_screen.update()
+        # screen.blit(event_screen, (0, 0))
+        progress_bar.update()
+        screen.blit(progress_bar, (0, 0))
+        response_order.update()
+        screen.blit(response_order, (0, progress_bar.get_height()))
         pygame.display.flip()
         clock.tick(FPS)
 
