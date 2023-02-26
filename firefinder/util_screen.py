@@ -14,6 +14,7 @@ from datetime import datetime
 from firefinder.util_logger import Logger
 
 pygame.init()
+pygame.display.set_caption("FireFinder")
 
 # Colors
 BLACK = (0, 0, 0)
@@ -214,7 +215,7 @@ class EventInfo(object):
 # ---- SURFACES ---------------------------
 class HeaderSurface(pygame.Surface):
     def __init__(self, size, logger=None, color_bg=BLACK, color_fg=WHITE, show_time=True, show_second=True,
-                 show_date=True, show_weekday=True, show_logo=True, path_logo="", company_name=""):
+                 show_date=True, show_weekday=True, show_logo=True, company_path_logo="", company_name=""):
         super(HeaderSurface, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\HeaderSurface.log")
 
@@ -236,9 +237,9 @@ class HeaderSurface(pygame.Surface):
                              'Sonntag']     # Weekday 6
 
         # configs for miscellaneous
-        self.show_logo    = show_logo
-        self.path_logo    = path_logo
-        self.company_name = company_name
+        self.show_logo         = show_logo
+        self.company_path_logo = company_path_logo
+        self.company_name      = company_name
 
         self.image = self._get_logo_surface()
 
@@ -266,9 +267,9 @@ class HeaderSurface(pygame.Surface):
 
     def _get_logo_surface(self):
         image = None
-        if os.path.isfile(self.path_logo):
+        if os.path.isfile(self.company_path_logo):
             # Load image
-            image = pygame.image.load(self.path_logo)
+            image = pygame.image.load(self.company_path_logo)
 
             # The image shall be 4 pixel smaller than the available space
             image = scale_image(image_obj=image, max_height=self.get_height() - 4)
@@ -276,43 +277,35 @@ class HeaderSurface(pygame.Surface):
         return image
 
     def configure(self, **kw):
-
-        if len(kw) == 0:  # return a dict of the current configuration
-            cfg = {'show_second': self.show_second, 'show_time': self.show_time, 'show_date': self.show_date,
-                   'show_weekday': self.show_weekday, 'path_logo': self.path_logo, 'show_logo': self.show_logo,
-                   'company_name': self.company_name, 'bg_color': self.bg_color, 'fg_color': self.fg_color}
-            return cfg
-
-        else:  # do a configure
-            for key, value in list(kw.items()):
-                if key == 'show_second':
-                    self.show_second = value
-                    self.logger.info("Set 'show_second' to {}".format(value))
-                elif key == 'show_time':
-                    self.show_time = value
-                    self.logger.info("Set 'show_time' to {}".format(value))
-                elif key == 'show_date':
-                    self.show_date = value
-                    self.logger.info("Set 'show_date' to {}".format(value))
-                elif key == 'show_weekday':
-                    self.show_weekday = value
-                    self.logger.info("Set 'show_weekday' to {}".format(value))
-                elif key == 'bg_color':
-                    self.bg_color = value
-                    self.logger.info("Set 'bg_color' to {}".format(value))
-                elif key == 'fg_color':
-                    self.fg_color = value
-                    self.logger.info("Set 'fg_color' to {}".format(value))
-                elif key == 'path_logo':
-                    self.path_logo = value
-                    self.logger.info("Set 'path_logo' to {}".format(value))
-                    self.image = self._get_logo_surface()
-                elif key == 'show_logo':
-                    self.show_logo = value
-                    self.logger.info("Set 'show_logo' to {}".format(value))
-                elif key == 'company_name':
-                    self.company_name = value
-                    self.logger.info("Set 'company_name' to {}".format(value))
+        for key, value in list(kw.items()):
+            if key == 'show_second':
+                self.show_second = value
+                self.logger.info("Set 'show_second' to {}".format(value))
+            elif key == 'show_time':
+                self.show_time = value
+                self.logger.info("Set 'show_time' to {}".format(value))
+            elif key == 'show_date':
+                self.show_date = value
+                self.logger.info("Set 'show_date' to {}".format(value))
+            elif key == 'show_weekday':
+                self.show_weekday = value
+                self.logger.info("Set 'show_weekday' to {}".format(value))
+            elif key == 'bg_color':
+                self.bg_color = value
+                self.logger.info("Set 'bg_color' to {}".format(value))
+            elif key == 'fg_color':
+                self.fg_color = value
+                self.logger.info("Set 'fg_color' to {}".format(value))
+            elif key == 'company_path_logo':
+                self.company_path_logo = value
+                self.logger.info("Set 'company_path_logo' to {}".format(value))
+                self.image = self._get_logo_surface()
+            elif key == 'show_logo':
+                self.show_logo = value
+                self.logger.info("Set 'show_logo' to {}".format(value))
+            elif key == 'company_name':
+                self.company_name = value
+                self.logger.info("Set 'company_name' to {}".format(value))
 
     def update(self):
 
@@ -851,36 +844,38 @@ class ResponseOrderSurface(pygame.Surface):
     def update(self):
         self.fill(self.color_bg)
 
-        left_padding = self.borderwidth + 1 # Offset of 5 pixels as the boarder already takes 4 pixel
+        left_padding = self.borderwidth + 1  # Offset of 5 pixels as the boarder already takes 4 pixel
 
-        # Only scroll if all images are wither than space available
-        if self._equipment_images_width > self.width:
-            for i, (image, rect) in enumerate(zip(self._equipment_image_list, self._equipment_rect_list)):
-                current_rect = rect.move(left_padding, 0)
-                self.blit(image, current_rect)
+        # Only update if equipment is listed
+        if self._equipment_image_list:
+            # Only scroll if all images are wither than space available
+            if self._equipment_images_width > self.width:
+                for i, (image, rect) in enumerate(zip(self._equipment_image_list, self._equipment_rect_list)):
+                    current_rect = rect.move(left_padding, 0)
+                    self.blit(image, current_rect)
 
-                # Change x-axis for next drawing. This simulates a moving text upwards
-                rect.move_ip(-self.scroll_speed, 0)
-                self._equipment_rect_list[i] = rect
+                    # Change x-axis for next drawing. This simulates a moving text upwards
+                    rect.move_ip(-self.scroll_speed, 0)
+                    self._equipment_rect_list[i] = rect
 
-            # Check if last image reached the middle of the screen
-            first_rect = self._equipment_rect_list[0]
-            last_rect = self._equipment_rect_list[-1]
-            if last_rect.right <= (self.width // 2) + left_padding:
-                self.scroll_speed = self.scroll_speed_base * 8
-            elif first_rect.left <= (self.width // 2) + left_padding:
-                self.scroll_speed = self.scroll_speed_base
+                # Check if last image reached the middle of the screen
+                first_rect = self._equipment_rect_list[0]
+                last_rect = self._equipment_rect_list[-1]
+                if last_rect.right <= (self.width // 2) + left_padding:
+                    self.scroll_speed = self.scroll_speed_base * 8
+                elif first_rect.left <= (self.width // 2) + left_padding:
+                    self.scroll_speed = self.scroll_speed_base
 
-            if last_rect.right <= left_padding:
-                self._restart_rect()
+                if last_rect.right <= left_padding:
+                    self._restart_rect()
 
-        else:
-            next_image_left = self.rect.left + left_padding
-            for image_obj in self._equipment_image_list:
-                rect = image_obj.get_rect()
-                rect.move_ip(next_image_left, 0)
-                next_image_left += rect.width
-                self.blit(image_obj, rect)
+            else:
+                next_image_left = self.rect.left + left_padding
+                for image_obj in self._equipment_image_list:
+                    rect = image_obj.get_rect()
+                    rect.move_ip(next_image_left, 0)
+                    next_image_left += rect.width
+                    self.blit(image_obj, rect)
 
         if self.borderwidth:
             pygame.draw.rect(self, BLACK, (0, 0, self.width, self.height), self.borderwidth)
@@ -976,13 +971,13 @@ class MessageSurface(pygame.Surface):
 
 # ---- SCREENS ----------------------------
 class SplashScreen(pygame.Surface):
-    def __init__(self, size, path_logo="", color_bg=BLACK, color_fg=WHITE, logger=None):
+    def __init__(self, size, company_path_logo="", color_bg=BLACK, color_fg=WHITE, logger=None):
         super(SplashScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SplashScreen.log")
 
-        self.path_logo = path_logo
-        self.color_bg = color_bg
-        self.color_fg = color_fg
+        self.company_path_logo = company_path_logo
+        self.color_bg          = color_bg
+        self.color_fg          = color_fg
 
         # Do not show logo in the header, it's already present in main surface
         self.header_height = 30
@@ -1004,9 +999,9 @@ class SplashScreen(pygame.Surface):
 
         self._main_surface.fill(self.color_bg)
 
-        if os.path.isfile(self.path_logo):
+        if os.path.isfile(self.company_path_logo):
             # Load image
-            image = pygame.image.load(self.path_logo)
+            image = pygame.image.load(self.company_path_logo)
             image = scale_image(image_obj=image, max_width=max_image_width, max_height=max_image_height)
 
             # Center image in the middle of the surface
@@ -1025,11 +1020,10 @@ class SplashScreen(pygame.Surface):
         self.blit(self._main_surface, (0, self.header_height + 1))
 
     def configure(self, **kw):
-
         update_image = False
         for key, value in list(kw.items()):
-            if key == 'path_logo':
-                self.path_logo = value
+            if key == 'company_path_logo':
+                self.company_path_logo = value
                 update_image = True
             elif key == 'color_bg':
                 self.color_bg = value
@@ -1047,6 +1041,41 @@ class SplashScreen(pygame.Surface):
 class EventScreen(pygame.Surface):
     def __init__(self, size, show_message_bar=True, alarm_message="", show_progress_bar=False, progress_bar_duration=7 * 60,
                  show_response_order=False, equipment_list=None, image_path_left="", image_path_right="", logger=None):
+        """
+        +---------MessageBar----------+
+        |                             |
+        |                             |
+        +-----------------------------+
+
+        +----------pictureBar---------+
+        |+-------------+-------------+|
+        ||             |             ||
+        ||  Left       | Right       ||
+        ||  Picture    | Picture     ||
+        ||  (pic_1)    | (pic_2)     ||
+        |+-------------+-------------+|
+        +-----------------------------+
+
+        +---------progressBar---------+
+        |XXXXXXXX                     |
+        +-----------------------------+
+
+        +------responseOrderBar-------+
+        |                             |
+        +-----------------------------+
+
+        :param size:                  Tuple for screen size in format (x, y)
+        :param show_message_bar:      If true the MessageBar at the top of the screen is shown.
+        :param alarm_message:         Message string from the police, will shown in the MessageBar
+        :param show_progress_bar:     If true a progress bar is shown at the bottom of the screen
+        :param progress_bar_duration: Time in second for the progress bar to reach 100%
+        :param show_response_order:   If true a response bar is shown at the bottom the the screen with equipment images
+        :param equipment_list:        List of pictures to display in the response bar.
+        :param image_path_left:       Image which is shown on the left side. If image_path_rigth is empty, this image
+                                      whill shown over the whole width
+        :param image_path_right:      Image which is shown on the right side
+        :param logger:                Logger instance
+        """
         super(EventScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\EventScreen.log")
 
@@ -1083,7 +1112,6 @@ class EventScreen(pygame.Surface):
         self.update_images()
 
     def configure(self, **kw):
-
         update_image = False
         for key, value in list(kw.items()):
             if key == 'alarm_message':
@@ -1189,6 +1217,29 @@ class EventScreen(pygame.Surface):
 
 class ClockScreen(pygame.Surface):
     def __init__(self, size, logger=None):
+        """
+        +---------analogClock---------+
+        |                             |
+        |                             |
+        |                             |
+        |                             |
+        |                             |
+        |                             |
+        |                             |
+        |                             |
+        |                             |
+        |                             |
+        +-----------------------------+
+
+        +--------digitalClock---------+
+        |+-------------+-------------+|
+        ||  timeLabel  |  dateLabel  ||
+        |+-------------+-------------+|
+        +-----------------------------+
+
+        :param size:   Tuple for screen size in format (x, y)
+        :param logger: Logger instance
+        """
         super(ClockScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockScreen.log")
 
@@ -1242,7 +1293,7 @@ class SlideshowScreen(pygame.Surface):
         self.size = size
 
         # store path where the pictures for the slideshow are stored
-        self.path_to_images      = kwargs.get("path_to_images", "")
+        self.slideshow_path      = kwargs.get("slideshow_path", "")
         self.sort_alphabetically = kwargs.get("short_alphabetically", False)
         self.display_duration    = kwargs.get("seconds_between_images", 4)
 
@@ -1253,20 +1304,20 @@ class SlideshowScreen(pygame.Surface):
         self.current_image_index = 0
         self.fade_alpha          = 0  # can be -1 ... 1 where -1 is the old image and 1 the new
         self.fade_over_bg        = kwargs.get("fade_over_background", False)
-        if self.path_to_images:
+        if self.slideshow_path:
             self.load_images()
 
         # Store settings for header-bar
-        self.show_header   = kwargs.get("show_header", True)
-        self.path_logo     = kwargs.get("path_logo", "")
-        self.company_name  = kwargs.get("company_name", "")
-        self.header_height = 40
-        self._header_surface_obj = HeaderSurface(size         = (self.size[0], self.header_height),
-                                                 logger       = logger,
-                                                 show_time    = False,
-                                                 color_bg     = GREY,
-                                                 path_logo    = self.path_logo,
-                                                 company_name = self.company_name)
+        self.show_header_bar   = kwargs.get("show_header", True)
+        self.company_path_logo = kwargs.get("company_path_logo", "")
+        self.company_name      = kwargs.get("company_name", "")
+        self.header_height     = 40
+        self._header_surface_obj = HeaderSurface(size              = (self.size[0], self.header_height),
+                                                 logger            = logger,
+                                                 show_time         = False,
+                                                 color_bg          = GREY,
+                                                 company_path_logo = self.company_path_logo,
+                                                 company_name      = self.company_name)
 
         self._font = get_font_obj(font_name=DEFAULT_FONT_BOLD, font_size=50)
 
@@ -1278,18 +1329,16 @@ class SlideshowScreen(pygame.Surface):
         successful = True
 
         # Check if path to images is defined
-        if self.path_to_images == '':
+        if self.slideshow_path == '':
             self.logger.error("ERROR: Path to slideshow folder not set yet")
             successful = False
 
         # check if slideshow folder already exists and create it if necessary
-        if not os.path.exists(self.path_to_images):
-            os.makedirs(self.path_to_images)
+        if not os.path.exists(self.slideshow_path):
+            os.makedirs(self.slideshow_path)
 
-        for filename in os.listdir(self.path_to_images):
+        for filename in os.listdir(self.slideshow_path):
             if filename.lower().endswith(('.jpg', '.jpeg', '.bmp', '.png', '.gif', '.eps', '.tif', '.tiff')):
-                # path = os.path.join(self.path_to_images, filename)
-                # image = pygame.image.load(path)
                 images.append(filename)
 
         self.current_image_index = 0
@@ -1312,10 +1361,10 @@ class SlideshowScreen(pygame.Surface):
                 self.current_image_index = 0
 
             max_height = self.size[1]
-            if self.show_header:
+            if self.show_header_bar:
                 max_height -= self.header_height
 
-            path = os.path.join(self.path_to_images, self.image_list[self.current_image_index])
+            path = os.path.join(self.slideshow_path, self.image_list[self.current_image_index])
             image = pygame.image.load(path)
             image = scale_image(image_obj  = image,
                                 max_height = max_height,
@@ -1345,7 +1394,7 @@ class SlideshowScreen(pygame.Surface):
 
         # If fading is in progress, the alpha channel is less than 1
         if self.fade_alpha < 1:
-            header_height = self.header_height if self.show_header else 0
+            header_height = self.header_height if self.show_header_bar else 0
             fade_surface = pygame.Surface((self.size[0], self.size[1]-header_height))
             fade_surface.fill(BLACK)
 
@@ -1355,7 +1404,7 @@ class SlideshowScreen(pygame.Surface):
                 fade_surface.set_alpha(255 - int(abs(self.fade_alpha) * 255))
                 x = (self.size[0] - self.current_image.get_width()) // 2
                 y = (self.size[1] - self.current_image.get_height()) // 2
-                if self.show_header:
+                if self.show_header_bar:
                     y += self.header_height
                 self.blit(self.current_image, (x, y))
                 self.blit(fade_surface, (x, y))
@@ -1365,7 +1414,7 @@ class SlideshowScreen(pygame.Surface):
                     fade_surface.set_alpha(255 - int(self.fade_alpha * 255))
                     x = (self.size[0] - self.new_image.get_width()) // 2
                     y = (self.size[1] - self.new_image.get_height()) // 2
-                    if self.show_header:
+                    if self.show_header_bar:
                         y += self.header_height
                     self.blit(self.new_image, (x, y))
                     self.blit(fade_surface, (x, y))
@@ -1378,7 +1427,7 @@ class SlideshowScreen(pygame.Surface):
                     y_old = (self.size[1] - self.current_image.get_height()) // 2
                     x_new = (self.size[0] - self.new_image.get_width()) // 2
                     y_new = (self.size[1] - self.new_image.get_height()) // 2
-                    if self.show_header:
+                    if self.show_header_bar:
                         y_old += self.header_height
                         y_new += self.header_height
                     self.blit(self.current_image, (x_old, y_old))
@@ -1394,20 +1443,19 @@ class SlideshowScreen(pygame.Surface):
             # No fade, just show picture
             x = (self.size[0] - self.current_image.get_width()) // 2
             y = (self.size[1] - self.current_image.get_height()) // 2
-            if self.show_header:
+            if self.show_header_bar:
                 y += self.header_height
             self.blit(self.current_image, (x, y))
 
         # Update header
-        if self.show_header:
+        if self.show_header_bar:
             self._header_surface_obj.update()
             self.blit(self._header_surface_obj, (0, 0))
 
     def configure(self, **kw):
-
         for key, value in list(kw.items()):
             if key == 'seconds_between_images':
-                self.display_duration = value
+                self.display_duration = int(value)
                 self.logger.info("Set 'seconds_between_images' to {}".format(value))
             elif key == 'fade_over_background':
                 self.fade_over_bg = value
@@ -1416,19 +1464,21 @@ class SlideshowScreen(pygame.Surface):
                 self.sort_alphabetically = value
                 self.logger.info("Set 'sort_alphabetically' to {}".format(value))
                 self.sort_images()
-            elif key == 'path_to_images':
-                self.path_to_images = value
-                self.logger.info("Set 'path_to_images' to {}".format(value))
+            elif key == 'slideshow_path':
+                self.slideshow_path = value
+                self.logger.info("Set 'slideshow_path' to {}".format(value))
                 self.load_images()
-            elif key == 'path_logo':
-                self.path_logo = value
-                self._header_surface_obj.configure(path_logo=self.path_logo)
+            elif key == 'company_path_logo':
+                self.company_path_logo = value
+                self.logger.info("Set 'company_path_logo' to {}".format(value))
+                self._header_surface_obj.configure(company_path_logo=self.company_path_logo)
+                self.load_images()
             elif key == 'company_name':
                 self.company_name = value
                 self._header_surface_obj.configure(company_name=self.company_name)
-            elif key == 'show_header':
-                self.show_header = value
-                self.logger.info("Set 'show_header' to {}".format(value))
+            elif key == 'show_header_bar':
+                self.show_header_bar = value
+                self.logger.info("Set 'show_header_bar' to {}".format(value))
             else:
                 self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
 
@@ -1446,18 +1496,28 @@ class Screen(Enum):
 
 
 class GuiThread(threading.Thread):
-    def __init__(self, size, full_screen, logger=None):
-        threading.Thread.__init__(self)
+    def __init__(self, size, full_screen, switch_delay_after_start=0, switch_delay_after_event=0,
+                 switch_to_screen_after_start='off', switch_to_screen_after_event='off', cec_enable=False,
+                 standby_enable=False, logger=None):
+        threading.Thread.__init__(self, daemon=True)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
 
-        self.size        = size
-        self.full_screen = full_screen
+        self.size                         = size
+        self.full_screen                  = full_screen
+        self.switch_delay_after_start     = switch_delay_after_start
+        self.switch_delay_after_event     = switch_delay_after_event
+        self.switch_to_screen_after_start = switch_to_screen_after_start
+        self.switch_to_screen_after_event = switch_to_screen_after_event
+
+        self.cec_enable     = cec_enable
+        self.standby_enable = standby_enable
+
         self._running    = False
         self._queue      = queue.Queue()
 
         self._fps = FPS
 
-    def set_screen(self, data):
+    def change_screen(self, data):
         self._queue.put(data)
 
     def run(self):
@@ -1467,11 +1527,8 @@ class GuiThread(threading.Thread):
         else:
             window = pygame.display.set_mode(self.size)
 
-        pygame.display.set_caption("FireFinder")
-        clock = pygame.time.Clock()
 
-        # Set the SplashScreen as default start screen
-        self.set_screen(data=(Screen.splash, {"path_logo": "D:\\Firefinder\\logo.png"}))
+        clock      = pygame.time.Clock()
         screen_obj = None
 
         self._running = True
@@ -1496,10 +1553,13 @@ class GuiThread(threading.Thread):
                 if isinstance(data, tuple):
                     screen_name = data[0]
                     screen_config = data[1]
+                    self.logger.info(f"switch to screen {screen_name}", screen_config=screen_config)
                 elif isinstance(data, Screen):
                     screen_name = data
+                    self.logger.info(f"switch to screen {screen_name}")
                 elif isinstance(data, dict):
                     screen_config = data
+                    self.logger.info("received new configuration for current screen", screen_config=screen_config)
                 else:
                     self.logger.error(f"Unknown data type '{type(data)}' received from queue")
 
@@ -1516,8 +1576,9 @@ class GuiThread(threading.Thread):
 
             # Fill the background with white
             window.fill((255, 255, 255))
-            screen_obj.update()
-            window.blit(screen_obj, (0, 0))
+            if screen_obj is not None:
+                screen_obj.update()
+                window.blit(screen_obj, (0, 0))
             pygame.display.flip()
 
             # Control the FPS
@@ -1529,34 +1590,74 @@ class GuiThread(threading.Thread):
 
 
 class GuiHandler(object):
-    def __init__(self, logger=None, full_screen=True, company_logo=""):
+    def __init__(self, logger=None, gui_settings=None, splash_settings=None, clock_settings=None,
+                 event_settings=None, slideshow_settings=None):
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
 
-        self.full_screen = full_screen
-        self.company_logo = company_logo
+        self.gui_settings       = gui_settings if gui_settings is not None else dict()
+        self.splash_settings    = splash_settings if splash_settings is not None else dict()
+        self.clock_settings     = clock_settings if clock_settings is not None else dict()
+        self.event_settings     = event_settings if event_settings is not None else dict()
+        self.slideshow_settings = slideshow_settings if slideshow_settings is not None else dict()
+
         self._thread = None
+        self._current_screen = None
 
         screen_info = pygame.display.Info()
-        if self.full_screen:
+        if self.gui_settings.get("full_screen_enable", False):
             self.size = (screen_info.current_w, screen_info.current_h)
         else:
             self.size = (screen_info.current_w * 0.9, screen_info.current_h * 0.9)
 
     def set_screen_and_config(self, screen_name: Screen, screen_config: dict):
-        self._thread.set_screen((screen_name, screen_config))
+        screen_config = self._merge_config(screen_name, screen_config)
+        self._current_screen = screen_name
+        self._thread.change_screen((screen_name, screen_config))
 
     def set_screen(self, screen_name: Screen):
-        self._thread.set_screen(screen_name)
+        """
+        Do not load screen without configuration. If user does not apply any config, send at least
+        the available default configuration
+
+        :param screen_name:
+        :return:
+        """
+        default_config = self._merge_config(screen_name=screen_name, screen_config=dict())
+        self.set_screen_and_config(screen_name=screen_name, screen_config=default_config)
 
     def set_configuration(self, screen_config: dict):
-        self._thread.set_screen(screen_config)
+        screen_config = self._merge_config(self._current_screen, screen_config)
+        self._thread.change_screen(screen_config)
+
+    def _merge_config(self, screen_name, screen_config):
+        config = dict()
+        if screen_name == Screen.splash:
+            config = dict(self.splash_settings)
+        elif screen_name == Screen.event:
+            config = dict(self.event_settings)
+        elif screen_name == Screen.clock:
+            config = dict(self.clock_settings)
+        elif screen_name == Screen.slideshow:
+            config = dict(self.slideshow_settings)
+
+        config.update(screen_config)
+        return config
 
     def start(self):
-        self._thread = GuiThread(size=self.size, full_screen=self.full_screen, logger=self.logger)
+        self._thread = GuiThread(size                         = self.size,
+                                 full_screen                  = self.gui_settings.get("full_screen_enable", False),
+                                 switch_delay_after_start     = self.gui_settings.get("switch_delay_after_start", 0),
+                                 switch_delay_after_event     = self.gui_settings.get("switch_delay_after_event", 0),
+                                 switch_to_screen_after_start = self.gui_settings.get("switch_to_screen_after_start", 'off'),
+                                 switch_to_screen_after_event = self.gui_settings.get("switch_to_screen_after_event", 'off'),
+                                 cec_enable                   = self.gui_settings.get("cec_enable", False),
+                                 standby_enable               = self.gui_settings.get("standby_enable", False),
+                                 logger                       = self.logger)
 
         # Deactivate mouse over GUI and set the SplashScreen as default start screen
         pygame.mouse.set_visible(False)
-        self.set_screen_and_config(screen_name=Screen.splash, screen_config={"path_logo": self.company_logo})
+        self.set_screen_and_config(screen_name=Screen.splash,
+                                   screen_config={"company_path_logo": self.slideshow_settings.get("company_path_logo", "")})
 
         self._thread.start()
 
@@ -1574,7 +1675,7 @@ def test_screen_top(screen_obj):
         screen_obj.blit(header_obj, (0, 0))
         pygame.display.flip()
 
-    header_obj = HeaderSurface(screen_obj.get_size(), height=30)
+    header_obj = HeaderSurface(screen_obj.get_size())
 
     print("Start Test")
 

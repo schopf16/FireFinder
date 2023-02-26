@@ -568,7 +568,7 @@ class ConfigFile(object):
 
         config_path = os.path.join(os.path.dirname(__file__), 'config.ini')
         self._config_file = kwargs.get('ini_file', config_path)
-        self.logger = logger
+        self._logger = logger
         self.successful = False
 
         # check if the passed file exist. Do not try to parse the file if it cannot be located
@@ -576,28 +576,57 @@ class ConfigFile(object):
             self._config = configparser.ConfigParser()
             self._config.read(self._config_file)
 
-            self.full_screen_enable              = self._get_value('Visual', 'fullscreen', default=False, expect_boolean=True)
-            self.switch_screen_delay_after_start = self._get_value('Visual', 'switchScreenAfterStart', default=0)
-            self.switch_to_screen_after_start    = self._get_value('Visual', 'switchToScreenAfterStart', default='Off')
-            self.switch_screen_delay_after_event = self._get_value('Visual', 'switchScreenAfterEvent', default=0)
-            self.switch_to_screen_after_event    = self._get_value('Visual', 'switchToScreenAfterEvent', default='Off')
-            self.company_path_logo               = self._get_value('Visual', 'company_path_logo', default="")
-            self.company_name                    = self._get_value('Visual', 'company_name', default="")
+            # [Visual] and [Power]
+            self.gui_settings = {
+                "full_screen_enable"              : self._get_boolean('Visual', 'fullscreen', default=False),
+                "switch_screen_delay_after_start" : self._get_int('Visual', 'switchScreenAfterStart', default=0),
+                "switch_to_screen_after_start"    : self._get_value('Visual', 'switchToScreenAfterStart', default='Off'),
+                "switch_screen_delay_after_event" : self._get_int('Visual', 'switchScreenAfterEvent', default=0),
+                "switch_to_screen_after_event"    : self._get_value('Visual', 'switchToScreenAfterEvent', default='Off'),
+                "cec_enable"                      : self._get_boolean('Power', 'cec_enable', default=False),
+                "standby_enable"                  : self._get_boolean('Power', 'stdby_enable', default=False)
+            }
 
-            # [Power]
-            self.cec_enable               = self._get_value('Power', 'cec_enable', default=False, expect_boolean=True)
-            self.standby_enable           = self._get_value('Power', 'stdby_enable', default=False, expect_boolean=True)
-            self.reboot_hdmi_device_after = self._get_value('Power', 'cec_reboot_after_minutes', default=0)
+            # [SplashScreen]
+            self.splash_screen = {
+                "company_path_logo"      : self._get_value('Visual', 'company_path_logo', default="")
+            }
 
-            # [Sound]
-            self.path_sound_folder      = self._get_value('Sound', 'path_sounds', default="")
-            self.force_sound_file       = self._get_value('Sound', 'force_sound_file', default="")
-            self.force_sound_repetition = self._get_value('Sound', 'force_repetition', default=1)
+            # [Slideshow]
+            self.slideshow_screen = {
+                "slideshow_path"         : self._get_value('Slideshow', 'slideshow_path', default=""),
+                "fade_over_background"   : self._get_boolean('Slideshow', 'fade_over_background', default=True),
+                "seconds_between_images" : self._get_int('Slideshow', 'seconds_between_images', default=60),
+                "sort_alphabetically"   : self._get_boolean('Slideshow', 'sort_alphabetically', default=True),
+                "show_header_bar"        : self._get_boolean('Slideshow', 'show_header_bar', default=True),
+                "company_path_logo"      : self._get_value('Visual', 'company_path_logo', default=""),
+                "company_name"           : self._get_value('Visual', 'company_name', default="")
+            }
+
+            # [Clock]
+            self.clock_screen = {
+                "show_second_hand"     : self._get_boolean("Clock", "show_second_hand", default=True),
+                "show_minute_hand"     : self._get_boolean("Clock", "show_minute_hand", default=True),
+                "show_hour_hand"       : self._get_boolean("Clock", "show_hour_hand", default=True),
+                "show_digital_time"    : self._get_boolean("Clock", "show_digital_time", default=True),
+                "show_digital_date"    : self._get_boolean("Clock", "show_digital_date", default=True),
+                "show_digital_seconds" : self._get_boolean("Clock", "show_digital_seconds", default=True)
+            }
+
+            # [Event]
+            self.event_screen = {
+                "show_alarm_message"    : self._get_boolean("Event", "show_alarm_message", default=True),
+                "show_progress_bar"     : self._get_boolean("Event", "show_progress_bar", default=False),
+                "show_response_order"   : self._get_boolean("Event", "show_response_order", default=False),
+                "path_sound_folder"     : self._get_value('Event', 'path_sounds', default=""),
+                "force_sound_file"      : self._get_value('Event', 'force_sound_file', default=""),
+                "force_sound_repetition": self._get_int('Event', 'force_repetition', default=1)
+            }
 
             self.successful = True
 
         else:
-            self.logger.critical("Failed loading ini-file at expected path: '{}'".format(self._config_file))
+            self._logger.critical("Failed loading ini-file at expected path: '{}'".format(self._config_file))
 
     def _has_section(self, section):
         """ Check if the given section is listed in the ini-file
@@ -607,7 +636,7 @@ class ConfigFile(object):
         """
         ret = self._config.has_section(section=section)
         if not ret:
-            self.logger.info("Section {} not found".format(section))
+            self._logger.info("Section {} not found".format(section))
         return ret
 
     def _has_option(self, section, option):
@@ -620,7 +649,7 @@ class ConfigFile(object):
         ret = self._config.has_option(section=section, option=option)
 
         if not ret:
-            self.logger.info("Option {} in Section {} not found".format(option, section))
+            self._logger.info("Option {} in Section {} not found".format(option, section))
         return ret
 
     @staticmethod
@@ -643,7 +672,7 @@ class ConfigFile(object):
         """Return a list of option names for the given section name."""
         return self._config.options(section=section)
 
-    def _get_value(self, section, option, default=None, expect_boolean=False):
+    def _get_value(self, section, option, default=None, expect_boolean=False, expect_int=False):
         """ Get the value from the option
 
         :param section:        Name of the section in the ini-file
@@ -660,14 +689,34 @@ class ConfigFile(object):
             if self._config.has_option(section=section, option=option):
                 if expect_boolean:
                     value = self._config.getboolean(section=section, option=option)
+                elif expect_int:
+                    value = self._config.getint(section=section, option=option)
                 else:
                     value = self._config.get(section=section, option=option)
             else:
-                self.logger.debug("Option {} in section {} is not available".format(option, section))
+                self._logger.debug("Option {} in section {} is not available".format(option, section))
         else:
-            self.logger.debug("Section {} is not available".format(section))
+            self._logger.debug("Section {} is not available".format(section))
 
         return value
+
+    def _get_boolean(self, section, option, default=None):
+        return self._get_value(section=section, option=option, default=default, expect_boolean=True)
+
+    def _get_int(self, section, option, default=None):
+        return self._get_value(section=section, option=option, default=default, expect_int=True)
+
+    def to_dict(self):
+        """
+        Convert all attributes from this class into a dictionary. Remove all attributes who start with _
+        :return:
+        """
+        attribute_dict = dict()
+        if self.successful:
+            attribute_dict = self.__dict__
+            attribute_dict = {k: v for k, v in attribute_dict.items() if not k.startswith('_')}
+
+        return attribute_dict
 
 
 def show_error_screen(error_code, ini_file_path):
@@ -746,20 +795,29 @@ def main():
     # console_handler.setFormatter(formatter)
     # logger.addHandler(console_handler)
     log_obj = Logger(verbose=True, file_path=".\\firefinder.log")
+    log_obj.info("Start firefinder")
 
     config_obj = ConfigFile(logger=log_obj)
-    assert config_obj.successful
+    config_dict = config_obj.to_dict()
+    config_successful = config_dict.get("successful", False)
+    if not config_successful:
+        log_obj.critical("Could not successfully load the configuration -> abording")
+        assert config_successful, "Failed loading configuration file"
 
-    gui = GuiHandler(logger            = log_obj,
-                     full_screen       = config_obj.full_screen_enable,
-                     company_logo      = config_obj.company_path_logo,)
+    gui = GuiHandler(logger             = log_obj,
+                     gui_settings       = config_dict.get("gui_settings", dict()),
+                     splash_settings    = config_dict.get("splash_screen", dict()),
+                     clock_settings     = config_dict.get("clock_screen", dict()),
+                     event_settings     = config_dict.get("event_screen", dict()),
+                     slideshow_settings = config_dict.get("slideshow_screen", dict())
+                     )
     gui.start()
-    time.sleep(5)
-    gui.set_screen(screen_name=Screen.event)
-    time.sleep(5)
-    gui.set_screen(screen_name=Screen.clock)
-    time.sleep(5)
-    gui.set_screen_and_config(screen_name=Screen.slideshow, screen_config={"path_to_images": "D:\\Firefinder\\Slideshow"})
+    # time.sleep(5)
+    # gui.set_screen(screen_name=Screen.event)
+    # time.sleep(5)
+    # gui.set_screen(screen_name=Screen.clock)
+    # time.sleep(5)
+    gui.set_screen_and_config(screen_name=Screen.slideshow, screen_config={"slideshow_path": "D:\\Firefinder\\Slideshow"})
     while gui.is_running():
         time.sleep(1)
 
