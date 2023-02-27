@@ -94,6 +94,8 @@ class AlarmSound(object):
             self.logger.info(f"successfully load sound file '{self.sound_file_path}'")
 
     def __sound_thread(self, loops=0, offset=0.0, delay=0, pause=0):
+        # catch exceptions in this thread
+        threading.excepthook = self.logger.thread_except_hook
 
         self.logger.info(f"Now playing sound file '{self.sound_file_path}'", loops=loops, offset=offset, delay=delay, pause=pause)
 

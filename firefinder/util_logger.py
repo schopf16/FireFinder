@@ -21,6 +21,11 @@ class DebugLevel(str, Enum):
     Critical = "Critical"
 
 
+def my_exception_hook(exctype, value, traceback):
+    print(f"Found error: {value}")
+    #logger.error("Uncaught exception occurred", exc_info=(exctype, value, traceback))
+
+
 class Logger(object):
     def __init__(self, verbose, file_path, no_color=False, exit_zero=False):
         self.verbose = verbose
@@ -45,7 +50,7 @@ class Logger(object):
 
             # Create a rotating file handler to overwrite old log files
             my_handler = RotatingFileHandler(self._file_path, mode='a', maxBytes=5 * 1024 * 1024, backupCount=5)
-            app_log = logging.getLogger('root')
+            app_log = logging.getLogger()
 
             log_formatter = logging.Formatter('%(asctime)s - %(message)s')
             my_handler.setFormatter(log_formatter)
@@ -62,7 +67,7 @@ class Logger(object):
 
             # Redirect python exception handler to my method
             self._old_except_hook = sys.excepthook
-            sys.excepthook = self._except_hook
+            sys.excepthook = self.except_hook
 
         except Exception as e:
             self._print_console("LOGGING DISABLED: {}".format(e), dbg_lvl=DebugLevel.Warning)
@@ -71,11 +76,11 @@ class Logger(object):
         # return instance for logging
         self._logger = app_log
 
-    def _except_hook(self, exctype, value, traceback):
-        msg = "Unhandled exception occurred"
+    def except_hook(self, exctype, value, traceback):
+        msg = f"Unhandled exception occurred: {value}"
 
         if self._logger:
-            self._logger.exception(msg)
+            self._logger.exception(msg, exc_info=(exctype, value, traceback))
 
         if self._no_color:
             print(msg)
@@ -91,6 +96,12 @@ class Logger(object):
             exit(0)
         else:
             exit(1)
+
+    def thread_except_hook(self, *args):
+        exc_type = args[0].exc_type
+        exc_value = args[0].exc_value
+        exc_traceback = args[0].exc_traceback
+        self.except_hook(exc_type, exc_value, exc_traceback)
 
     def _print_console(self, msg, dbg_lvl):
         if self.verbose:
@@ -117,7 +128,14 @@ class Logger(object):
         filename = func.co_filename.split('\\')[-1]
         lineno = func.co_firstlineno
         funcname = func.co_name
-        log = "[{}:{} - {:>40}() ] {:>9}: {}".format(filename, lineno, funcname, dbg_lvl.upper(), msg)
+
+        base_string = "[{}:{} - ".format(filename, lineno)
+        if len(base_string) > 30:
+            # Truncate base_string, it is too long
+            base_string = "{}...".format(base_string[:27])
+        if len(funcname) > 20:
+            funcname = "{}...".format(funcname[:17])
+        log = "{:<30}{:>20}() ] {:>8}: {:<}".format(base_string, funcname, dbg_lvl.upper(), msg)
 
         if len(args[0]) or len(args[1]):
             log = "{} {}".format(log, args)

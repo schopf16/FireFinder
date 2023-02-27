@@ -39,7 +39,6 @@ from firefinder.ff_screenSlideshow import ScreenSlideshow
 from firefinder.cecLibrary import TvPower
 from firefinder.ff_miscellaneous import RepeatingTimer
 
-from pathlib2 import Path
 from firefinder.util_screen import GuiHandler, Screen
 from firefinder.util_logger import Logger
 

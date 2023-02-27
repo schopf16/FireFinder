@@ -2,6 +2,7 @@
 
 import os
 import re
+import sys
 import math
 import time
 import queue
@@ -1334,12 +1335,16 @@ class SlideshowScreen(pygame.Surface):
             successful = False
 
         # check if slideshow folder already exists and create it if necessary
-        if not os.path.exists(self.slideshow_path):
-            os.makedirs(self.slideshow_path)
-
-        for filename in os.listdir(self.slideshow_path):
-            if filename.lower().endswith(('.jpg', '.jpeg', '.bmp', '.png', '.gif', '.eps', '.tif', '.tiff')):
-                images.append(filename)
+        if os.path.exists(self.slideshow_path):
+            for filename in os.listdir(self.slideshow_path):
+                if filename.lower().endswith(('.jpg', '.jpeg', '.bmp', '.png', '.gif', '.eps', '.tif', '.tiff')):
+                    images.append(filename)
+        else:
+            try:
+                os.makedirs(self.slideshow_path)
+            except FileNotFoundError as e:
+                self.logger.critical(f"Could not create temporary folder, probably root drive "
+                                     f"in path '{self.slideshow_path}' is not existing", exception=e.args)
 
         self.current_image_index = 0
         self.image_list = images
@@ -1348,9 +1353,7 @@ class SlideshowScreen(pygame.Surface):
 
     def sort_images(self):
         if self.sort_alphabetically:
-            print("Start sort")
             self.image_list = sorted(self.image_list)
-            print("End sort")
         else:
             self.image_list = random.sample(self.image_list, len(self.image_list))
 
@@ -1499,8 +1502,11 @@ class GuiThread(threading.Thread):
     def __init__(self, size, full_screen, switch_delay_after_start=0, switch_delay_after_event=0,
                  switch_to_screen_after_start='off', switch_to_screen_after_event='off', cec_enable=False,
                  standby_enable=False, logger=None):
-        threading.Thread.__init__(self, daemon=True)
+        threading.Thread.__init__(self, daemon=True, name="GuiThread")
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
+
+        # catch exceptions in this thread
+        threading.excepthook = self.logger.thread_except_hook
 
         self.size                         = size
         self.full_screen                  = full_screen
