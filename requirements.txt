@@ -1,4 +1,4 @@
-watchdog==2.1.8
+watchdog==2.3.0
 pillow==9.1.1
 celery==5.2.7
 pygame==2.1.2

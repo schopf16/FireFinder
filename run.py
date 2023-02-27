@@ -27,9 +27,6 @@ import pygame
 import tkinter as tk
 import configparser
 
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
-
 # local classes
 from firefinder.ff_sound import AlarmSound
 from firefinder.ff_screenClock import ScreenClock
@@ -41,30 +38,10 @@ from firefinder.ff_miscellaneous import RepeatingTimer
 
 from firefinder.util_screen import GuiHandler, Screen
 from firefinder.util_logger import Logger
+from firefinder.util_filehandler import FileWatch
 
 
 ########################################################################
-
-
-
-def blit_text(surface, text, pos, font, color=pygame.Color('black')):
-    words = [word.split(' ') for word in text.splitlines()]  # 2D array where each row is a list of words.
-    space = font.size(' ')[0]  # The width of a space.
-    max_width, max_height = surface.get_size()
-    word_height = 0
-    x, y = pos
-    for line in words:
-        for word in line:
-            word_surface = font.render(word, 0, color)
-            word_width, word_height = word_surface.get_size()
-            if x + word_width >= max_width:
-                x = pos[0]  # Reset the x.
-                y += word_height  # Start on new row.
-            surface.blit(word_surface, (x, y))
-            x += word_width + space
-        x = pos[0]  # Reset the x.
-        y += word_height  # Start on new row.
-
 
 class FireFinderGUI(tk.Tk):
     def __init__(self, configuration_dict, **kwargs):
@@ -201,7 +178,7 @@ class FireFinderGUI(tk.Tk):
         sys.exit()   # Fallback if the one above doesn't work properly
 
 
-class MyHandler(FileSystemEventHandler):
+class MyHandler(object):
     def __init__(self, gui_handler, configuration_dict, **kwargs):
 
         self.logger = kwargs.get("logger", logging.getLogger())
@@ -575,6 +552,12 @@ class ConfigFile(object):
             self._config = configparser.ConfigParser()
             self._config.read(self._config_file)
 
+            # [FileObserver]
+            self.file_observer = {
+                "observing_path": self._get_value('FileObserver', 'observing_path', default=""),
+                "observing_file": self._get_value('FileObserver', 'observing_file', default="")
+            }
+
             # [Visual] and [Power]
             self.gui_settings = {
                 "full_screen_enable"              : self._get_boolean('Visual', 'fullscreen', default=False),
@@ -784,17 +767,8 @@ def show_error_screen(error_code, ini_file_path):
 
 
 def main():
-    # logger = logging.getLogger(__name__)
-    # logger.setLevel(logging.DEBUG)
-    # formatter = logging.Formatter('%(asctime)-15s - %(levelname)-8s : %(message)s')
-    #
-    # console_handler = logging.StreamHandler(sys.stdout)
-    # # console_handler.setLevel(logging.DEBUG)
-    #
-    # console_handler.setFormatter(formatter)
-    # logger.addHandler(console_handler)
     log_obj = Logger(verbose=True, file_path=".\\firefinder.log")
-    log_obj.info("Start firefinder")
+    log_obj.info("Start FireFinder")
 
     config_obj = ConfigFile(logger=log_obj)
     config_dict = config_obj.to_dict()
@@ -811,6 +785,21 @@ def main():
                      slideshow_settings = config_dict.get("slideshow_screen", dict())
                      )
     gui.start()
+
+    # Check if a path observation is configured, if so register it an apply gui-callback
+    observe_path = config_dict["file_observer"].get("observing_path", "")
+    observe_file = config_dict["file_observer"].get("observing_file", "")
+    if observe_path != "" and os.path.isdir(observe_path):
+        if observe_file != "":
+            watch = FileWatch(file_path = os.path.join(observe_path, observe_file),
+                              callback  = gui.set_screen_and_config,
+                              logger    = log_obj)
+            watch.start()
+        else:
+            log_obj.error("observing_path is defined in config but not observing_file, please specify it")
+    else:
+        log_obj.error(f"Cannot observe path '{observe_path}' as this path does not exist")
+
     # time.sleep(5)
     # gui.set_screen(screen_name=Screen.event)
     # time.sleep(5)
