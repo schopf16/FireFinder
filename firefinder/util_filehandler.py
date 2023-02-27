@@ -5,6 +5,7 @@ import threading
 import configparser
 import time
 
+from pathlib import Path
 from firefinder.util_screen import Screen, GuiHandler
 from firefinder.util_logger import Logger
 
@@ -24,7 +25,7 @@ def get_screen_obj(screen_name: str):
     return screen_obj
 
 
-def get_screen_config(screen_name: str, config_obj: configparser.ConfigParser):
+def get_screen_config(screen_name: str, config_obj: configparser.ConfigParser, basedir: str):
     screen_name = screen_name.lower()
     screen_config = dict()
 
@@ -36,9 +37,11 @@ def get_screen_config(screen_name: str, config_obj: configparser.ConfigParser):
             if picture:
                 equipment_list.append(picture)
 
+        image_left = config_obj.get('Event', 'picture_left', fallback="")
+        image_right = config_obj.get('Event', 'picture_right', fallback="")
         screen_config["alarm_message"]         = config_obj.get('Event', 'message_full', fallback="")
-        screen_config["image_left"]            = config_obj.get('Event', 'picture_left', fallback="")
-        screen_config["image_right"]           = config_obj.get('Event', 'picture_right', fallback="")
+        screen_config["image_left"]            = os.path.join(basedir, image_left)
+        screen_config["image_right"]           = os.path.join(basedir, image_right)
         screen_config["progress_bar_duration"] = config_obj.getint('Progress', 'progress_time', fallback=7*60)
         screen_config["sound_file"]            = config_obj.get('Sound', 'sound', fallback="")
         screen_config["repeat_sound"]          = config_obj.getint('Sound', 'repeat', fallback=1)
@@ -68,18 +71,22 @@ class FileWatch(object):
         # catch exceptions in this thread
         threading.excepthook = logger.thread_except_hook
 
-        last_modified_time = os.stat(file_path).st_mtime
-        logger.info(f"Start watching file '{file_path}' for modification")
+        path_obj = Path(file_path)
+
+        last_modified_time = os.stat(path_obj.absolute()).st_mtime
+        logger.info(f"Start watching file '{path_obj.absolute()}' for modification")
+
+
         while True:
             time.sleep(1)
-            file_time = os.stat(file_path).st_mtime
+            file_time = os.stat(path_obj.absolute()).st_mtime
             if file_time != last_modified_time:
                 last_modified_time = file_time
 
                 logger.debug("FileModifiedEvent raised")
 
                 config_obj = configparser.ConfigParser()
-                config_obj.read(file_path, encoding='utf-8')
+                config_obj.read(path_obj.absolute(), encoding='utf-8')
 
                 screen_name = config_obj.get("General", "show", fallback=None)
                 if screen_name is None:
@@ -91,7 +98,9 @@ class FileWatch(object):
                     logger.error(f"Could not assign a valid screen to '{screen_name}'")
                     return
 
-                screen_config = get_screen_config(screen_name=screen_name, config_obj=config_obj)
+                screen_config = get_screen_config(screen_name = screen_name,
+                                                  config_obj  = config_obj,
+                                                  basedir     = str(path_obj.parent))
                 callback(screen_name=screen_obj, screen_config=screen_config)
 
 

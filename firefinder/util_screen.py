@@ -169,19 +169,20 @@ class EventInfo(object):
             second = " ".join(event_list[1:])  # In case there is a second ';' somewhere in the description
 
             # The _first_ part shall contain the case, level, event-keyword and city
-            first_list = first.split(',')
-            self.case_and_level = first_list[0].strip()
-            self.event_keyword = ",".join(first_list[1:-1]).strip()
-            self.city = first_list[-1].strip()
+            first_list = [s.strip() for s in first.split(',')]
+            self.case_and_level = first_list[0]
+            self.event_keyword = ",".join(first_list[1:-1])
+            self.city = first_list[-1]
 
             # The _second_ part shall contain street_name, street_number (optional)
-            second_list = second.split(',')
-            self.street_name = second_list[0].strip()
+            second_list = [s.strip() for s in second.split(',')]
+            self.street_name = second_list[0]
+            del second_list[0]  # The street name is assigned and can be removed
 
-            street_nbr = second_list[1].strip()
+            street_nbr = second_list[0]
             if str(street_nbr).isnumeric():
                 self.street_number = street_nbr
-                del second_list[1]  # The second element was detected as street number, remove from list
+                del second_list[0]  # The street number is assigned and can be removed
 
             if self.case_and_level == "AA":
                 # This is an automatic alarm. Expect [object-info, alarmnetnbr] in the message
@@ -190,19 +191,21 @@ class EventInfo(object):
 
                 # Search for the alarmnet number in the list
                 for alarmnet_index in range(0, len(second_list)):
-                    stripped_string = str(second_list[alarmnet_index].strip())
+                    stripped_string = str(second_list[alarmnet_index])
                     if re.match(r"(\d{3}\s\d{3})", stripped_string, re.UNICODE):
                         self.alarmnet_number = stripped_string
                         alarmnet_found = True
                         break
 
-                # If a alarmnet number was found, the element in front shall contain the object-info
                 if alarmnet_found:
-                    self.object_info = second_list[alarmnet_index-1].strip()
-
-                # Check if additional information's are sent
-                if alarmnet_found and alarmnet_index > 2:
-                    self.details = " ".join(second_list[:alarmnet_index-2])
+                    # If a alarmnet number was found, the element in front shall contain the object-info
+                    self.object_info = " ".join(second_list[:alarmnet_index])
+                    # Check if additional information's are sent
+                    if alarmnet_index < len(second_list):
+                        self.details = " ".join(second_list[alarmnet_index+1:])
+                else:
+                    # If no alarmnet number is found, take everything as details
+                    self.details = " ".join(second_list)
 
             else:
                 # No automatic alarm. Take everything after the address as additional info (street-nbr is already cutted)
