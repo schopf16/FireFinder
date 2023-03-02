@@ -8,11 +8,13 @@ import time
 import queue
 import random
 import pygame
+import pathlib
 import threading
 
 from enum import Enum
 from datetime import datetime
 from firefinder.util_logger import Logger
+from firefinder.util_sound import AlarmSound
 
 pygame.init()
 pygame.display.set_caption("FireFinder")
@@ -32,6 +34,7 @@ DEFAULT_FONT = os.path.join(THIS_FILE_PATH, "font", "Frutiger.ttf")
 DEFAULT_FONT_BOLD = os.path.join(THIS_FILE_PATH, "font", "Frutiger_bold.ttf")
 DEFAULT_PIC_DIR = os.path.join(THIS_FILE_PATH, "pic")
 DEFAULT_NO_PIC = os.path.join(THIS_FILE_PATH, "pic", "bg", "no_image.png")
+DEFAULT_SOUND_DIR = os.path.join(THIS_FILE_PATH, "sound")
 
 CASE_LEVEL_DICT = {
     "AA": "Automatischer Alarm Feuer",
@@ -1044,7 +1047,8 @@ class SplashScreen(pygame.Surface):
 
 class EventScreen(pygame.Surface):
     def __init__(self, size, show_message_bar=True, alarm_message="", show_progress_bar=False, progress_bar_duration=7 * 60,
-                 show_response_order=False, equipment_list=None, image_path_left="", image_path_right="", logger=None):
+                 show_response_order=False, equipment_list=None, image_path_left="", image_path_right="", logger=None,
+                 path_sound_folder=DEFAULT_SOUND_DIR, force_sound_file="", force_sound_repetition=1):
         """
         +---------MessageBar----------+
         |                             |
@@ -1115,8 +1119,19 @@ class EventScreen(pygame.Surface):
         self.image_rect_right = None
         self.update_images()
 
+        # Sound
+        self.sound_file = ""
+        self.sound_file_force = force_sound_file
+        self.sound_repeat = 1
+        self.sound_repeat_force = force_sound_repetition
+        self.sound_obj = AlarmSound(path=path_sound_folder, logger=self.logger)
+
+    def __del__(self):
+        self.sound_obj.stop()
+
     def configure(self, **kw):
         update_image = False
+        update_sound = False
         for key, value in list(kw.items()):
             if key == 'alarm_message':
                 self.message_obj.update_text(value)
@@ -1139,11 +1154,32 @@ class EventScreen(pygame.Surface):
             elif key == 'show_response_order':
                 update_image = True
                 self.show_response_order = value
+            elif key == 'sound_file':
+                self.sound_file = value
+                update_sound = True
+            elif key == 'sound_repeat':
+                self.sound_repeat = value
+                update_sound = True
+            elif key == 'sound_repeat_force':
+                self.sound_repeat_force = value
+                update_sound = True
+            elif key == 'sound_file_force':
+                self.sound_file_force = value
+                update_sound = True
+            elif key == 'path_sound_folder':
+                if pathlib.Path(value).is_dir():
+                    self.sound_obj.sound_folder_path = value
+                    self.logger.info(f"Set default sound path to '{value}'")
+                else:
+                    self.sound_obj.sound_folder_path = DEFAULT_SOUND_DIR
+                    self.logger.info(f"Could not find sound path '{value}', set therefore to default '{DEFAULT_SOUND_DIR}'")
             else:
                 self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
 
-        if update_image is True:
+        if update_image:
             self.update_images()
+        if update_sound:
+            self.update_sound()
 
     def update_images(self):
         # Calculate size of Images
@@ -1188,6 +1224,18 @@ class EventScreen(pygame.Surface):
             image_rect.center = (images_width + images_width // 2, message_height + self.images_height // 2)
             self.image_obj_right = image_obj
             self.image_rect_right = image_rect
+
+    def update_sound(self):
+        if self.sound_file and self.sound_obj.is_file(self.sound_file):
+            self.sound_obj.load_music(file=self.sound_file)
+            self.sound_obj.start(loops=self.sound_repeat, offset=0, delay=2, pause=15)
+            print("play std")
+        elif self.sound_file_force and self.sound_obj.is_file(self.sound_file_force):
+            self.sound_obj.load_music(file=self.sound_file_force)
+            self.sound_obj.start(loops=self.sound_repeat_force, offset=0, delay=2, pause=15)
+            print("play force")
+        else:
+            self.logger.warning("Could not start sound, no file defined")
 
     def update(self):
         self.fill(BLACK)
@@ -1648,6 +1696,11 @@ class GuiHandler(object):
             config = dict(self.clock_settings)
         elif screen_name == Screen.slideshow:
             config = dict(self.slideshow_settings)
+
+        # Remove undefined key's
+        for key, value in dict(config).items():
+            if value is None or value == "":
+                del config[key]
 
         config.update(screen_config)
         return config

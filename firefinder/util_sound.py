@@ -138,6 +138,9 @@ class AlarmSound(object):
     def is_running(self):
         return self._running
 
+    def is_file(self, file):
+        return Path(os.path.join(self.sound_folder_path, file)).is_file()
+
 
 if __name__ == '__main__':
 

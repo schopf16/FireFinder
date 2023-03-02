@@ -601,8 +601,8 @@ class ConfigFile(object):
                 "show_progress_bar"     : self._get_boolean("Event", "show_progress_bar", default=False),
                 "show_response_order"   : self._get_boolean("Event", "show_response_order", default=False),
                 "path_sound_folder"     : self._get_value('Event', 'path_sounds', default=""),
-                "force_sound_file"      : self._get_value('Event', 'force_sound_file', default=""),
-                "force_sound_repetition": self._get_int('Event', 'force_repetition', default=1)
+                "sound_file_force"      : self._get_value('Event', 'force_sound_file', default=""),
+                "sound_repeat_force"    : self._get_int('Event', 'force_repetition', default=1)
             }
 
             self.successful = True
