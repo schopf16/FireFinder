@@ -1,6 +1,6 @@
 ; last modified 26. april 2016 by Michael Anderegg
 
-[General]
+[FileObserver]
 ; Enter the local full path of the directory in which the alert.ini
 ; file is copied to. Normally this directory is a shared folder.
 ; Do not use umlaut cause this ini-file is written in ASCII
@@ -9,7 +9,7 @@ observing_path  = D:\Firefinder
 
 ; The name of the file which the software is triggering for.
 observing_file    = Object.ini
-; ------------------------------------------------------------------
+; ==================================================================
 
 [Visual]
 ; The software is designed to work in full screen. However you may
@@ -17,7 +17,7 @@ observing_file    = Object.ini
 fullscreen        = false
 ; ------------------------------------------------------------------
 
-; After the system has startet, the software shows the splash screen
+; After the system has started, the software shows the splash screen
 ; If the software should change the screen, set the time in second
 ; after the start of the software and the screen in which the software
 ; has to switch. If variable is not defined or 0, the screen remains
@@ -26,18 +26,18 @@ fullscreen        = false
 ; won't change any more.
 switchScreenAfterStart = 300
 
-; The following screens are availlable
+; The following screens are available
 ; off       - switch tv off
 ; slideshow - Shows random picture
 ; time      - display a analog an digital clock
 switchToScreenAfterStart = off   
 ; ------------------------------------------------------------------
 
-; After a event occours, system may switch after a given time
+; After a event occurs, system may switch after a given time
 ; into an other screen
 switchScreenAfterEvent = 600   
 
-; The following screens are availlable
+; The following screens are available
 ; off       - switch tv off
 ; slideshow - Shows random picture
 ; time      - display a analog an digital clock
@@ -45,7 +45,7 @@ switchToScreenAfterEvent = off
 ; ------------------------------------------------------------------
 
 ; If empty or set to 'None' the system won't display a image. Enter
-; full path and filename with extentions. For example 
+; full path and filename with extensions. For example
 ; D:\Picutre\Logo.png
 ; Default: None
 company_path_logo = None
@@ -55,7 +55,7 @@ company_path_logo = None
 ; or not existing, nothing is shown
 ; Default: *Empty*
 company_name      =
-; ------------------------------------------------------------------
+; ==================================================================
 
 [Power]
 ; The raspberry pi is able to drive a television over CEC-signals.
@@ -76,18 +76,48 @@ cec_enable               = true
 stdby_enable             = false
 ; ------------------------------------------------------------------
 
-; Some television switch of automaticaly after some houres of 
-; inactivity. To obtain some eco-labels, it is not possible to
-; switch off this auto standby function. To prevent the television
-; to switch to standby, the system switch off and on the televison
-; after the given time below. If the programm is in show=off mode,
-; the television remain off.
-cec_reboot_after_minutes = 180
+[Slideshow]
+; Define the path where the images for the Slideshow screen are stored.
+; Enter full path.
+; Default: None
+slideshow_path = D:\Firefinder\Slideshow
 ; ------------------------------------------------------------------
 
-[Sound]
+; If True, the old picture fades out after black and the
+; new one fades in afterwards.
+; Default: True
+fade_over_background = true
+; ------------------------------------------------------------------
+
+; Time in seconds between the images change
+; Default: 60
+seconds_between_images = 60
+; ------------------------------------------------------------------
+
+; Define if the images are sorted alphabetically by their file
+; names or randomly.
+; Default: True (sort alphabetically)
+sort_alphabetically = true
+; ------------------------------------------------------------------
+
+; Define if the header bar is shown allong with the company logo
+; and company name
+; Default True
+show_header_bar = true
+; ==================================================================
+
+[Clock]
+show_second_hand = true
+show_minute_hand = true
+show_hour_hand = true
+show_digital_time = false
+show_digital_date = true
+show_digital_seconds = true
+; ==================================================================
+
+[Event]
 ; Define the path where the sound files are stored. Enter full path.
-; If empty or none, the system will search in the working directory 
+; If empty or none, the system will search in the working directory
 ; in the folder ./firefinder/sound
 ; Default: None
 path_sounds   = None
@@ -103,58 +133,24 @@ force_sound_file = None
 
 ; Set the amount of repetitions that the sound should be repeated.
 ; This hook takes place if the force_sound_file hook take effect.
-; If set to 0, the sound is repeated endless. 
+; If set to 0, the sound is repeated endless.
 ; default 1
 force_repetition = 1
 ; ------------------------------------------------------------------
 
-[Logging]
-; Enable logging output to file
-enable_logging   = True
+; If not defined by the caller, define if the alarm message shall
+; be shown or not
+; Default: True
+show_alarm_message = true
 ; ------------------------------------------------------------------
 
-; Define location and name of the log file. Every time the software
-; is started, a new file is created.
-logging_file     = D:\EclipseWorkspace\firefinder/fire.log
+; If not defined by the caller, define if the progress bar shall
+; be shown or not
+; Default: False
+show_progress_bar = false
 ; ------------------------------------------------------------------
 
-; By default, the file grows indefinitely. You can specify particular
-; values of maxBytes and backupCount to allow the file to rollover at
-; a predetermined size. If maxBytes is zero, rollover never occurs
-logging_file_max_byte = 5000000 
-; ------------------------------------------------------------------
-
-; Rollover occurs whenever the current log file is nearly maxBytes
-; in length. If logging_backup_count is >= 1, the system will
-; successively create new files with the same pathname as the base
-; file, but with extensions ".1", ".2" etc. appended to it. For
-; example, with a logging_backup_count of 5 and a base file name
-; of "app.log", you would get "app.log", "app.log.1", "app.log.2",
-; ... through to "app.log.5". The file being written to is always
-; "app.log" - when it gets filled up, it is closed and renamed to
-; "app.log.1", and if files "app.log.1", "app.log.2" etc. exist,
-; then they are renamed to "app.log.2", "app.log.3" etc.
-; respectively.
-logging_backup_count = 5
-; ------------------------------------------------------------------
-
-; Set the debug level. 
-; The logging functions are named after the level or severity
-; of the events they are used to track. The standard levels and
-; their applicability are described below (in increasing order
-; of severity):
-; Level		 Severity	When it's used
-; Debug			10		Detailed information, typically of interest
-;						only when diagnosing problems.
-; Info			20		Confirmation that things are working
-;						as expected.
-; Warning		30		An indication that something unexpected
-;						happened, or indicative of some problem
-;						in the near future (e.g. ‘disk space low’).
-;						The software is still working as expected.
-; Error			40		Due to a more serious problem, the software
-;						has not been able to perform some function.
-; Critical		50		A serious error, indicating that the program
-;						itself may be unable to continue running.
-logging_level        = debug
-; ------------------------------------------------------------------
+; If not defined by the caller, define if the response order shall
+; be shown or not
+; Default: False
+show_response_order = false

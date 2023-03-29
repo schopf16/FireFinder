@@ -1,0 +1,12 @@
+
+*.log
+*.pyc
+/.idea/.gitignore
+/.idea/FireFinder.iml
+/.idea/inspectionProfiles/profiles_settings.xml
+/.idea/misc.xml
+/.idea/modules.xml
+/.idea/vcs.xml
+/config.ini
+.idea/encodings.xml
+.idea/codeStyles/codeStyleConfig.xml
