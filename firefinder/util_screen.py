@@ -13,6 +13,7 @@ import threading
 
 from enum import Enum
 from datetime import datetime
+from firefinder.util_power import GraphicOutputDriver, OutputState
 from firefinder.util_logger import Logger
 from firefinder.util_sound import AlarmSound
 
@@ -977,7 +978,19 @@ class MessageSurface(pygame.Surface):
 
 
 # ---- SCREENS ----------------------------
-class SplashScreen(pygame.Surface):
+class BaseScreen(pygame.Surface):
+    def __init__(self, size):
+        super(BaseScreen, self).__init__(size)
+        self.size = size
+
+    def configure(self):
+        raise NotImplementedError("'configure' method not implemented for this screen class")
+
+    def update(self):
+        raise NotImplementedError("'update' method not implemented for this screen class")
+
+
+class SplashScreen(BaseScreen):
     def __init__(self, size, company_path_logo="", color_bg=BLACK, color_fg=WHITE, logger=None):
         super(SplashScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SplashScreen.log")
@@ -1045,7 +1058,7 @@ class SplashScreen(pygame.Surface):
             self._set_logo()
 
 
-class EventScreen(pygame.Surface):
+class EventScreen(BaseScreen):
     def __init__(self, size, show_message_bar=True, alarm_message="", show_progress_bar=False, progress_bar_duration=7 * 60,
                  show_response_order=False, equipment_list=None, image_path_left="", image_path_right="", logger=None,
                  path_sound_folder=DEFAULT_SOUND_DIR, force_sound_file="", force_sound_repetition=1):
@@ -1086,8 +1099,6 @@ class EventScreen(pygame.Surface):
         """
         super(EventScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\EventScreen.log")
-
-        self.size = size
 
         # Store the height of the several places
         self.message_bar_height = 220  # Pixel
@@ -1267,7 +1278,7 @@ class EventScreen(pygame.Surface):
             self.blit(self.response_order_obj, (0, response_offset))
 
 
-class ClockScreen(pygame.Surface):
+class ClockScreen(BaseScreen):
     def __init__(self, size, logger=None):
         """
         +---------analogClock---------+
@@ -1294,8 +1305,6 @@ class ClockScreen(pygame.Surface):
         """
         super(ClockScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\ClockScreen.log")
-
-        self.size = size
 
         self.color_bg = BLACK
         self.color_fg = WHITE
@@ -1337,12 +1346,10 @@ class ClockScreen(pygame.Surface):
                 self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
 
 
-class SlideshowScreen(pygame.Surface):
+class SlideshowScreen(BaseScreen):
     def __init__(self, size, logger=None, **kwargs):
         super(SlideshowScreen, self).__init__(size)
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\SlideshowScreen.log")
-
-        self.size = size
 
         # store path where the pictures for the slideshow are stored
         self.slideshow_path      = kwargs.get("slideshow_path", "")
@@ -1537,6 +1544,23 @@ class SlideshowScreen(pygame.Surface):
                 self.logger.error(f"Unknown configuration set: '{key}': '{value}'")
 
 
+class OffScreen(BaseScreen):
+    def __init__(self, size, logger=None, **kwargs):
+        super(OffScreen, self).__init__(size)
+        self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\OffScreen.log")
+
+        self.bg_color = BLACK
+        self.fill(self.bg_color)
+
+    def configure(self):
+        # This screen cannot be configured
+        pass
+
+    def update(self):
+        # Noting to update
+        pass
+
+
 # ---- SCREEN THREAD / HANDLER ------------
 class Screen(Enum):
     """
@@ -1566,8 +1590,7 @@ class GuiThread(threading.Thread):
         self.switch_to_screen_after_start = switch_to_screen_after_start
         self.switch_to_screen_after_event = switch_to_screen_after_event
 
-        self.cec_enable     = cec_enable
-        self.standby_enable = standby_enable
+        self.tv_remote_obj = GraphicOutputDriver(logger=self.logger, cec_enable=cec_enable, standby_enable=standby_enable)
 
         self._running    = False
         self._queue      = queue.Queue()
@@ -1583,7 +1606,6 @@ class GuiThread(threading.Thread):
             window = pygame.display.set_mode(self.size, pygame.FULLSCREEN)
         else:
             window = pygame.display.set_mode(self.size)
-
 
         clock      = pygame.time.Clock()
         screen_obj = None
@@ -1604,9 +1626,10 @@ class GuiThread(threading.Thread):
 
             # Check queue for data (new screen oder configuration for current screen)
             try:
-                screen_name = None
+                screen_name   = None
                 screen_config = None
-                data = self._queue.get_nowait()
+                data          = self._queue.get_nowait()
+
                 if isinstance(data, tuple):
                     screen_name = data[0]
                     screen_config = data[1]
@@ -1622,6 +1645,12 @@ class GuiThread(threading.Thread):
 
                 if screen_name is not None:
                     screen_obj = screen_name.value(size=window.get_size(), logger=self.logger)
+
+                    # On a screen change always check if status of the television shall be changed
+                    if isinstance(screen_name.value, OffScreen):
+                        self.tv_remote_obj.set_visual(state=OutputState.off)
+                    else:
+                        self.tv_remote_obj.set_visual(state=OutputState.on)
 
                 if screen_config is not None:
                     if hasattr(screen_obj, "configure"):

@@ -9,7 +9,7 @@ observing_path  = D:\Firefinder
 
 ; The name of the file which the software is triggering for.
 observing_file    = Object.ini
-; ------------------------------------------------------------------
+; ==================================================================
 
 [Visual]
 ; The software is designed to work in full screen. However you may
@@ -47,15 +47,15 @@ switchToScreenAfterEvent = off
 ; If empty or set to 'None' the system won't display a image. Enter
 ; full path and filename with extensions. For example
 ; D:\Picutre\Logo.png
-; Default: *Empty*
-company_path_logo =
+; Default: None
+company_path_logo = None
 ; ------------------------------------------------------------------
 
 ; The company name is shown in several screens on the top. If empty 
 ; or not existing, nothing is shown
 ; Default: *Empty*
 company_name      =
-; ------------------------------------------------------------------
+; ==================================================================
 
 [Power]
 ; The raspberry pi is able to drive a television over CEC-signals.
@@ -82,10 +82,29 @@ stdby_enable             = false
 ; Default: None
 slideshow_path = D:\Firefinder\Slideshow
 ; ------------------------------------------------------------------
+
+; If True, the old picture fades out after black and the
+; new one fades in afterwards.
+; Default: True
 fade_over_background = true
+; ------------------------------------------------------------------
+
+; Time in seconds between the images change
+; Default: 60
 seconds_between_images = 60
+; ------------------------------------------------------------------
+
+; Define if the images are sorted alphabetically by their file
+; names or randomly.
+; Default: True (sort alphabetically)
 sort_alphabetically = true
+; ------------------------------------------------------------------
+
+; Define if the header bar is shown allong with the company logo
+; and company name
+; Default True
 show_header_bar = true
+; ==================================================================
 
 [Clock]
 show_second_hand = true
@@ -94,12 +113,9 @@ show_hour_hand = true
 show_digital_time = false
 show_digital_date = true
 show_digital_seconds = true
+; ==================================================================
 
 [Event]
-show_alarm_message = true
-show_progress_bar = true
-show_response_order = true
-
 ; Define the path where the sound files are stored. Enter full path.
 ; If empty or none, the system will search in the working directory
 ; in the folder ./firefinder/sound
@@ -121,3 +137,20 @@ force_sound_file = None
 ; default 1
 force_repetition = 1
 ; ------------------------------------------------------------------
+
+; If not defined by the caller, define if the alarm message shall
+; be shown or not
+; Default: True
+show_alarm_message = true
+; ------------------------------------------------------------------
+
+; If not defined by the caller, define if the progress bar shall
+; be shown or not
+; Default: False
+show_progress_bar = false
+; ------------------------------------------------------------------
+
+; If not defined by the caller, define if the response order shall
+; be shown or not
+; Default: False
+show_response_order = false

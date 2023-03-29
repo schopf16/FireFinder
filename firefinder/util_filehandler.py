@@ -76,7 +76,6 @@ class FileWatch(object):
         last_modified_time = os.stat(path_obj.absolute()).st_mtime
         logger.info(f"Start watching file '{path_obj.absolute()}' for modification")
 
-
         while True:
             time.sleep(1)
             file_time = os.stat(path_obj.absolute()).st_mtime
