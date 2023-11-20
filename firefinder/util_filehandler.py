@@ -12,15 +12,15 @@ from firefinder.util_logger import Logger
 
 def get_screen_obj(screen_name: str):
     screen_name = screen_name.lower()
-    if screen_name.lower() == "event":
+    if screen_name == "event":
         screen_obj = Screen.event
-    elif screen_name.lower() == "clock":
+    elif screen_name == "clock":
         screen_obj = Screen.clock
-    elif screen_name.lower() == "splashscreen":
+    elif screen_name == "splashscreen":
         screen_obj = Screen.splash
-    elif screen_name.lower() == "slideshow":
+    elif screen_name == "slideshow":
         screen_obj = Screen.slideshow
-    elif screen_name.lower() == "off":
+    elif screen_name == "off":
         screen_obj = Screen.off
     else:
         screen_obj = None
@@ -85,6 +85,7 @@ class FileWatch(object):
                 last_modified_time = file_time
 
                 logger.debug("FileModifiedEvent raised")
+                logger.debug("Ini file contain:\n%s", path_obj.read_text(encoding='utf-8'))
 
                 config_obj = configparser.ConfigParser()
                 config_obj.read(path_obj.absolute(), encoding='utf-8')
