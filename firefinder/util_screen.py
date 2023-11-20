@@ -1571,6 +1571,7 @@ class Screen(Enum):
     clock = ClockScreen
     splash = SplashScreen
     slideshow = SlideshowScreen
+    off = OffScreen
 
 
 class GuiThread(threading.Thread):

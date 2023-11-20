@@ -12,14 +12,16 @@ from firefinder.util_logger import Logger
 
 def get_screen_obj(screen_name: str):
     screen_name = screen_name.lower()
-    if screen_name == "event":
+    if screen_name.lower() == "event":
         screen_obj = Screen.event
-    elif screen_name == "clock":
+    elif screen_name.lower() == "clock":
         screen_obj = Screen.clock
-    elif screen_name == "splashscreen":
+    elif screen_name.lower() == "splashscreen":
         screen_obj = Screen.splash
-    elif screen_name == "slideshow":
+    elif screen_name.lower() == "slideshow":
         screen_obj = Screen.slideshow
+    elif screen_name.lower() == "off":
+        screen_obj = Screen.off
     else:
         screen_obj = None
     return screen_obj
