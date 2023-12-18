@@ -154,3 +154,14 @@ show_progress_bar = false
 ; be shown or not
 ; Default: False
 show_response_order = false
+; ==================================================================
+
+[Logging]
+; Enable backup observe-file before file gets parsed
+enable_backup   = True
+; ------------------------------------------------------------------
+
+; Define location of the backup path where the observe-file shall be
+; copied before read. 'enable_backup' must be activated before
+backup_path     = C:\FireFinder\bkp\
+; ------------------------------------------------------------------

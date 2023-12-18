@@ -91,6 +91,15 @@ class ConfigFile(object):
                 "sound_repeat_force"    : self._get_int('Event', 'force_repetition', default=1)
             }
 
+            # [Logging]
+            self.logging = {
+                "enable_logging" : self._get_boolean("Logging", "enable_logging", default=True),
+                "logging_file"   : self._get_value('Logging', 'logging_file', default=".\log\fire.log"),
+                "enable_backup"  : self._get_boolean("Logging", "enable_backup", default=False),
+                "backup_path"    : self._get_value('Logging', 'backup_path', default=".")
+
+            }
+
             self.successful = True
 
         else:
@@ -208,13 +217,17 @@ def main():
     gui.start()
 
     # Check if a path observation is configured, if so register it an apply gui-callback
-    observe_path = config_dict["file_observer"].get("observing_path", "")
-    observe_file = config_dict["file_observer"].get("observing_file", "")
+    observe_path   = config_dict["file_observer"].get("observing_path", "")
+    observe_file   = config_dict["file_observer"].get("observing_file", "")
+    backup_observe = config_dict["logging"].get("enable_backup", False)
+    backup_path    = config_dict["logging"].get("backup_path", ".")
     if observe_path != "" and os.path.isdir(observe_path):
         if observe_file != "":
-            watch = FileWatch(file_path = os.path.join(observe_path, observe_file),
-                              callback  = gui.set_screen_and_config,
-                              logger    = log_obj)
+            watch = FileWatch(file_path   = os.path.join(observe_path, observe_file),
+                              callback    = gui.set_screen_and_config,
+                              backup_file = backup_observe,
+                              backup_path = backup_path,
+                              logger      = log_obj)
             watch.start()
         else:
             log_obj.error("observing_path is defined in config but not observing_file, please specify it")
@@ -226,7 +239,7 @@ def main():
     # time.sleep(5)
     # gui.set_screen(screen_name=Screen.clock)
     # time.sleep(5)
-    gui.set_screen_and_config(screen_name=Screen.slideshow, screen_config={"slideshow_path": "D:\\Firefinder\\Slideshow"})
+    # gui.set_screen_and_config(screen_name=Screen.slideshow, screen_config={"slideshow_path": "D:\\Firefinder\\Slideshow"})
     while gui.is_running():
         time.sleep(1)
 

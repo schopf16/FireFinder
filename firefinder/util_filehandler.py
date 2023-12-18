@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import os
+import time
+import shutil
 import threading
 import configparser
-import time
 
 from pathlib import Path
 from firefinder.util_screen import Screen, GuiHandler
@@ -51,8 +52,15 @@ def get_screen_config(screen_name: str, config_obj: configparser.ConfigParser, b
 
 
 class FileWatch(object):
-    def __init__(self, file_path: str, callback: GuiHandler.set_screen_and_config, logger: Logger):
+    def __init__(self, file_path: str, callback: GuiHandler.set_screen_and_config, logger: Logger, backup_file=False,
+                 backup_path="."):
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\FileWatch.log")
+        self.backup_enable = backup_file
+        self.backup_path = Path(backup_path)
+
+        if self.backup_enable and not self.backup_path.exists():
+            logger.info(f"'{self.backup_path.absolute()}' is not existing, create folder")
+            os.makedirs(self.backup_path.absolute())
 
         assert callback.__func__ is GuiHandler.set_screen_and_config, "Wrong callback type"
         self.callback = callback
@@ -63,11 +71,21 @@ class FileWatch(object):
         self._thread = threading.Thread(target=self._do_watch,
                                         daemon=True,
                                         name="FileWatch",
-                                        args=(self.file_path, self.callback, self.logger))
+                                        args=(self.file_path, self.callback, self.logger, self.backup_enable, self.backup_path))
         self._thread.start()
 
+    def _do_backup(self):
+        path_obj = Path(self.file_path)
+
+        file_stem = path_obj.stem
+        file_suffix = path_obj.suffix
+        timestr = time.strftime("_%Y%m%d_%H%M%S")
+        new_file_name = file_stem + timestr + file_suffix
+
+        shutil.copyfile(path_obj.absolute(), os.path.join(self.backup_path.absolute(), new_file_name))
+
     @staticmethod
-    def _do_watch(file_path, callback, logger):
+    def _do_watch(file_path, callback, logger, do_backup: bool, backup_path: Path):
         # catch exceptions in this thread
         threading.excepthook = logger.thread_except_hook
 
@@ -84,8 +102,21 @@ class FileWatch(object):
 
                 logger.debug("FileModifiedEvent raised")
 
+                if do_backup:
+                    logger.info(f"Backup '{path_obj.absolute()}' to '{backup_path.absolute()}'")
+                    file_stem   = path_obj.stem
+                    file_suffix = path_obj.suffix
+                    time_str    = time.strftime("_%Y%m%d_%H%M%S")
+                    new_file_name = file_stem + time_str + file_suffix
+                    shutil.copyfile(path_obj.absolute(), os.path.join(backup_path.absolute(), new_file_name))
+
                 config_obj = configparser.ConfigParser()
-                config_obj.read(path_obj.absolute(), encoding='utf-8')
+                try:
+                    # Try UTF-8 without BOM first
+                    config_obj.read(path_obj.absolute(), encoding='utf-8')
+                except configparser.MissingSectionHeaderError:
+                    # If failing, try UTF-8 with BOM
+                    config_obj.read(path_obj.absolute(), encoding='utf-8-sig')
 
                 screen_name = config_obj.get("General", "show", fallback=None)
                 if screen_name is None:
@@ -101,6 +132,3 @@ class FileWatch(object):
                                                   config_obj  = config_obj,
                                                   basedir     = str(path_obj.parent))
                 callback(screen_name=screen_obj, screen_config=screen_config)
-
-
-
