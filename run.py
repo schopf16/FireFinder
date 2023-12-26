@@ -52,6 +52,7 @@ class ConfigFile(object):
                 "switch_screen_delay_after_event" : self._get_int('Visual', 'switchScreenAfterEvent', default=0),
                 "switch_to_screen_after_event"    : self._get_value('Visual', 'switchToScreenAfterEvent', default='Off'),
                 "cec_enable"                      : self._get_boolean('Power', 'cec_enable', default=False),
+                "hdmi_port_number"                : self._get_int('Power', 'hdmi_televison_port_number', default=1),
                 "standby_enable"                  : self._get_boolean('Power', 'stdby_enable', default=False)
             }
 

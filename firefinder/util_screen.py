@@ -1597,7 +1597,8 @@ class Screen(Enum):
 
 
 class GuiThread(threading.Thread):
-    def __init__(self, size, full_screen, switch_delay_after_event=0, switch_to_screen_after_event='off', cec_enable=False, standby_enable=False, logger=None):
+    def __init__(self, size, full_screen, switch_delay_after_event=0, switch_to_screen_after_event='off', cec_enable=False, hdmi_port_nbr=1,
+                 standby_enable=False, logger=None):
         threading.Thread.__init__(self, daemon=True, name="GuiThread")
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
 
@@ -1611,7 +1612,7 @@ class GuiThread(threading.Thread):
 
         self._timer_obj: Union[threading.Timer, None] = None
 
-        self.tv_remote_obj = GraphicOutputDriver(logger=self.logger, cec_enable=cec_enable, standby_enable=standby_enable)
+        self.tv_remote_obj = GraphicOutputDriver(logger=self.logger, cec_enable=cec_enable, hdmi_port_nbr=hdmi_port_nbr, standby_enable=standby_enable)
 
         self._running    = False
         self._queue      = queue.Queue()
@@ -1788,6 +1789,7 @@ class GuiHandler(object):
                                  switch_delay_after_event     = self.gui_settings.get("switch_screen_delay_after_event", 0),
                                  switch_to_screen_after_event = self.gui_settings.get("switch_to_screen_after_event", 'off'),
                                  cec_enable                   = self.gui_settings.get("cec_enable", False),
+                                 hdmi_port_nbr                = self.gui_settings.get("hdmi_port_number", 1),
                                  standby_enable               = self.gui_settings.get("standby_enable", False),
                                  logger                       = self.logger)
 

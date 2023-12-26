@@ -188,19 +188,23 @@ class PyCecClient:
 
 
 class TvPower(Task):
-    def __init__(self, logger=None):
+    def __init__(self, hdmi_port_nbr=1, logger=None):
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\TvPower.log")
+
+        self.hdmi_televison_port_number = hdmi_port_nbr
         
         if cec:
             self.ceclib = PyCecClient()
 
             # initialise libCEC and enter the main loop
             self.ceclib.init_lib_cec()
+        else:
+            my_dir = os.path.split(os.path.realpath(__file__))[0]
+            self.path_to_cec_client = os.path.join(my_dir, "..", "library", "cec-client.exe")
 
     def run(self, on):
         log = "Received: {}".format(on)
         self.logger.info(log)
-        # self.last_message = time.time() # can use it for monitoring later on
 
         if cec:
             if on:
@@ -210,6 +214,13 @@ class TvPower(Task):
             else:
                 print("switching tv off now")
                 self.ceclib.process_command_standby()
+        else:
+            if on:
+                subprocess.call(["echo", "as", "|", self.path_to_cec_client, '-s', '-p', str(self.hdmi_televison_port_number)],
+                                shell=True, timeout=30)
+            else:
+                subprocess.call(["echo", "standby", "0", "|", self.path_to_cec_client, "-s", "-p", str(self.hdmi_televison_port_number)],
+                                shell=True, timeout=30)
 
         return log
     
@@ -249,9 +260,10 @@ class RepeatingTimer(object):
         
         
 class GraphicOutputDriver(object):
-    def __init__(self, logger=None, cec_enable=False, standby_enable=False, bypass_tv_power_save=0):
+    def __init__(self, logger=None, cec_enable=False, hdmi_port_nbr=1, standby_enable=False, bypass_tv_power_save=0):
         self.logger               = logger if logger is not None else Logger(verbose=True, file_path=".\\MonitorOutputDriver.log")
         self.cec_enable           = cec_enable
+        self.hdmi_port_number     = hdmi_port_nbr
         self.standby_enable       = standby_enable
         self.bypass_tv_power_save = bypass_tv_power_save
 
@@ -259,7 +271,7 @@ class GraphicOutputDriver(object):
         self._current_television_state = OutputState.off
 
         # Create television object to drive TV
-        self.tv_obj = TvPower()
+        self.tv_obj = TvPower(hdmi_port_nbr=hdmi_port_nbr)
         
         # Try to disable power saving
         if os.name == 'posix':
@@ -348,7 +360,7 @@ class GraphicOutputDriver(object):
                     self._current_graphic_output = new_state
 
             if self.cec_enable:
-                # Always enable TV. The user could switch of TV manualy
+                # Always enable TV. The user could switch of TV manually
                 self.logger.info("Switch TV on")
                 self.tv_obj.run(True)
         else:
