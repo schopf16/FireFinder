@@ -28,6 +28,7 @@ def get_screen_config(screen_name: str, config_obj: configparser.ConfigParser, b
         screen_config["alarm_message"]         = config_obj.get('Event', 'message_full', fallback="")
         screen_config["image_left"]            = os.path.join(basedir, image_left)
         screen_config["image_right"]           = os.path.join(basedir, image_right)
+        screen_config["show_progress_bar"]     = config_obj.getboolean('Progress', 'show_progress', fallback=False)
         screen_config["progress_bar_duration"] = config_obj.getint('Progress', 'progress_time', fallback=7*60)
         screen_config["sound_file"]            = config_obj.get('Sound', 'sound', fallback="")
         screen_config["sound_repeat"]          = config_obj.getint('Sound', 'repeat', fallback=1)
