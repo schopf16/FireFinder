@@ -67,6 +67,14 @@ company_name      =
 cec_enable               = true
 ; ------------------------------------------------------------------
 
+; When the TV set is switched on, it must be switched to this 
+; device so that the visualization can be displayed. Enter the HDMI
+; port on which the device is located. Currently this only works
+; on Windows devices.
+; default: 1
+hdmi_televison_port_number = 1
+; -----------------------------------------------------------------
+
 ; If a computer screen is connected instead of a television, the 
 ; software can't put screen into standby by sending CEC-signals. 
 ; Therefore the system deactivate the monitor output which puts the
