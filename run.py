@@ -204,7 +204,7 @@ def main():
     config_dict = config_obj.to_dict()
     config_successful = config_dict.get("successful", False)
     if not config_successful:
-        log_obj.critical("Could not successfully load the configuration -> aborting")
+        log_obj.critical("Could not successfully load the configuration -> abording")
         assert config_successful, "Failed loading configuration file"
 
     gui = GuiHandler(logger             = log_obj,
@@ -240,7 +240,6 @@ def main():
     # gui.set_screen(screen_name=Screen.clock)
     # time.sleep(5)
     # gui.set_screen_and_config(screen_name=Screen.slideshow, screen_config={"slideshow_path": "D:\\Firefinder\\Slideshow"})
-    # gui.set_screen(screen_name=Screen.off)
     while gui.is_running():
         time.sleep(1)
 

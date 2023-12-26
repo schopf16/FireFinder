@@ -7,25 +7,8 @@ import threading
 import configparser
 
 from pathlib import Path
-from firefinder.util_screen import Screen, GuiHandler
+from firefinder.util_screen import GuiHandler, get_screen_obj_from_string
 from firefinder.util_logger import Logger
-
-
-def get_screen_obj(screen_name: str):
-    screen_name = screen_name.lower()
-    if screen_name == "event":
-        screen_obj = Screen.event
-    elif screen_name == "clock":
-        screen_obj = Screen.clock
-    elif screen_name == "splashscreen":
-        screen_obj = Screen.splash
-    elif screen_name == "slideshow":
-        screen_obj = Screen.slideshow
-    elif screen_name == "off":
-        screen_obj = Screen.off
-    else:
-        screen_obj = None
-    return screen_obj
 
 
 def get_screen_config(screen_name: str, config_obj: configparser.ConfigParser, basedir: str):
@@ -103,7 +86,6 @@ class FileWatch(object):
                 last_modified_time = file_time
 
                 logger.debug("FileModifiedEvent raised")
-                logger.debug("Ini file contain:\n%s", path_obj.read_text(encoding='utf-8'))
 
                 if do_backup:
                     logger.info(f"Backup '{path_obj.absolute()}' to '{backup_path.absolute()}'")
@@ -126,7 +108,7 @@ class FileWatch(object):
                     logger.error("Failed to read variable \"show\" in section [General]")
                     return
 
-                screen_obj = get_screen_obj(screen_name=screen_name)
+                screen_obj = get_screen_obj_from_string(screen_name=screen_name)
                 if screen_obj is None:
                     logger.error(f"Could not assign a valid screen to '{screen_name}'")
                     return

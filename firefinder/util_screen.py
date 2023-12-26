@@ -2,7 +2,6 @@
 
 import os
 import re
-import sys
 import math
 import time
 import queue
@@ -12,6 +11,7 @@ import pathlib
 import threading
 
 from enum import Enum
+from typing import Union
 from datetime import datetime
 from firefinder.util_power import GraphicOutputDriver, OutputState
 from firefinder.util_logger import Logger
@@ -125,6 +125,23 @@ def get_font_obj(font_name, font_size):
     else:
         font = pygame.font.SysFont(font_name, int(font_size))
     return font
+
+
+def get_screen_obj_from_string(screen_name: str):
+    screen_name = screen_name.lower()
+    if screen_name == "event":
+        screen_obj = Screen.event
+    elif screen_name == "clock":
+        screen_obj = Screen.clock
+    elif screen_name == "splashscreen":
+        screen_obj = Screen.splash
+    elif screen_name == "off":
+        screen_obj = Screen.off
+    elif screen_name == "slideshow":
+        screen_obj = Screen.slideshow
+    else:
+        screen_obj = None
+    return screen_obj
 
 
 class EventInfo(object):
@@ -1567,17 +1584,15 @@ class Screen(Enum):
     This enumeration holds all available screens for display.
     ORDER: To define the classes within the enumeration, they must already be defined beforehand
     """
+    off   = OffScreen
     event = EventScreen
     clock = ClockScreen
     splash = SplashScreen
     slideshow = SlideshowScreen
-    off = OffScreen
 
 
 class GuiThread(threading.Thread):
-    def __init__(self, size, full_screen, switch_delay_after_start=0, switch_delay_after_event=0,
-                 switch_to_screen_after_start='off', switch_to_screen_after_event='off', cec_enable=False,
-                 standby_enable=False, logger=None):
+    def __init__(self, size, full_screen, switch_delay_after_event=0, switch_to_screen_after_event='off', cec_enable=False, standby_enable=False, logger=None):
         threading.Thread.__init__(self, daemon=True, name="GuiThread")
         self.logger = logger if logger is not None else Logger(verbose=True, file_path=".\\GuiHandler.log")
 
@@ -1586,10 +1601,10 @@ class GuiThread(threading.Thread):
 
         self.size                         = size
         self.full_screen                  = full_screen
-        self.switch_delay_after_start     = switch_delay_after_start
         self.switch_delay_after_event     = switch_delay_after_event
-        self.switch_to_screen_after_start = switch_to_screen_after_start
         self.switch_to_screen_after_event = switch_to_screen_after_event
+
+        self._timer_obj: Union[threading.Timer, None] = None
 
         self.tv_remote_obj = GraphicOutputDriver(logger=self.logger, cec_enable=cec_enable, standby_enable=standby_enable)
 
@@ -1648,10 +1663,19 @@ class GuiThread(threading.Thread):
                     screen_obj = screen_name.value(size=window.get_size(), logger=self.logger)
 
                     # On a screen change always check if status of the television shall be changed
-                    if isinstance(screen_name.value, OffScreen):
+                    if screen_name == Screen.off:
                         self.tv_remote_obj.set_visual(state=OutputState.off)
                     else:
                         self.tv_remote_obj.set_visual(state=OutputState.on)
+
+                    # On screen change to event, trigger timer if self.switch_delay_after_event is != 0
+                    if screen_name == Screen.event and self.switch_delay_after_event != 0:
+                        log = f"This is a event, switch automatically to '{self.switch_to_screen_after_event}' after {self.switch_delay_after_event} seconds"
+                        self.logger.info(log)
+                        switch_to_screen_obj = get_screen_obj_from_string(screen_name=self.switch_to_screen_after_event)
+                        self.start_timer(timer_time=self.switch_delay_after_event, screen_name=switch_to_screen_obj)
+                    else:
+                        self.stop_timer()
 
                 if screen_config is not None:
                     if hasattr(screen_obj, "configure"):
@@ -1674,6 +1698,24 @@ class GuiThread(threading.Thread):
     def stop(self):
         self._running = False
         pygame.quit()
+
+    def start_timer(self, timer_time: int, screen_name: Screen):
+        """
+        This method starts a timer to switch the screen to off-screen after
+        """
+
+        self.stop_timer()
+
+        self.logger.info(f"Create new timer. Switch to '{screen_name}' after {timer_time} seconds")
+        self._timer_obj = threading.Timer(interval=timer_time, function=self.change_screen, args=[(screen_name, {})])
+        self._timer_obj.daemon = True  # Kill timer if application is stopped
+        self._timer_obj.start()
+
+    def stop_timer(self):
+        if self._timer_obj is not None:
+            self.logger.info("Timer not 'None', cancel it first")
+            self._timer_obj.cancel()
+            self._timer_obj = None
 
 
 class GuiHandler(object):
@@ -1738,9 +1780,7 @@ class GuiHandler(object):
     def start(self):
         self._thread = GuiThread(size                         = self.size,
                                  full_screen                  = self.gui_settings.get("full_screen_enable", False),
-                                 switch_delay_after_start     = self.gui_settings.get("switch_delay_after_start", 0),
-                                 switch_delay_after_event     = self.gui_settings.get("switch_delay_after_event", 0),
-                                 switch_to_screen_after_start = self.gui_settings.get("switch_to_screen_after_start", 'off'),
+                                 switch_delay_after_event     = self.gui_settings.get("switch_screen_delay_after_event", 0),
                                  switch_to_screen_after_event = self.gui_settings.get("switch_to_screen_after_event", 'off'),
                                  cec_enable                   = self.gui_settings.get("cec_enable", False),
                                  standby_enable               = self.gui_settings.get("standby_enable", False),
@@ -1752,6 +1792,15 @@ class GuiHandler(object):
                                    screen_config={"company_path_logo": self.slideshow_settings.get("company_path_logo", "")})
 
         self._thread.start()
+
+        # Check if the screen shall automatically change after application has been started
+        switch_delay_after_start     = self.gui_settings.get("switch_screen_delay_after_start", 0)
+        switch_to_screen_after_start = self.gui_settings.get("switch_to_screen_after_start", 'off')
+        if switch_delay_after_start != 0:
+            time.sleep(1)
+            screen_obj = get_screen_obj_from_string(screen_name=switch_to_screen_after_start)
+            self.logger.info(f"Starting GuiHandler, switch automatic to screen '{screen_obj}' after {switch_delay_after_start} seconds")
+            self._thread.start_timer(timer_time=switch_delay_after_start, screen_name=screen_obj)
 
     def stop(self):
         self._thread.stop()
@@ -1886,7 +1935,7 @@ if __name__ == "__main__":
     screen = pygame.display.set_mode((this_screen.current_w, this_screen.current_h))
     # screen = pygame.display.set_mode((this_screen.current_w, 500))
     # screen = pygame.display.set_mode((500, 500))
-    splash_screen = SplashScreen((this_screen.current_w, this_screen.current_h), path_logo="D:\\Firefinder\\logo.png")
+    splash_screen = SplashScreen((this_screen.current_w, this_screen.current_h), company_path_logo="C:\\Firefinder\\logo.png")
     # slideshow_obj = SlideshowScreen((this_screen.current_w, this_screen.current_h), path_to_images="D:\\Firefinder\\Slideshow")
     # analog_clock_surface = AnalogClockSurface((this_screen.current_w, 1200))
     # digital_clock_surface = DigitalClockSurface((this_screen.current_w, 300))
@@ -1905,8 +1954,8 @@ if __name__ == "__main__":
                                progress_bar_duration= 60,
                                show_response_order=True,
                                equipment_list=["Fz_1.png", "Fz_2.png", "Fz_3.png", "Fz_4.png", "Fz_5.png", "Fz_6.png", "Fz_7.png", "Fz_8.png", "Fz_9.png", ],
-                               image_path_left="D:\\FireFinder\\direction_1.jpg",
-                               image_path_right="D:\\FireFinder\\direction_detail_1.jpg",
+                               image_path_left="C:\\FireFinder\\direction_1.jpg",
+                               image_path_right="C:\\FireFinder\\direction_detail_1.jpg",
                                )
     clock = pygame.time.Clock()
     while True:
