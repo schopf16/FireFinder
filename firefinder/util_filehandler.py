@@ -104,9 +104,10 @@ class FileWatch(object):
                     config_obj.read(path_obj.absolute(), encoding='utf-8-sig')
 
                 screen_name = config_obj.get("General", "show", fallback=None)
-                if screen_name is None:
-                    logger.error("Failed to read variable \"show\" in section [General]")
-                    return
+                if screen_name is None or screen_name == "":
+                    logger.error(f"Failed to read variable \"show\" in section [General], read value is '{screen_name}")
+                    logger.info("Set screen_name to default 'off'")
+                    screen_name = 'off'
 
                 screen_obj = get_screen_obj_from_string(screen_name=screen_name)
                 if screen_obj is None:
