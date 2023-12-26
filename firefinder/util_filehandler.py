@@ -21,6 +21,8 @@ def get_screen_obj(screen_name: str):
         screen_obj = Screen.splash
     elif screen_name == "slideshow":
         screen_obj = Screen.slideshow
+    elif screen_name == "off":
+        screen_obj = Screen.off
     else:
         screen_obj = None
     return screen_obj
@@ -101,6 +103,7 @@ class FileWatch(object):
                 last_modified_time = file_time
 
                 logger.debug("FileModifiedEvent raised")
+                logger.debug("Ini file contain:\n%s", path_obj.read_text(encoding='utf-8'))
 
                 if do_backup:
                     logger.info(f"Backup '{path_obj.absolute()}' to '{backup_path.absolute()}'")
