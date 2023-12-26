@@ -106,7 +106,10 @@ def scale_image(image_obj, max_width=None, max_height=None, crop=False, keep_rat
     new_height = int(height * scale_factor)
 
     # Scale the image using the new dimensions
-    scaled_image = pygame.transform.smoothscale(image_obj, (new_width, new_height))
+    try:
+        scaled_image = pygame.transform.smoothscale(image_obj, (new_width, new_height))
+    except ValueError:
+        scaled_image = pygame.transform.scale(image_obj, (new_width, new_height))
 
     if crop:
         # If cropping, create a new surface with the target dimensions and blit the scaled image onto it
@@ -839,6 +842,8 @@ class ResponseOrderSurface(pygame.Surface):
             for equipment_name in equipment_list:
                 # Load image and scale to available space
                 image_path = os.path.join(DEFAULT_PIC_DIR, equipment_name)
+                self.logger.debug(f"calculate image '{image_path}' for screen")
+
                 if not os.path.isfile(image_path):
                     self.logger.error(f"Could not find picture {image_path}, take 'no_image' instead")
                     image_path = DEFAULT_NO_PIC
