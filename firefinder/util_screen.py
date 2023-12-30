@@ -1808,7 +1808,7 @@ class GuiHandler(object):
         switch_delay_after_start     = self.gui_settings.get("switch_screen_delay_after_start", 0)
         switch_to_screen_after_start = self.gui_settings.get("switch_to_screen_after_start", 'off')
         if switch_delay_after_start != 0:
-            time.sleep(1)
+            time.sleep(5)
             screen_obj = get_screen_obj_from_string(screen_name=switch_to_screen_after_start)
             self.logger.info(f"Starting GuiHandler, switch automatic to screen '{screen_obj}' after {switch_delay_after_start} seconds")
             self._thread.start_timer(timer_time=switch_delay_after_start, screen_name=screen_obj)
