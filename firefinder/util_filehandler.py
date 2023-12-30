@@ -45,8 +45,8 @@ class FileWatch(object):
         self.backup_path = Path(backup_path)
 
         if self.backup_enable and not self.backup_path.exists():
-            logger.info(f"'{self.backup_path.absolute()}' is not existing, create folder")
-            os.makedirs(self.backup_path.absolute())
+            logger.info(f"'{self.backup_path.resolve()}' is not existing, create folder")
+            os.makedirs(self.backup_path.resolve())
 
         assert callback.__func__ is GuiHandler.set_screen_and_config, "Wrong callback type"
         self.callback = callback
@@ -68,7 +68,7 @@ class FileWatch(object):
         timestr = time.strftime("_%Y%m%d_%H%M%S")
         new_file_name = file_stem + timestr + file_suffix
 
-        shutil.copyfile(path_obj.absolute(), os.path.join(self.backup_path.absolute(), new_file_name))
+        shutil.copyfile(path_obj.resolve(), os.path.join(self.backup_path.resolve(), new_file_name))
 
     @staticmethod
     def _do_watch(file_path, callback, logger, do_backup: bool, backup_path: Path):
@@ -77,32 +77,48 @@ class FileWatch(object):
 
         path_obj = Path(file_path)
 
-        last_modified_time = os.stat(path_obj.absolute()).st_mtime
-        logger.info(f"Start watching file '{path_obj.absolute()}' for modification")
+        last_modified_time = os.stat(path_obj.resolve()).st_mtime
+        logger.info(f"Start watching file '{path_obj.resolve()}' for modification")
+
+        is_file_available = True
 
         while True:
             time.sleep(1)
-            file_time = os.stat(path_obj.absolute()).st_mtime
+            try:
+                file_time = os.stat(path_obj.resolve()).st_mtime
+
+                if not is_file_available:
+                    is_file_available = True
+                    logger.error(f"File '{path_obj.resolve()}' is available again")
+
+            except FileNotFoundError:
+                # If the file does not exist (perhaps it gets deleted before updated)
+                file_time = last_modified_time
+
+                if is_file_available:
+                    is_file_available = False
+                    logger.error(f"File '{path_obj.resolve()}' no longer available")
+
             if file_time != last_modified_time:
                 last_modified_time = file_time
 
                 logger.debug("FileModifiedEvent raised")
 
                 if do_backup:
-                    logger.info(f"Backup '{path_obj.absolute()}' to '{backup_path.absolute()}'")
+                    logger.info(f"Backup '{path_obj.resolve()}' to '{backup_path.resolve()}'")
                     file_stem   = path_obj.stem
                     file_suffix = path_obj.suffix
                     time_str    = time.strftime("_%Y%m%d_%H%M%S")
                     new_file_name = file_stem + time_str + file_suffix
-                    shutil.copyfile(path_obj.absolute(), os.path.join(backup_path.absolute(), new_file_name))
+                    shutil.copyfile(path_obj.resolve(), os.path.join(backup_path.resolve(), new_file_name))
 
                 config_obj = configparser.ConfigParser()
                 try:
                     # Try UTF-8 without BOM first
-                    config_obj.read(path_obj.absolute(), encoding='utf-8')
+                    config_obj.read(path_obj.resolve(), encoding='utf-8')
                 except configparser.MissingSectionHeaderError:
                     # If failing, try UTF-8 with BOM
-                    config_obj.read(path_obj.absolute(), encoding='utf-8-sig')
+                    config_obj.read(path_obj.resolve(), encoding='utf-8-sig')
 
                 screen_name = config_obj.get("General", "show", fallback=None)
                 if screen_name is None or screen_name == "":
@@ -119,3 +135,4 @@ class FileWatch(object):
                                                   config_obj  = config_obj,
                                                   basedir     = str(path_obj.parent))
                 callback(screen_name=screen_obj, screen_config=screen_config)
+
