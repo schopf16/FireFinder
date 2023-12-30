@@ -1622,6 +1622,7 @@ class GuiThread(threading.Thread):
         self._queue      = queue.Queue()
 
         self._fps = FPS
+        self._screen_updated = False
 
     def change_screen(self, data):
         self._queue.put(data)
@@ -1702,6 +1703,9 @@ class GuiThread(threading.Thread):
                 window.blit(screen_obj, (0, 0))
             pygame.display.flip()
 
+            # Inform that the screen is now updated
+            self._screen_updated = True
+
             # Control the FPS
             clock.tick(self._fps)
 
@@ -1726,6 +1730,9 @@ class GuiThread(threading.Thread):
             self.logger.info("Timer not 'None', cancel it first")
             self._timer_obj.cancel()
             self._timer_obj = None
+
+    def is_screen_updated(self):
+        return self._screen_updated
 
 
 class GuiHandler(object):
@@ -1808,7 +1815,10 @@ class GuiHandler(object):
         switch_delay_after_start     = self.gui_settings.get("switch_screen_delay_after_start", 0)
         switch_to_screen_after_start = self.gui_settings.get("switch_to_screen_after_start", 'off')
         if switch_delay_after_start != 0:
-            time.sleep(5)
+            time_start = time.time()
+            while not self._thread.is_screen_updated() and time.time()-time_start <= 30:
+                # Wait until the screen has been updated once or a timeout of 30 seconds is reached
+                time.sleep(1)
             screen_obj = get_screen_obj_from_string(screen_name=switch_to_screen_after_start)
             self.logger.info(f"Starting GuiHandler, switch automatic to screen '{screen_obj}' after {switch_delay_after_start} seconds")
             self._thread.start_timer(timer_time=switch_delay_after_start, screen_name=screen_obj)
