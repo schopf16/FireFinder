@@ -1,4 +1,4 @@
-; last modified 26. april 2016 by Michael Anderegg
+; last modified 30. december 2023 by Michael Anderegg
 
 [FileObserver]
 ; Enter the local full path of the directory in which the alert.ini

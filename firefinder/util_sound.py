@@ -32,6 +32,8 @@ class AlarmSound(object):
         self.sound_folder_path = path
         self.musicLoadSuccessfully = False
 
+        self.logger.info(f"Load AlarmSound-class and set sound-path to '{self.sound_folder_path}'")
+
     def start(self, loops=0, offset=0.0, delay=0, pause=0):
         """
         This will play the loaded music stream. If the music is already playing
@@ -92,6 +94,8 @@ class AlarmSound(object):
 
         if self.sound_file_path:
             self.logger.info(f"successfully load sound file '{self.sound_file_path}'")
+        else:
+            self.logger.warning("Failed settings new sound file")
 
     def __sound_thread(self, loops=0, offset=0.0, delay=0, pause=0):
         # catch exceptions in this thread

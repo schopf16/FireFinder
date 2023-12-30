@@ -271,7 +271,7 @@ class GraphicOutputDriver(object):
         self._current_television_state = OutputState.off
 
         # Create television object to drive TV
-        self.tv_obj = TvPower(hdmi_port_nbr=hdmi_port_nbr)
+        self.tv_obj = TvPower(hdmi_port_nbr=hdmi_port_nbr, logger=self.logger)
         
         # Try to disable power saving
         if os.name == 'posix':

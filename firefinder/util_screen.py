@@ -1115,7 +1115,7 @@ class EventScreen(BaseScreen):
         :param show_response_order:   If true a response bar is shown at the bottom the the screen with equipment images
         :param equipment_list:        List of pictures to display in the response bar.
         :param image_path_left:       Image which is shown on the left side. If image_path_rigth is empty, this image
-                                      whill shown over the whole width
+                                      will shown over the whole width
         :param image_path_right:      Image which is shown on the right side
         :param logger:                Logger instance
         """
@@ -1131,7 +1131,7 @@ class EventScreen(BaseScreen):
         # Configure the alarm message bar
         message_size = (self.get_width(), self.message_bar_height)
         self.show_message_bar = show_message_bar
-        self.message_obj = MessageSurface(size=message_size, message=alarm_message)
+        self.message_obj = MessageSurface(size=message_size, message=alarm_message, logger=self.logger)
 
         # Configure the progress bar
         progress_size = (self.get_width(), self.progress_bar_height)
@@ -1141,7 +1141,9 @@ class EventScreen(BaseScreen):
         # Configure the response order bar
         response_size = (self.get_width(), self.response_order_height)
         self.show_response_order = show_response_order
-        self.response_order_obj = ResponseOrderSurface(size=response_size, equipment_list=equipment_list)
+        self.response_order_obj = ResponseOrderSurface(size=response_size,
+                                                       equipment_list=equipment_list,
+                                                       logger=self.logger)
 
         # Configure images
         self.image_path_left = image_path_left
@@ -1262,11 +1264,11 @@ class EventScreen(BaseScreen):
         if self.sound_file and self.sound_obj.is_file(self.sound_file):
             self.sound_obj.load_music(file=self.sound_file)
             self.sound_obj.start(loops=self.sound_repeat, offset=0, delay=2, pause=15)
-            print("play std")
+            self.logger.info("Play sound")
         elif self.sound_file_force and self.sound_obj.is_file(self.sound_file_force):
             self.sound_obj.load_music(file=self.sound_file_force)
             self.sound_obj.start(loops=self.sound_repeat_force, offset=0, delay=2, pause=15)
-            print("play force")
+            self.logger.info("Play sound forced")
         else:
             self.logger.warning("Could not start sound, no file defined")
 
@@ -1335,13 +1337,15 @@ class ClockScreen(BaseScreen):
                                               color_bg         = self.color_bg,
                                               show_second_hand = True,
                                               show_minute_hand = True,
-                                              show_hour_hand   = True)
+                                              show_hour_hand   = True,
+                                              logger           = self.logger)
 
         self._digital_clk = DigitalClockSurface(size      = (self.size[0], self.size[1]*0.2),
                                                 color_bg  = self.color_bg,
                                                 color_fg  = self.color_fg,
                                                 show_time = False,
-                                                show_date = True)
+                                                show_date = True,
+                                                logger    = self.logger)
 
     def update(self):
         self.fill(self.color_bg)
